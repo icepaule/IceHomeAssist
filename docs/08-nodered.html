@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node-RED - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Node-RED
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Node-RED</h1>
+            <p>
+                Node-RED ist ein flow-basiertes Automatisierungswerkzeug, das als HA-Addon installiert
+                ist. Im IceHomeAssist-System wird Node-RED primär für die Verarbeitung von WiFi-Button-Events
+                verwendet, da die dynamische Funktionszuweisung über <code>input_select</code>-Helpers
+                in Node-RED eleganter umsetzbar ist als in nativen HA-Automatisierungen.
+            </p>
+
+            <!-- Addon Setup -->
+            <h2>Addon-Konfiguration</h2>
+            <div class="card">
+                <h3>Addon-Details</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Eigenschaft</th>
+                            <th>Wert</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Addon-ID</strong></td>
+                            <td><code>addon_a0d7b954_nodered</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Web-Interface</strong></td>
+                            <td><code>http://homeassistant.local:1880</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Flows-Datei</strong></td>
+                            <td><code>/var/lib/homeassistant/addon_configs/a0d7b954_nodered/flows.json</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>MQTT-Verbindung</strong></td>
+                            <td>Verbindet sich mit dem Mosquitto-Addon auf <code>localhost:1883</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>HA-Verbindung</strong></td>
+                            <td>Über das Node-RED HA Companion Plugin (automatisch konfiguriert)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-box">
+                <strong>Hinweis:</strong> Die HA-Automatisierungen in <code>packages/wifi_buttons.yaml</code>
+                sind mit <code>initial_state: false</code> deaktiviert. Die eigentliche Button-Logik
+                wird vollständig über Node-RED-Flows gesteuert.
+            </div>
+
+            <!-- WiFi Buttons Hardware -->
+            <h2>WiFi Buttons (ESP32-S3 Tasmota)</h2>
+            <p>
+                Die WiFi-Buttons basieren auf einem ESP32-S3 Mikrocontroller mit Tasmota-Firmware.
+                Das Gerät hat sowohl physische GPIO-Buttons als auch einen RF-Empfänger für
+                Funk-Fernbedienungen.
+            </p>
+
+            <h3>Hardware-Übersicht</h3>
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Button</th>
+                            <th>Typ</th>
+                            <th>Kennung</th>
+                            <th>Beschreibung</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Button 1</strong></td>
+                            <td>Physisch (GPIO)</td>
+                            <td><code>GPIO42</code></td>
+                            <td>Erster physischer Taster am Gerät</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Button 2</strong></td>
+                            <td>Physisch (GPIO)</td>
+                            <td><code>GPIO41</code></td>
+                            <td>Zweiter physischer Taster am Gerät</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Button 3</strong></td>
+                            <td>Physisch (GPIO)</td>
+                            <td><code>GPIO40</code></td>
+                            <td>Dritter physischer Taster am Gerät</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Button 4</strong></td>
+                            <td>RF-Fernbedienung</td>
+                            <td><code>0xD26F68</code></td>
+                            <td>Erster Funk-Button der Fernbedienung</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Button 5</strong></td>
+                            <td>RF-Fernbedienung</td>
+                            <td><code>0xDD21A8</code></td>
+                            <td>Zweiter Funk-Button der Fernbedienung</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>MQTT Topic</h3>
+            <pre><code><span class="cmt"># MQTT Topic für Button-Events</span>
+<span class="val">stat/wifibutton1/RESULT</span>
+
+<span class="cmt"># Beispiel-Payload für physischen Button</span>
+{
+  <span class="str">"Button1"</span>: {
+    <span class="str">"Action"</span>: <span class="str">"SINGLE"</span>
+  }
+}
+
+<span class="cmt"># Beispiel-Payload für RF-Button</span>
+{
+  <span class="str">"RfReceived"</span>: {
+    <span class="str">"Sync"</span>: <span class="val">12350</span>,
+    <span class="str">"Low"</span>: <span class="val">420</span>,
+    <span class="str">"High"</span>: <span class="val">1210</span>,
+    <span class="str">"Data"</span>: <span class="str">"0xD26F68"</span>,
+    <span class="str">"RfKey"</span>: <span class="str">"None"</span>
+  }
+}
+
+<span class="cmt"># Mögliche Button-Actions</span>
+<span class="cmt"># Physische Buttons: SINGLE, DOUBLE, HOLD</span>
+<span class="cmt"># RF-Buttons: Nur SINGLE (über Data-Code identifiziert)</span></code></pre>
+
+            <!-- Input Select Helpers -->
+            <h2>input_select Helpers</h2>
+            <p>
+                Jeder WiFi-Button wird über einen <code>input_select</code>-Helper konfiguriert.
+                Dieser bestimmt, welche Aktion bei einem Tastendruck ausgeführt wird. Die Zuweisung
+                kann über das Dashboard geändert werden, ohne Code zu bearbeiten.
+            </p>
+
+            <h3>Konfiguration in packages/wifi_buttons.yaml</h3>
+            <pre><code><span class="cmt"># packages/wifi_buttons.yaml - Input Select Helpers</span>
+
+<span class="kw">input_select:</span>
+  <span class="kw">wifi_button1_action:</span>
+    <span class="kw">name:</span> <span class="str">"WiFi Button 1 Aktion"</span>
+    <span class="kw">options:</span>
+      - <span class="str">"Licht Toggle"</span>
+      - <span class="str">"Musik Play/Pause"</span>
+      - <span class="str">"Staubsauger Start"</span>
+      - <span class="str">"Szene Abend"</span>
+      - <span class="str">"Strompreis Ansage"</span>
+      - <span class="str">"Nichts"</span>
+    <span class="kw">initial:</span> <span class="str">"Licht Toggle"</span>
+    <span class="kw">icon:</span> <span class="str">mdi:gesture-tap-button</span>
+
+  <span class="kw">wifi_button2_action:</span>
+    <span class="kw">name:</span> <span class="str">"WiFi Button 2 Aktion"</span>
+    <span class="kw">options:</span>
+      - <span class="str">"Licht Toggle"</span>
+      - <span class="str">"Musik Play/Pause"</span>
+      - <span class="str">"Staubsauger Start"</span>
+      - <span class="str">"Szene Abend"</span>
+      - <span class="str">"Strompreis Ansage"</span>
+      - <span class="str">"Nichts"</span>
+    <span class="kw">initial:</span> <span class="str">"Musik Play/Pause"</span>
+    <span class="kw">icon:</span> <span class="str">mdi:gesture-tap-button</span>
+
+  <span class="kw">wifi_button3_action:</span>
+    <span class="kw">name:</span> <span class="str">"WiFi Button 3 Aktion"</span>
+    <span class="kw">options:</span>
+      - <span class="str">"Licht Toggle"</span>
+      - <span class="str">"Musik Play/Pause"</span>
+      - <span class="str">"Staubsauger Start"</span>
+      - <span class="str">"Szene Abend"</span>
+      - <span class="str">"Strompreis Ansage"</span>
+      - <span class="str">"Nichts"</span>
+    <span class="kw">initial:</span> <span class="str">"Staubsauger Start"</span>
+    <span class="kw">icon:</span> <span class="str">mdi:gesture-tap-button</span>
+
+  <span class="cmt"># Analog für Button 4 und 5 (RF)</span>
+  <span class="kw">wifi_button4_action:</span>
+    <span class="kw">name:</span> <span class="str">"RF Button 4 Aktion"</span>
+    <span class="kw">options:</span>
+      - <span class="str">"Licht Toggle"</span>
+      - <span class="str">"Musik Play/Pause"</span>
+      - <span class="str">"Szene Abend"</span>
+      - <span class="str">"Nichts"</span>
+    <span class="kw">initial:</span> <span class="str">"Szene Abend"</span>
+
+  <span class="kw">wifi_button5_action:</span>
+    <span class="kw">name:</span> <span class="str">"RF Button 5 Aktion"</span>
+    <span class="kw">options:</span>
+      - <span class="str">"Licht Toggle"</span>
+      - <span class="str">"Musik Play/Pause"</span>
+      - <span class="str">"Szene Abend"</span>
+      - <span class="str">"Nichts"</span>
+    <span class="kw">initial:</span> <span class="str">"Strompreis Ansage"</span></code></pre>
+
+            <!-- Node-RED Flow-Struktur -->
+            <h2>Node-RED Flow-Struktur</h2>
+            <p>
+                Der Haupt-Flow für die WiFi-Buttons folgt einem konsistenten Muster:
+            </p>
+
+            <h3>Flow-Diagramm</h3>
+            <pre><code>┌─────────────┐    ┌──────────────┐    ┌───────────────┐    ┌─────────────┐
+│  MQTT In    │───▶│  JSON Parse  │───▶│  Button       │───▶│  input_select│
+│             │    │              │    │  Identifi-    │    │  Abfrage    │
+│ stat/wifi-  │    │ Payload      │    │  kation       │    │  (HA API)   │
+│ button1/    │    │ parsen       │    │  (welcher?)   │    │             │
+│ RESULT      │    │              │    │              │    │             │
+└─────────────┘    └──────────────┘    └───────────────┘    └──────┬──────┘
+                                                                    │
+                                                                    ▼
+                                                           ┌───────────────┐
+                                                           │  Switch-Node  │
+                                                           │               │
+                                                           │ Aktion        │
+                                                           │ auswählen     │
+                                                           │ basierend auf │
+                                                           │ input_select  │
+                                                           └───────┬───────┘
+                                                                   │
+                                    ┌──────────────────────────────┼──────────┐
+                                    │              │               │          │
+                              ┌─────▼────┐  ┌─────▼────┐  ┌──────▼───┐ ┌───▼────┐
+                              │ Licht    │  │ Musik    │  │ Staub-   │ │ Szene  │
+                              │ Toggle   │  │ Play/    │  │ sauger   │ │ Abend  │
+                              │          │  │ Pause    │  │ Start    │ │        │
+                              │ (HA      │  │ (HA      │  │ (HA      │ │ (HA    │
+                              │ Service) │  │ Service) │  │ Service) │ │Service)│
+                              └──────────┘  └──────────┘  └──────────┘ └────────┘</code></pre>
+
+            <h3>Flow-Beschreibung</h3>
+            <div class="card">
+                <ol>
+                    <li>
+                        <strong>MQTT In Node:</strong> Lauscht auf dem Topic <code>stat/wifibutton1/RESULT</code>
+                        und empfängt alle Button-Events.
+                    </li>
+                    <li>
+                        <strong>JSON Parse:</strong> Wandelt den MQTT-Payload-String in ein JSON-Objekt um.
+                    </li>
+                    <li>
+                        <strong>Button-Identifikation:</strong> Ein Function-Node identifiziert, welcher
+                        Button gedrückt wurde:
+                        <ul>
+                            <li>Physische Buttons: Über <code>msg.payload.Button1</code>, <code>Button2</code>, <code>Button3</code></li>
+                            <li>RF-Buttons: Über <code>msg.payload.RfReceived.Data</code> (0xD26F68 oder 0xDD21A8)</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>input_select Abfrage:</strong> Fragt über die HA-API den aktuellen Wert
+                        des entsprechenden <code>input_select</code>-Helpers ab.
+                    </li>
+                    <li>
+                        <strong>Switch-Node:</strong> Leitet die Nachricht basierend auf dem
+                        <code>input_select</code>-Wert an den entsprechenden Aktions-Zweig weiter.
+                    </li>
+                    <li>
+                        <strong>Aktions-Nodes:</strong> Rufen den jeweiligen HA-Service auf
+                        (z.B. <code>light.toggle</code>, <code>media_player.media_play_pause</code>).
+                    </li>
+                </ol>
+            </div>
+
+            <h3>Beispiel: Function-Node (Button-Identifikation)</h3>
+            <pre><code><span class="cmt">// Node-RED Function Node: Button identifizieren</span>
+
+<span class="kw">const</span> payload = msg.payload;
+
+<span class="cmt">// Physische Buttons prüfen</span>
+<span class="kw">if</span> (payload.Button1) {
+    msg.button = <span class="val">1</span>;
+    msg.action = payload.Button1.Action;
+} <span class="kw">else if</span> (payload.Button2) {
+    msg.button = <span class="val">2</span>;
+    msg.action = payload.Button2.Action;
+} <span class="kw">else if</span> (payload.Button3) {
+    msg.button = <span class="val">3</span>;
+    msg.action = payload.Button3.Action;
+}
+<span class="cmt">// RF-Buttons prüfen</span>
+<span class="kw">else if</span> (payload.RfReceived) {
+    <span class="kw">const</span> rfData = payload.RfReceived.Data;
+    <span class="kw">if</span> (rfData === <span class="str">"0xD26F68"</span>) {
+        msg.button = <span class="val">4</span>;
+        msg.action = <span class="str">"SINGLE"</span>;
+    } <span class="kw">else if</span> (rfData === <span class="str">"0xDD21A8"</span>) {
+        msg.button = <span class="val">5</span>;
+        msg.action = <span class="str">"SINGLE"</span>;
+    }
+}
+
+<span class="cmt">// Nur bei SINGLE-Action weitermachen</span>
+<span class="kw">if</span> (msg.action === <span class="str">"SINGLE"</span>) {
+    <span class="kw">return</span> msg;
+}
+<span class="kw">return null</span>;</code></pre>
+
+            <!-- Flows-Datei -->
+            <h2>Flows-Datei</h2>
+            <div class="card">
+                <p>
+                    Die Node-RED Flows werden in einer JSON-Datei gespeichert:
+                </p>
+                <pre><code><span class="cmt"># Flows-Datei auf dem Host</span>
+/var/lib/homeassistant/addon_configs/a0d7b954_nodered/flows.json
+
+<span class="cmt"># Backup der Flows erstellen</span>
+<span class="kw">sudo</span> cp /var/lib/homeassistant/addon_configs/a0d7b954_nodered/flows.json \
+    /var/lib/homeassistant/addon_configs/a0d7b954_nodered/flows.json.bak</code></pre>
+            </div>
+
+            <div class="warning-box">
+                <strong>Achtung:</strong> Bearbeite die <code>flows.json</code> nicht manuell!
+                Verwende immer den Node-RED-Editor (<code>http://homeassistant.local:1880</code>).
+                Manuelle Änderungen können die Flow-Struktur beschädigen.
+            </div>
+
+            <!-- Warum Node-RED -->
+            <h2>Warum Node-RED statt HA-Automatisierungen?</h2>
+            <div class="card">
+                <p>
+                    Für die WiFi-Buttons wird Node-RED statt nativer HA-Automatisierungen verwendet,
+                    weil:
+                </p>
+                <ul>
+                    <li><strong>Dynamische Zuordnung:</strong> Die Funktion jedes Buttons kann über
+                        <code>input_select</code> im Dashboard geändert werden, ohne Automatisierungen
+                        zu bearbeiten</li>
+                    <li><strong>Komplexe Logik:</strong> Die Unterscheidung zwischen 5 verschiedenen
+                        Buttons (3 GPIO + 2 RF) mit jeweils mehreren Aktionsmöglichkeiten ist in
+                        Node-RED übersichtlicher als in YAML</li>
+                    <li><strong>Visueller Editor:</strong> Flows können grafisch erstellt und debuggt
+                        werden &ndash; ideal für Event-basierte Logik</li>
+                    <li><strong>MQTT-Integration:</strong> Node-RED hat exzellente MQTT-Unterstützung
+                        mit JSON-Parsing direkt im Flow</li>
+                </ul>
+                <p>
+                    Die HA-Automatisierungen in <code>packages/wifi_buttons.yaml</code> sind daher mit
+                    <code>initial_state: false</code> deaktiviert und dienen nur als Dokumentation
+                    der verfügbaren Aktionen.
+                </p>
+            </div>
+
+            <!-- Tasmota GPIO Konfiguration -->
+            <h2>Tasmota-Konfiguration (ESP32-S3)</h2>
+            <pre><code><span class="cmt"># Tasmota Template für ESP32-S3 WiFi Buttons</span>
+<span class="cmt"># Konsole: http://&lt;esp32-ip&gt;</span>
+
+<span class="cmt"># GPIO-Zuordnung konfigurieren</span>
+Template {<span class="str">"NAME"</span>:<span class="str">"WiFiButton1"</span>,<span class="str">"GPIO"</span>:[<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>,<span class="val">0</span>],<span class="str">"FLAG"</span>:<span class="val">0</span>,<span class="str">"BASE"</span>:<span class="val">1</span>}
+
+<span class="cmt"># Button-GPIOs setzen</span>
+GPIO42 <span class="val">Button1</span>   <span class="cmt"># Physischer Button 1</span>
+GPIO41 <span class="val">Button2</span>   <span class="cmt"># Physischer Button 2</span>
+GPIO40 <span class="val">Button3</span>   <span class="cmt"># Physischer Button 3</span>
+
+<span class="cmt"># MQTT-Einstellungen</span>
+MqttHost <span class="val">192.168.1.100</span>     <span class="cmt"># IP des NUC (Mosquitto)</span>
+MqttPort <span class="val">1883</span>
+MqttUser <span class="val">mqtt_user</span>
+Topic <span class="val">wifibutton1</span>
+
+<span class="cmt"># Button-Modus: Nur MQTT-Events senden (kein lokaler Toggle)</span>
+SetOption73 <span class="val">1</span>  <span class="cmt"># Buttons senden MQTT statt lokaler Aktion</span>
+SetOption13 <span class="val">1</span>  <span class="cmt"># Button-Single-Press-Modus</span></code></pre>
+
+            <div class="info-box">
+                <strong>RF-Empfänger:</strong> Die RF-Codes 0xD26F68 und 0xDD21A8 werden automatisch
+                von Tasmota erkannt und als <code>RfReceived</code>-Events über MQTT gesendet.
+                Es ist keine zusätzliche Konfiguration des RF-Empfängers erforderlich, sofern der
+                RF-GPIO in Tasmota korrekt zugewiesen ist.
+            </div>
+
+            <div class="page-nav">
+                <a href="07-automatisierungen.html">
+                    <div><div class="label">Zurück</div>Automatisierungen</div>
+                </a>
+                <a href="09-mqtt.html">
+                    <div><div class="label">Weiter</div>MQTT</div>
+                </a>
+            </div>
+            <div class="footer">
+                IceHomeAssist Dokumentation &middot; Erstellt Februar 2026
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) {
+        a.classList.add('active');
+    }
+});
+
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation Inhaltsverzeichnis"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker Container Komponenten"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker Setup"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes Netzwerk"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages Secrets"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Switch WiFi Radar"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive GPS Tracker"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
+];
+
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i =>
+        i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Keine Ergebnisse</div>';
+    } else {
+        results.innerHTML = matches.map(m =>
+            `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`
+        ).join('');
+    }
+    results.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-container')) {
+        document.getElementById('searchResults').classList.remove('active');
+    }
+});
+</script>
+</body>
+</html>

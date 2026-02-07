@@ -1,0 +1,882 @@
+# =============================================================================
+# WIFI BUTTONS PAKET
+# =============================================================================
+# ESP32-S3 WiFi Button im Bad
+# 3 physische Buttons (GPIO42/41/40) + 2 RF-Tasten (SRX882S auf GPIO21)
+# Unterstützt: SINGLE, DOUBLE, TRIPLE, HOLD
+#
+# ZUM BEARBEITEN:
+#   1. input_select Optionen ändern → Abschnitt "Input Helpers" unten
+#   2. Neue Aktion hinzufügen → Script im Abschnitt "Scripts" erstellen,
+#      dann Option in den input_selects + choose-Block ergänzen
+#   3. Nach Änderungen: HA Konfiguration prüfen & neu laden
+#      (Einstellungen → System → Konfiguration prüfen → YAML neu laden)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# MQTT Sensoren für WiFi Buttons
+# -----------------------------------------------------------------------------
+mqtt:
+  sensor:
+    - name: "WiFi Button 1 Aktion"
+      unique_id: wifibutton1_action
+      state_topic: "stat/wifibutton1/RESULT"
+      value_template: >
+        {% set data = value_json %}
+        {% if data.Button1 is defined %}
+          Button1_{{ data.Button1.Action }}
+        {% elif data.Button2 is defined %}
+          Button2_{{ data.Button2.Action }}
+        {% elif data.Button3 is defined %}
+          Button3_{{ data.Button3.Action }}
+        {% elif data.Button4 is defined %}
+          Button4_{{ data.Button4.Action }}
+        {% elif data.Button5 is defined %}
+          Button5_{{ data.Button5.Action }}
+        {% else %}
+          unknown
+        {% endif %}
+      icon: mdi:gesture-tap-button
+
+    - name: "WiFi Button 1 Status"
+      unique_id: wifibutton1_status
+      state_topic: "tele/wifibutton1/STATE"
+      value_template: "{{ value_json.Wifi.RSSI }}"
+      unit_of_measurement: "%"
+      icon: mdi:wifi
+
+# -----------------------------------------------------------------------------
+# Template Sensoren
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      - name: "WiFi Button Letzte Aktion"
+        unique_id: wifibutton_letzte_aktion
+        state: >
+          {% set action = states('sensor.wifi_button_1_aktion') %}
+          {% set mapping = {
+            'Button1_SINGLE': 'Taste 1 kurz',
+            'Button1_DOUBLE': 'Taste 1 doppelt',
+            'Button1_TRIPLE': 'Taste 1 dreifach',
+            'Button1_HOLD': 'Taste 1 lang',
+            'Button2_SINGLE': 'Taste 2 kurz',
+            'Button2_DOUBLE': 'Taste 2 doppelt',
+            'Button2_TRIPLE': 'Taste 2 dreifach',
+            'Button2_HOLD': 'Taste 2 lang',
+            'Button3_SINGLE': 'Taste 3 kurz',
+            'Button3_DOUBLE': 'Taste 3 doppelt',
+            'Button3_TRIPLE': 'Taste 3 dreifach',
+            'Button3_HOLD': 'Taste 3 lang',
+            'Button4_SINGLE': 'Funk 1',
+            'Button5_SINGLE': 'Funk 2'
+          } %}
+          {{ mapping.get(action, action) }}
+        icon: mdi:gesture-tap
+
+  - trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+    sensor:
+      - name: "WiFi Button Event"
+        unique_id: wifibutton_event
+        state: "{{ now().isoformat() }}"
+        attributes:
+          button: >
+            {% set data = trigger.payload | from_json %}
+            {% if data.Button1 is defined %}1
+            {% elif data.Button2 is defined %}2
+            {% elif data.Button3 is defined %}3
+            {% elif data.Button4 is defined %}4
+            {% elif data.Button5 is defined %}5
+            {% else %}unknown{% endif %}
+          action: >
+            {% set data = trigger.payload | from_json %}
+            {% if data.Button1 is defined %}{{ data.Button1.Action }}
+            {% elif data.Button2 is defined %}{{ data.Button2.Action }}
+            {% elif data.Button3 is defined %}{{ data.Button3.Action }}
+            {% elif data.Button4 is defined %}{{ data.Button4.Action }}
+            {% elif data.Button5 is defined %}{{ data.Button5.Action }}
+            {% else %}unknown{% endif %}
+          raw: "{{ trigger.payload }}"
+
+# -----------------------------------------------------------------------------
+# Input Helpers - HIER AKTIONEN KONFIGURIEREN
+# -----------------------------------------------------------------------------
+# Jeder Button hat einen input_select pro Druckart (single/double/triple).
+# Die Optionen bestimmen, was im HA-UI als Dropdown auswaehlbar ist.
+# "initial" ist der Standardwert nach HA-Neustart.
+# -----------------------------------------------------------------------------
+input_select:
+  # --- Button 1 (physisch, GPIO42) ---
+  wifibutton1_button1_single_action:
+    name: "Taste 1 Kurz"
+    options:
+      - "Bad Licht An"
+      - "Bad Licht Aus"
+      - "WLED An"
+      - "WLED Aus"
+      - "Alexa Bad Radio Bayern 1"
+      - "Alexa Bad Radio Aus"
+      - "Nichts"
+    initial: "WLED An"
+    icon: mdi:gesture-tap
+
+  wifibutton1_button1_double_action:
+    name: "Taste 1 Doppelt"
+    options:
+      - "Bad Licht An"
+      - "Bad Licht Aus"
+      - "WLED An"
+      - "WLED Aus"
+      - "Alexa Bad Radio Bayern 1"
+      - "Alexa Bad Radio Aus"
+      - "Nichts"
+    initial: "WLED Aus"
+    icon: mdi:gesture-double-tap
+
+  wifibutton1_button1_triple_action:
+    name: "Taste 1 Dreifach"
+    options:
+      - "Szene Alles Aus"
+      - "Szene Gute Nacht"
+      - "Szene Film"
+      - "WLED An"
+      - "WLED Aus"
+      - "Nichts"
+    initial: "Szene Alles Aus"
+    icon: mdi:gesture-tap
+
+  # --- Button 2 (physisch, GPIO41) ---
+  wifibutton1_button2_single_action:
+    name: "Taste 2 Kurz"
+    options:
+      - "Alexa Bad Radio Bayern 1"
+      - "Alexa Bad Radio NDR2"
+      - "Alexa Bad Radio Aus"
+      - "Alexa Bad Spotify"
+      - "WLED An"
+      - "WLED Aus"
+      - "Nichts"
+    initial: "Alexa Bad Radio Bayern 1"
+    icon: mdi:gesture-tap
+
+  wifibutton1_button2_double_action:
+    name: "Taste 2 Doppelt"
+    options:
+      - "Alexa Bad Radio Bayern 1"
+      - "Alexa Bad Radio NDR2"
+      - "Alexa Bad Radio Aus"
+      - "Alexa Bad Spotify"
+      - "WLED An"
+      - "WLED Aus"
+      - "Nichts"
+    initial: "Alexa Bad Radio Aus"
+    icon: mdi:gesture-double-tap
+
+  wifibutton1_button2_triple_action:
+    name: "Taste 2 Dreifach"
+    options:
+      - "Alexa Bad Radio Bayern 1"
+      - "Alexa Bad Radio NDR2"
+      - "Alexa Bad Radio Aus"
+      - "Alexa Bad Spotify"
+      - "Szene Film"
+      - "Nichts"
+    initial: "Alexa Bad Radio NDR2"
+    icon: mdi:gesture-tap
+
+  # --- Button 3 (physisch, GPIO40) ---
+  wifibutton1_button3_single_action:
+    name: "Taste 3 Kurz"
+    options:
+      - "WLED An"
+      - "WLED Aus"
+      - "Alexa Bad Radio Bayern 1"
+      - "Alexa Bad Radio NDR2"
+      - "Alexa Bad Radio Aus"
+      - "Alexa Bad Spotify"
+      - "Nichts"
+    initial: "Alexa Bad Radio Bayern 1"
+    icon: mdi:gesture-tap
+
+  wifibutton1_button3_double_action:
+    name: "Taste 3 Doppelt"
+    options:
+      - "WLED An"
+      - "WLED Aus"
+      - "Alexa Bad Radio Bayern 1"
+      - "Alexa Bad Radio Aus"
+      - "Szene Alles Aus"
+      - "Nichts"
+    initial: "Alexa Bad Radio Aus"
+    icon: mdi:gesture-double-tap
+
+  wifibutton1_button3_triple_action:
+    name: "Taste 3 Dreifach"
+    options:
+      - "Szene Alles Aus"
+      - "Szene Gute Nacht"
+      - "Szene Film"
+      - "Alexa Bad Radio Aus"
+      - "Alexa Movie Radio"
+      - "Nichts"
+    initial: "Alexa Movie Radio"
+    icon: mdi:gesture-tap
+
+  # --- Funk-Taste 1 (RF 0xD26F68 → Button4) ---
+  wifibutton1_funk1_action:
+    name: "Funk-Taste 1"
+    options:
+      - "Bad Licht An"
+      - "Bad Licht Aus"
+      - "WLED An"
+      - "WLED Aus"
+      - "Alexa Bad Radio Bayern 1"
+      - "Alexa Bad Radio Aus"
+      - "Szene Alles Aus"
+      - "Nichts"
+    initial: "Bad Licht An"
+    icon: mdi:access-point
+
+  # --- Funk-Taste 2 (RF 0xDD21A8 → Button5) ---
+  wifibutton1_funk2_action:
+    name: "Funk-Taste 2"
+    options:
+      - "Bad Licht An"
+      - "Bad Licht Aus"
+      - "WLED An"
+      - "WLED Aus"
+      - "Alexa Bad Radio Bayern 1"
+      - "Alexa Bad Radio Aus"
+      - "Szene Alles Aus"
+      - "Nichts"
+    initial: "Bad Licht Aus"
+    icon: mdi:access-point
+
+# -----------------------------------------------------------------------------
+# Scripts - HIER NEUE AKTIONEN ERSTELLEN
+# -----------------------------------------------------------------------------
+# Jedes Script ist eine wiederverwendbare Aktion.
+# Der Optionsname im input_select muss zum choose-Block passen.
+# Entity-IDs ggf. an eigene Geraete anpassen!
+# -----------------------------------------------------------------------------
+script:
+  # Bad Deckenlampe ist aktuell NICHT smart. Wenn ein Shelly/Zigbee-Relais
+  # eingebaut wird, hier die entity_id anpassen (z.B. light.bad_deckenlampe
+  # oder switch.bad_deckenlampe).
+  # Bis dahin schalten diese Scripts die WLED2 als Ersatz.
+  wifibtn_bad_licht_an:
+    alias: "Bad Licht An"
+    icon: mdi:lightbulb-on
+    sequence:
+      - service: light.turn_on
+        target:
+          entity_id: light.wled2
+        data:
+          brightness_pct: 100
+
+  wifibtn_bad_licht_aus:
+    alias: "Bad Licht Aus"
+    icon: mdi:lightbulb-off
+    sequence:
+      - service: light.turn_off
+        target:
+          entity_id: light.wled2
+
+  wifibtn_wled_an:
+    alias: "WLED An"
+    icon: mdi:led-strip
+    sequence:
+      - service: light.turn_on
+        target:
+          entity_id: light.wled2
+
+  wifibtn_wled_aus:
+    alias: "WLED Aus"
+    icon: mdi:led-strip-variant
+    sequence:
+      - service: light.turn_off
+        target:
+          entity_id: light.wled2
+
+  # Alexa-Scripts benoetigen die "Alexa Media Player" Integration (HACS).
+  # Siehe: https://github.com/alandtse/alexa_media_player
+  # Nach Installation wird media_player.marcus_echo_show_8_2nd_gen automatisch verfuegbar.
+  wifibtn_alexa_bad_radio_bayern1:
+    alias: "Alexa Bad Radio Bayern 1"
+    icon: mdi:radio
+    sequence:
+      - service: media_player.volume_set
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        data:
+          volume_level: 0.3
+        continue_on_error: true
+      - service: media_player.play_media
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        data:
+          media_content_id: "Radio Bayern 1"
+          media_content_type: "TUNEIN"
+        continue_on_error: true
+
+  wifibtn_alexa_bad_radio_ndr2:
+    alias: "Alexa Bad Radio NDR2"
+    icon: mdi:radio
+    sequence:
+      - service: media_player.volume_set
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        data:
+          volume_level: 0.3
+        continue_on_error: true
+      - service: media_player.play_media
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        data:
+          media_content_id: "NDR 2"
+          media_content_type: "TUNEIN"
+        continue_on_error: true
+
+  wifibtn_alexa_bad_radio_aus:
+    alias: "Alexa Bad Radio Aus"
+    icon: mdi:radio-off
+    sequence:
+      - service: media_player.media_stop
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        continue_on_error: true
+
+  wifibtn_alexa_bad_spotify:
+    alias: "Alexa Bad Spotify"
+    icon: mdi:spotify
+    sequence:
+      - service: media_player.volume_set
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        data:
+          volume_level: 0.3
+        continue_on_error: true
+      - service: media_player.play_media
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        data:
+          media_content_id: "Spotify"
+          media_content_type: "TUNEIN"
+        continue_on_error: true
+
+  wifibtn_szene_alles_aus:
+    alias: "Szene Alles Aus"
+    icon: mdi:power-off
+    sequence:
+      - service: light.turn_off
+        target:
+          entity_id: light.wled2
+      - service: switch.turn_off
+        target:
+          entity_id: switch.licht_wz_mss210_main_channel
+      - service: media_player.media_stop
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        continue_on_error: true
+
+  wifibtn_szene_gute_nacht:
+    alias: "Szene Gute Nacht"
+    icon: mdi:weather-night
+    sequence:
+      - service: light.turn_on
+        target:
+          entity_id: light.wled2
+        data:
+          brightness_pct: 10
+          color_temp_kelvin: 2700
+      - service: media_player.media_stop
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        continue_on_error: true
+
+  wifibtn_szene_film:
+    alias: "Szene Film"
+    icon: mdi:movie-open
+    sequence:
+      - service: light.turn_on
+        target:
+          entity_id: light.wled2
+        data:
+          brightness_pct: 5
+          color_temp_kelvin: 2200
+      - service: switch.turn_off
+        target:
+          entity_id: switch.licht_wz_mss210_main_channel
+
+  wifibtn_alexa_movie_radio:
+    alias: "Alexa Movie Radio"
+    icon: mdi:movie-open-star
+    sequence:
+      - service: media_player.volume_set
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        data:
+          volume_level: 0.05
+        continue_on_error: true
+      - service: media_player.play_media
+        target:
+          entity_id: media_player.marcus_echo_show_8_2nd_gen
+        data:
+          media_content_id: "Movie Radio"
+          media_content_type: "TUNEIN"
+        continue_on_error: true
+
+# -----------------------------------------------------------------------------
+# Automationen
+# -----------------------------------------------------------------------------
+# Jede Automation: MQTT-Trigger → choose anhand input_select → Script
+# Pattern fuer neue Buttons/Aktionen kopieren.
+# HINWEIS: Automationen deaktiviert (initial_state: false) - Node-RED uebernimmt.
+# -----------------------------------------------------------------------------
+automation:
+  # === BUTTON 1 (physisch, GPIO42) ===
+  - id: wifibutton_b1_single
+    alias: "WiFi Taste 1 Kurz"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button1":{"Action":"SINGLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_single_action
+                state: "Bad Licht An"
+            sequence: [service: script.wifibtn_bad_licht_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_single_action
+                state: "Bad Licht Aus"
+            sequence: [service: script.wifibtn_bad_licht_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_single_action
+                state: "WLED An"
+            sequence: [service: script.wifibtn_wled_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_single_action
+                state: "WLED Aus"
+            sequence: [service: script.wifibtn_wled_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_single_action
+                state: "Alexa Bad Radio Bayern 1"
+            sequence: [service: script.wifibtn_alexa_bad_radio_bayern1]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_single_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+    mode: single
+
+  - id: wifibutton_b1_double
+    alias: "WiFi Taste 1 Doppelt"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button1":{"Action":"DOUBLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_double_action
+                state: "Bad Licht An"
+            sequence: [service: script.wifibtn_bad_licht_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_double_action
+                state: "Bad Licht Aus"
+            sequence: [service: script.wifibtn_bad_licht_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_double_action
+                state: "WLED An"
+            sequence: [service: script.wifibtn_wled_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_double_action
+                state: "WLED Aus"
+            sequence: [service: script.wifibtn_wled_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_double_action
+                state: "Alexa Bad Radio Bayern 1"
+            sequence: [service: script.wifibtn_alexa_bad_radio_bayern1]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_double_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+    mode: single
+
+  - id: wifibutton_b1_triple
+    alias: "WiFi Taste 1 Dreifach"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button1":{"Action":"TRIPLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_triple_action
+                state: "Szene Alles Aus"
+            sequence: [service: script.wifibtn_szene_alles_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_triple_action
+                state: "Szene Gute Nacht"
+            sequence: [service: script.wifibtn_szene_gute_nacht]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_triple_action
+                state: "Szene Film"
+            sequence: [service: script.wifibtn_szene_film]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_triple_action
+                state: "WLED An"
+            sequence: [service: script.wifibtn_wled_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button1_triple_action
+                state: "WLED Aus"
+            sequence: [service: script.wifibtn_wled_aus]
+    mode: single
+
+  # === BUTTON 2 (physisch, GPIO41) ===
+  - id: wifibutton_b2_single
+    alias: "WiFi Taste 2 Kurz"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button2":{"Action":"SINGLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_single_action
+                state: "Alexa Bad Radio Bayern 1"
+            sequence: [service: script.wifibtn_alexa_bad_radio_bayern1]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_single_action
+                state: "Alexa Bad Radio NDR2"
+            sequence: [service: script.wifibtn_alexa_bad_radio_ndr2]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_single_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_single_action
+                state: "Alexa Bad Spotify"
+            sequence: [service: script.wifibtn_alexa_bad_spotify]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_single_action
+                state: "WLED An"
+            sequence: [service: script.wifibtn_wled_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_single_action
+                state: "WLED Aus"
+            sequence: [service: script.wifibtn_wled_aus]
+    mode: single
+
+  - id: wifibutton_b2_double
+    alias: "WiFi Taste 2 Doppelt"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button2":{"Action":"DOUBLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_double_action
+                state: "Alexa Bad Radio Bayern 1"
+            sequence: [service: script.wifibtn_alexa_bad_radio_bayern1]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_double_action
+                state: "Alexa Bad Radio NDR2"
+            sequence: [service: script.wifibtn_alexa_bad_radio_ndr2]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_double_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_double_action
+                state: "Alexa Bad Spotify"
+            sequence: [service: script.wifibtn_alexa_bad_spotify]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_double_action
+                state: "WLED An"
+            sequence: [service: script.wifibtn_wled_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_double_action
+                state: "WLED Aus"
+            sequence: [service: script.wifibtn_wled_aus]
+    mode: single
+
+  - id: wifibutton_b2_triple
+    alias: "WiFi Taste 2 Dreifach"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button2":{"Action":"TRIPLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_triple_action
+                state: "Alexa Bad Radio Bayern 1"
+            sequence: [service: script.wifibtn_alexa_bad_radio_bayern1]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_triple_action
+                state: "Alexa Bad Radio NDR2"
+            sequence: [service: script.wifibtn_alexa_bad_radio_ndr2]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_triple_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_triple_action
+                state: "Alexa Bad Spotify"
+            sequence: [service: script.wifibtn_alexa_bad_spotify]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button2_triple_action
+                state: "Szene Film"
+            sequence: [service: script.wifibtn_szene_film]
+    mode: single
+
+  # === BUTTON 3 (physisch, GPIO40) ===
+  - id: wifibutton_b3_single
+    alias: "WiFi Taste 3 Kurz"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button3":{"Action":"SINGLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_single_action
+                state: "WLED An"
+            sequence: [service: script.wifibtn_wled_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_single_action
+                state: "WLED Aus"
+            sequence: [service: script.wifibtn_wled_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_single_action
+                state: "Alexa Bad Radio Bayern 1"
+            sequence: [service: script.wifibtn_alexa_bad_radio_bayern1]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_single_action
+                state: "Alexa Bad Radio NDR2"
+            sequence: [service: script.wifibtn_alexa_bad_radio_ndr2]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_single_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_single_action
+                state: "Alexa Bad Spotify"
+            sequence: [service: script.wifibtn_alexa_bad_spotify]
+    mode: single
+
+  - id: wifibutton_b3_double
+    alias: "WiFi Taste 3 Doppelt"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button3":{"Action":"DOUBLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_double_action
+                state: "WLED An"
+            sequence: [service: script.wifibtn_wled_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_double_action
+                state: "WLED Aus"
+            sequence: [service: script.wifibtn_wled_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_double_action
+                state: "Alexa Bad Radio Bayern 1"
+            sequence: [service: script.wifibtn_alexa_bad_radio_bayern1]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_double_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_double_action
+                state: "Szene Alles Aus"
+            sequence: [service: script.wifibtn_szene_alles_aus]
+    mode: single
+
+  - id: wifibutton_b3_triple
+    alias: "WiFi Taste 3 Dreifach"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button3":{"Action":"TRIPLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_triple_action
+                state: "Szene Alles Aus"
+            sequence: [service: script.wifibtn_szene_alles_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_triple_action
+                state: "Szene Gute Nacht"
+            sequence: [service: script.wifibtn_szene_gute_nacht]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_triple_action
+                state: "Szene Film"
+            sequence: [service: script.wifibtn_szene_film]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_triple_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_button3_triple_action
+                state: "Alexa Movie Radio"
+            sequence: [service: script.wifibtn_alexa_movie_radio]
+    mode: single
+
+  # === FUNK-TASTE 1 (RF 0xD26F68 → Button4) ===
+  - id: wifibutton_funk1
+    alias: "WiFi Funk-Taste 1"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button4":{"Action":"SINGLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk1_action
+                state: "Bad Licht An"
+            sequence: [service: script.wifibtn_bad_licht_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk1_action
+                state: "Bad Licht Aus"
+            sequence: [service: script.wifibtn_bad_licht_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk1_action
+                state: "WLED An"
+            sequence: [service: script.wifibtn_wled_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk1_action
+                state: "WLED Aus"
+            sequence: [service: script.wifibtn_wled_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk1_action
+                state: "Alexa Bad Radio Bayern 1"
+            sequence: [service: script.wifibtn_alexa_bad_radio_bayern1]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk1_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk1_action
+                state: "Szene Alles Aus"
+            sequence: [service: script.wifibtn_szene_alles_aus]
+    mode: single
+
+  # === FUNK-TASTE 2 (RF 0xDD21A8 → Button5) ===
+  - id: wifibutton_funk2
+    alias: "WiFi Funk-Taste 2"
+    initial_state: false
+    trigger:
+      - platform: mqtt
+        topic: "stat/wifibutton1/RESULT"
+        payload: '{"Button5":{"Action":"SINGLE"}}'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk2_action
+                state: "Bad Licht An"
+            sequence: [service: script.wifibtn_bad_licht_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk2_action
+                state: "Bad Licht Aus"
+            sequence: [service: script.wifibtn_bad_licht_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk2_action
+                state: "WLED An"
+            sequence: [service: script.wifibtn_wled_an]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk2_action
+                state: "WLED Aus"
+            sequence: [service: script.wifibtn_wled_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk2_action
+                state: "Alexa Bad Radio Bayern 1"
+            sequence: [service: script.wifibtn_alexa_bad_radio_bayern1]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk2_action
+                state: "Alexa Bad Radio Aus"
+            sequence: [service: script.wifibtn_alexa_bad_radio_aus]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk2_action
+                state: "Szene Alles Aus"
+            sequence: [service: script.wifibtn_szene_alles_aus]
+    mode: single

@@ -1,0 +1,148 @@
+# =============================================================================
+# IceWiFi - UniFi Network Monitoring Package
+# =============================================================================
+# Native HA UniFi Integration liefert: AP-Status, Clients, Device Tracker
+# Dieses Package ergaenzt: Radar (Nearby Devices), Netzwerk-Status Template
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Command Line Sensors
+# -----------------------------------------------------------------------------
+command_line:
+  # UniFi Controller Erreichbarkeit
+  - binary_sensor:
+      name: "UniFi Controller Online"
+      unique_id: unifi_controller_online
+      command: "curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1:8443/ 2>/dev/null"
+      payload_on: "200"
+      device_class: connectivity
+      scan_interval: 120
+
+  # WiFi Radar - Nearby Devices + Client Signal Details
+  - sensor:
+      name: "UniFi Radar"
+      unique_id: unifi_radar
+      command: "python3 /config/scripts/unifi_radar_data.py"
+      value_template: "{{ value_json.total_clients }}"
+      unit_of_measurement: "Clients"
+      json_attributes:
+        - aps
+        - total_clients
+        - total_nearby
+        - timestamp
+      scan_interval: 300
+      command_timeout: 30
+      icon: mdi:radar
+
+# -----------------------------------------------------------------------------
+# Template Sensors
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      - name: "Netzwerk Status"
+        unique_id: network_overall_status
+        state: >-
+          {% set ctrl = states('binary_sensor.unifi_controller_online') %}
+          {% set gw = states('sensor.usg_3p_state') %}
+          {% set ap1 = states('sensor.u6_1_og_state') %}
+          {% set ap2 = states('sensor.u6_keller_state') %}
+          {% set aps_ok = (ap1 not in ['unavailable','unknown','offline']) | int + (ap2 not in ['unavailable','unknown','offline']) | int %}
+          {% if ctrl == 'on' and gw not in ['unavailable','unknown','offline'] and aps_ok >= 2 %}
+            Alles OK
+          {% elif ctrl == 'on' and gw not in ['unavailable','unknown','offline'] %}
+            Eingeschraenkt
+          {% elif ctrl == 'on' %}
+            Gateway Offline
+          {% else %}
+            Controller Offline
+          {% endif %}
+        icon: >-
+          {% set s = states('sensor.netzwerk_status') %}
+          {% if s == 'Alles OK' %}mdi:check-network
+          {% elif s == 'Eingeschraenkt' %}mdi:network-strength-2
+          {% else %}mdi:network-off
+          {% endif %}
+
+      - name: "UniFi APs Gesamt"
+        unique_id: unifi_aps_total
+        state: "2"
+        unit_of_measurement: "APs"
+        icon: mdi:access-point-network
+
+      - name: "UniFi APs Online"
+        unique_id: unifi_aps_online_tpl
+        state: >-
+          {% set ap1 = states('sensor.u6_1_og_state') %}
+          {% set ap2 = states('sensor.u6_keller_state') %}
+          {{ (ap1 not in ['unavailable','unknown','offline']) | int + (ap2 not in ['unavailable','unknown','offline']) | int }}
+        unit_of_measurement: "APs"
+        icon: mdi:access-point
+
+      - name: "UniFi Clients Total"
+        unique_id: unifi_clients_total_tpl
+        state: "{{ state_attr('sensor.unifi_radar', 'total_clients') | int(0) }}"
+        unit_of_measurement: "Clients"
+        icon: mdi:wifi
+
+      # Client counts per AP from radar data
+      - name: "AP 1OG Clients"
+        unique_id: ap_1og_clients_radar
+        state: >-
+          {% set aps = state_attr('sensor.unifi_radar', 'aps') %}
+          {% if aps and aps | length > 0 %}{{ aps[0].clients | length }}{% else %}0{% endif %}
+        unit_of_measurement: "Clients"
+        icon: mdi:wifi
+
+      - name: "AP Keller Clients"
+        unique_id: ap_keller_clients_radar
+        state: >-
+          {% set aps = state_attr('sensor.unifi_radar', 'aps') %}
+          {% if aps and aps | length > 1 %}{{ aps[1].clients | length }}{% else %}0{% endif %}
+        unit_of_measurement: "Clients"
+        icon: mdi:wifi
+
+      - name: "Gateway Clients"
+        unique_id: gw_clients_radar
+        state: "0"
+        unit_of_measurement: "Clients"
+        icon: mdi:router-network
+
+      - name: "UniFi Gateway Status"
+        unique_id: unifi_gw_status_tpl
+        state: >-
+          {% set s = states('sensor.usg_3p_state') %}
+          {% if s in ['unavailable','unknown'] %}unknown{% elif s == 'offline' %}offline{% else %}online{% endif %}
+        icon: mdi:router-network
+
+      - name: "UniFi Radar Nearby Total"
+        unique_id: unifi_radar_nearby_total
+        state: "{{ state_attr('sensor.unifi_radar', 'total_nearby') | int(0) }}"
+        unit_of_measurement: "Geraete"
+        icon: mdi:radar
+
+# -----------------------------------------------------------------------------
+# Automations
+# -----------------------------------------------------------------------------
+automation:
+  - alias: "IceWiFi - Netzwerk Warnung"
+    id: icewifi_network_warning
+    trigger:
+      - platform: state
+        entity_id: sensor.netzwerk_status
+        from: "Alles OK"
+    condition:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: sensor.netzwerk_status
+            state: "unavailable"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "IceWiFi Netzwerk-Warnung"
+          message: >-
+            Netzwerk-Status: {{ states('sensor.netzwerk_status') }}
+            Controller: {{ states('binary_sensor.unifi_controller_online') }}
+            Gateway: {{ states('sensor.usg_3p_state') }}
+            APs: U6+ 1.OG={{ states('sensor.u6_1_og_state') }}, Keller={{ states('sensor.u6_keller_state') }}
+          notification_id: icewifi_network

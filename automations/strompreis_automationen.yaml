@@ -1,0 +1,186 @@
+# =============================================================================
+# Strompreis Automatisierungen
+# =============================================================================
+# Benachrichtigungen und Aktionen bei günstigen Strompreisen
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Benachrichtigung bei günstigem Strompreis
+# -----------------------------------------------------------------------------
+- id: strompreis_guenstig_benachrichtigung
+  alias: "Strompreis: Günstig-Alarm"
+  description: "Benachrichtigt wenn der Strompreis unter die eingestellte Schwelle fällt"
+  trigger:
+    - platform: template
+      value_template: >
+        {{ (states('sensor.paule_electricity_price') | float(0) * 100) < states('input_number.strompreis_schwelle') | float(25) }}
+      for:
+        minutes: 1
+  condition:
+    - condition: state
+      entity_id: input_boolean.guenstiger_strom_benachrichtigung
+      state: "on"
+    - condition: time
+      after: "06:00:00"
+      before: "22:00:00"
+  action:
+    - service: persistent_notification.create
+      data:
+        title: "💰 Günstiger Strompreis!"
+        message: >
+          Der Strompreis liegt aktuell bei {{ (states('sensor.paule_electricity_price') | float(0) * 100) | round(1) }} ct/kWh.
+
+          Jetzt ist eine gute Zeit für:
+          - Waschmaschine
+          - Trockner
+          - Spülmaschine
+        notification_id: strompreis_guenstig
+    - service: notify.mobile_app_iphone_von_marcus
+      data:
+        title: "💰 Günstiger Strompreis!"
+        message: >
+          Aktuell nur {{ (states('sensor.paule_electricity_price') | float(0) * 100) | round(1) }} ct/kWh -
+          Gute Zeit für Waschmaschine oder Trockner!
+        data:
+          push:
+            sound:
+              name: default
+              critical: 0
+
+# -----------------------------------------------------------------------------
+# Benachrichtigung wenn Preis wieder steigt
+# -----------------------------------------------------------------------------
+- id: strompreis_teuer_warnung
+  alias: "Strompreis: Teuer-Warnung"
+  description: "Warnt wenn der Strompreis deutlich über Durchschnitt liegt"
+  trigger:
+    - platform: template
+      value_template: >
+        {{ (states('sensor.paule_electricity_price') | float(0) * 100) > 40 }}
+      for:
+        minutes: 5
+  condition:
+    - condition: state
+      entity_id: input_boolean.guenstiger_strom_benachrichtigung
+      state: "on"
+  action:
+    - service: persistent_notification.create
+      data:
+        title: "⚠️ Hoher Strompreis"
+        message: >
+          Der Strompreis liegt bei {{ (states('sensor.paule_electricity_price') | float(0) * 100) | round(1) }} ct/kWh.
+
+          Verschiebe energieintensive Geräte auf später!
+        notification_id: strompreis_teuer
+
+# -----------------------------------------------------------------------------
+# Waschmaschine bei günstigem Preis einschalten
+# -----------------------------------------------------------------------------
+- id: waschmaschine_guenstiger_strom
+  alias: "Waschmaschine: Bei günstigem Strom einschalten"
+  description: "Schaltet die Waschmaschine ein wenn der Preis günstig ist"
+  trigger:
+    - platform: template
+      value_template: >
+        {{ (states('sensor.paule_electricity_price') | float(0) * 100) < states('input_number.strompreis_schwelle') | float(25) }}
+  condition:
+    - condition: state
+      entity_id: input_boolean.waschmaschine_warten
+      state: "on"
+    - condition: time
+      after: "06:00:00"
+      before: "22:00:00"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.strom_waschmaschine
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.waschmaschine_warten
+    - service: persistent_notification.create
+      data:
+        title: "🧺 Waschmaschine gestartet"
+        message: >
+          Strom ist günstig ({{ (states('sensor.paule_electricity_price') | float(0) * 100) | round(1) }} ct/kWh).
+          Die Waschmaschine wurde eingeschaltet!
+        notification_id: waschmaschine_gestartet
+    - service: notify.mobile_app_iphone_von_marcus
+      data:
+        title: "🧺 Waschmaschine gestartet"
+        message: "Strompreis günstig - Waschmaschine wurde eingeschaltet!"
+
+# -----------------------------------------------------------------------------
+# Trockner bei günstigem Preis einschalten
+# -----------------------------------------------------------------------------
+- id: trockner_guenstiger_strom
+  alias: "Trockner: Bei günstigem Strom einschalten"
+  description: "Schaltet den Trockner ein wenn der Preis günstig ist"
+  trigger:
+    - platform: template
+      value_template: >
+        {{ (states('sensor.paule_electricity_price') | float(0) * 100) < states('input_number.strompreis_schwelle') | float(25) }}
+  condition:
+    - condition: state
+      entity_id: input_boolean.trockner_warten
+      state: "on"
+    - condition: time
+      after: "06:00:00"
+      before: "22:00:00"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.strom_trockner
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.trockner_warten
+    - service: persistent_notification.create
+      data:
+        title: "🌀 Trockner gestartet"
+        message: >
+          Strom ist günstig ({{ (states('sensor.paule_electricity_price') | float(0) * 100) | round(1) }} ct/kWh).
+          Der Trockner wurde eingeschaltet!
+        notification_id: trockner_gestartet
+    - service: notify.mobile_app_iphone_von_marcus
+      data:
+        title: "🌀 Trockner gestartet"
+        message: "Strompreis günstig - Trockner wurde eingeschaltet!"
+
+# -----------------------------------------------------------------------------
+# Tägliche Zusammenfassung der besten Stromzeiten
+# -----------------------------------------------------------------------------
+- id: strompreis_tagesvorschau
+  alias: "Strompreis: Tägliche Vorschau"
+  description: "Sendet morgens eine Übersicht der günstigen Zeiten"
+  trigger:
+    - platform: time
+      at: "07:00:00"
+  condition:
+    - condition: state
+      entity_id: input_boolean.guenstiger_strom_benachrichtigung
+      state: "on"
+  action:
+    - service: persistent_notification.create
+      data:
+        title: "📊 Strompreise Heute"
+        message: >
+          Aktueller Preis: {{ (states('sensor.paule_electricity_price') | float(0) * 100) | round(1) }} ct/kWh
+
+          Tipp: Prüfe die Tibber App für die günstigsten Zeiten heute!
+        notification_id: strompreis_tagesvorschau
+
+# -----------------------------------------------------------------------------
+# Status aktualisieren wenn Preis-Schwelle geändert wird
+# -----------------------------------------------------------------------------
+- id: strompreis_schwelle_geaendert
+  alias: "Strompreis: Schwelle geändert"
+  description: "Bestätigt Änderung der Preisschwelle"
+  trigger:
+    - platform: state
+      entity_id: input_number.strompreis_schwelle
+  action:
+    - service: persistent_notification.create
+      data:
+        title: "⚙️ Preisschwelle geändert"
+        message: >
+          Neue Schwelle für günstigen Strom: {{ states('input_number.strompreis_schwelle') }} ct/kWh
+        notification_id: strompreis_schwelle

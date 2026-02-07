@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrationen - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Integrationen
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Integrationen</h1>
+            <p>
+                Home Assistant wird durch Integrationen mit externen Diensten und Geräten verbunden.
+                Das IceHomeAssist-System nutzt sowohl offizielle Integrationen als auch Custom Components
+                über HACS (Home Assistant Community Store). Diese Seite dokumentiert alle verwendeten
+                Integrationen mit Versionen, Beschreibungen und Setup-Hinweisen.
+            </p>
+
+            <!-- Übersichtstabelle -->
+            <h2>Integrationen im Überblick</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Integration</th>
+                        <th>Typ</th>
+                        <th>Version</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Alexa Media Player</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v5.11.0</td>
+                        <td>Steuerung von Amazon Echo Geräten</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Divera Control</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v1.3.1</td>
+                        <td>THW/Feuerwehr Alarmierung über Divera 24/7</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Dreame Vacuum</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v1.0.8</td>
+                        <td>Dreame Staubsaugerroboter Steuerung</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DWD</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>2025.12.1</td>
+                        <td>Deutscher Wetterdienst Integration</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DWD Precipitation</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>2025.7.0b1</td>
+                        <td>DWD Niederschlagssensor</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DWD Precipitation Forecast</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v0.2.0</td>
+                        <td>Niederschlagsvorhersage vom DWD</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fritz!Box VPN</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v0.7.0</td>
+                        <td>Fritz!Box VPN-Verbindungsstatus</td>
+                    </tr>
+                    <tr>
+                        <td><strong>HACS</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v2.0.5</td>
+                        <td>Home Assistant Community Store</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Meross Cloud</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v1.3.12</td>
+                        <td>Meross Geräte über Cloud-API</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Meross LAN</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v5.8.0</td>
+                        <td>Meross Geräte über lokales Netzwerk</td>
+                    </tr>
+                    <tr>
+                        <td><strong>PetKit</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v0.1.14</td>
+                        <td>PetKit Futterautomaten und Trinkbrunnen</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Xiaomi Cloud Map Extractor</strong></td>
+                        <td><span class="badge">HACS</span></td>
+                        <td>v2.2.5</td>
+                        <td>Staubsauger-Karte aus Xiaomi Cloud extrahieren</td>
+                    </tr>
+                    <tr>
+                        <td><strong>MQTT</strong></td>
+                        <td><span class="badge">Offiziell</span></td>
+                        <td>Core</td>
+                        <td>MQTT-Protokoll für Tasmota-Geräte</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tibber</strong></td>
+                        <td><span class="badge">Offiziell</span></td>
+                        <td>Core</td>
+                        <td>Dynamischer Stromtarif, Preise und Verbrauch</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sony Bravia TV</strong></td>
+                        <td><span class="badge">Offiziell</span></td>
+                        <td>Core</td>
+                        <td>Android TV Steuerung</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fritz!Box</strong></td>
+                        <td><span class="badge">Offiziell</span></td>
+                        <td>Core</td>
+                        <td>Fritz!Box Router Integration (TR-064)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>UniFi Network</strong></td>
+                        <td><span class="badge">Offiziell</span></td>
+                        <td>Core</td>
+                        <td>Ubiquiti UniFi Netzwerk-Management</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- HACS -->
+            <h2>HACS (Home Assistant Community Store)</h2>
+            <div class="info-box">
+                <strong>Was ist HACS?</strong> HACS ist ein Community-Store, der die Installation und
+                Verwaltung von Custom Components, Themes und Lovelace-Karten ermöglicht. Es wird selbst
+                als Custom Component installiert und bietet eine grafische Oberfläche in Home Assistant.
+            </div>
+
+            <h3>HACS installieren</h3>
+            <pre><code><span class="cmt"># HACS herunterladen und installieren (im Container)</span>
+<span class="kw">sudo</span> docker exec -it homeassistant bash
+
+<span class="cmt"># Innerhalb des Containers:</span>
+wget -O - https://get.hacs.xyz | bash -
+
+<span class="cmt"># Danach Home Assistant neu starten</span>
+<span class="cmt"># und HACS über Einstellungen → Integrationen hinzufügen</span></code></pre>
+
+            <!-- Detaillierte HACS Components -->
+            <h2>HACS Custom Components im Detail</h2>
+
+            <div class="card">
+                <h3>Alexa Media Player <span class="badge">v5.11.0</span></h3>
+                <p>
+                    Ermöglicht die vollständige Steuerung von Amazon Echo-Geräten direkt aus Home Assistant.
+                    Unterstützt Medienwiedergabe, Text-to-Speech (TTS), Routinen-Auslösung und Geräte-Gruppierung.
+                </p>
+                <table>
+                    <tr>
+                        <td><strong>Haupt-Entity</strong></td>
+                        <td><code>media_player.marcus_echo_show_8_2nd_gen</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Gruppen-Entity</strong></td>
+                        <td><code>media_player.uberall</code> (Überall/Everywhere)</td>
+                    </tr>
+                </table>
+                <div class="warning-box">
+                    <strong>Setup-Hinweis:</strong> Für die Einrichtung ist 2FA auf dem Amazon-Konto erforderlich.
+                    Bei 500-Fehlern während des Setups handelt es sich in der Regel um Amazons Bot-Erkennung
+                    ("aamation" Challenge), nicht um HA-Bugs. Mehrere Versuche können nötig sein.
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Divera Control <span class="badge">v1.3.1</span></h3>
+                <p>
+                    Integration für das Alarmierungssystem Divera 24/7, das vom THW (Technisches Hilfswerk)
+                    und Feuerwehren verwendet wird. Zeigt aktuelle Alarme, Einsatzdetails und Verfügbarkeiten an.
+                </p>
+                <pre><code><span class="cmt"># Konfiguration über die UI</span>
+<span class="cmt"># Einstellungen → Integrationen → Divera Control</span>
+<span class="cmt"># Benötigt: API-Key aus Divera 24/7</span></code></pre>
+            </div>
+
+            <div class="card">
+                <h3>Dreame Vacuum <span class="badge">v1.0.8</span></h3>
+                <p>
+                    Vollständige Steuerung des Dreame Staubsaugerroboters. Unterstützt Start/Stop,
+                    Raum-spezifische Reinigung, Saugstärke, Wischmodus und Live-Karte.
+                </p>
+                <p>
+                    Wird in Kombination mit dem <strong>Xiaomi Cloud Map Extractor</strong> (v2.2.5) verwendet,
+                    um die Reinigungskarte im Dashboard anzuzeigen.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>DWD Wetter-Integrationen</h3>
+                <p>Drei separate HACS-Komponenten für umfassende Wetterdaten vom Deutschen Wetterdienst:</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Komponente</th>
+                            <th>Version</th>
+                            <th>Funktion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>DWD</strong></td>
+                            <td>2025.12.1</td>
+                            <td>Allgemeine Wetterdaten: Temperatur, Luftfeuchtigkeit, Wind, Wetterlage</td>
+                        </tr>
+                        <tr>
+                            <td><strong>DWD Precipitation</strong></td>
+                            <td>2025.7.0b1</td>
+                            <td>Aktueller Niederschlagssensor (Radar-basiert)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>DWD Precipitation Forecast</strong></td>
+                            <td>v0.2.0</td>
+                            <td>Niederschlagsvorhersage für die nächsten Stunden</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>Fritz!Box VPN <span class="badge">v0.7.0</span></h3>
+                <p>
+                    Überwacht den Status der VPN-Verbindungen auf der Fritz!Box. Zeigt an, welche
+                    VPN-Tunnel aktiv sind und ermöglicht die Überwachung der Verbindungsstabilität.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Meross Integrationen</h3>
+                <p>
+                    Für Meross-Geräte werden zwei Komponenten parallel verwendet:
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Komponente</th>
+                            <th>Version</th>
+                            <th>Vorteil</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Meross LAN</strong></td>
+                            <td>v5.8.0</td>
+                            <td>Lokale Steuerung ohne Cloud &ndash; schnellere Reaktionszeiten, funktioniert ohne Internet</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Meross Cloud</strong></td>
+                            <td>v1.3.12</td>
+                            <td>Cloud-basierte Steuerung als Fallback, Firmware-Updates, Ersteinrichtung</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="info-box">
+                    <strong>Empfehlung:</strong> Meross LAN sollte bevorzugt werden, da es lokal arbeitet.
+                    Meross Cloud dient als Backup und für die initiale Geräte-Erkennung.
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>PetKit <span class="badge">v0.1.14</span></h3>
+                <p>
+                    Integration für PetKit-Geräte wie Futterautomaten und Trinkbrunnen. Ermöglicht
+                    die Überwachung des Futterstands, der Wasserqualität und des Fütterungszeitplans.
+                    Wird im <a href="13-haustier.html">Charly-Dashboard</a> verwendet.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Xiaomi Cloud Map Extractor <span class="badge">v2.2.5</span></h3>
+                <p>
+                    Extrahiert die Reinigungskarte des Staubsaugers aus der Xiaomi/Dreame Cloud und
+                    stellt sie als Kamera-Entity in Home Assistant bereit. Wird im Staubsauger-Dashboard
+                    als Live-Karte angezeigt.
+                </p>
+                <pre><code><span class="cmt"># Beispiel: Kamera-Entity für die Staubsauger-Karte</span>
+<span class="kw">camera:</span>
+  - <span class="kw">platform:</span> <span class="val">xiaomi_cloud_map_extractor</span>
+    <span class="kw">name:</span> <span class="str">"Staubsauger Karte"</span>
+    <span class="kw">host:</span> <span class="val">!secret dreame_host</span>
+    <span class="kw">token:</span> <span class="val">!secret dreame_token</span>
+    <span class="kw">username:</span> <span class="val">!secret xiaomi_username</span>
+    <span class="kw">password:</span> <span class="val">!secret xiaomi_password</span>
+    <span class="kw">draw:</span>
+      - <span class="val">all</span></code></pre>
+            </div>
+
+            <!-- Offizielle Integrationen -->
+            <h2>Offizielle Integrationen</h2>
+
+            <div class="card">
+                <h3>MQTT</h3>
+                <p>
+                    Die offizielle MQTT-Integration verbindet Home Assistant mit dem Mosquitto Broker.
+                    Alle Tasmota-Geräte (Energiesensoren, WiFi-Buttons) kommunizieren über MQTT.
+                </p>
+                <p>Siehe <a href="09-mqtt.html">MQTT-Seite</a> für ausführliche Dokumentation.</p>
+            </div>
+
+            <div class="card">
+                <h3>Tibber</h3>
+                <p>
+                    Tibber ist der dynamische Stromanbieter. Die Integration liefert stündliche Strompreise,
+                    Verbrauchsdaten und ermöglicht die Optimierung des Energieverbrauchs basierend auf dem
+                    aktuellen Strompreis.
+                </p>
+                <p>Siehe <a href="10-energie.html">Energie-Seite</a> für ausführliche Dokumentation.</p>
+            </div>
+
+            <div class="card">
+                <h3>Sony Bravia TV</h3>
+                <p>
+                    Steuerung des Sony Bravia Android TV. Ermöglicht Ein/Ausschalten, Lautstärke,
+                    App-Start und Quellenwahl über Home Assistant.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Fritz!Box (TR-064)</h3>
+                <p>
+                    Offizielle Integration für den Fritz!Box Router. Bietet Geräte-Tracking (wer ist im
+                    Netzwerk), Anrufüberwachung, DSL-Verbindungsstatus und Smart-Home-Geräte-Steuerung.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>UniFi Network</h3>
+                <p>
+                    Integration für Ubiquiti UniFi Netzwerk-Equipment. Ermöglicht das Monitoring von
+                    Switches, Access Points und verbundenen Clients. Wird im
+                    <a href="12-netzwerk.html">Netzwerk-Dashboard</a> verwendet.
+                </p>
+            </div>
+
+            <!-- HACS verwalten -->
+            <h2>HACS-Komponenten verwalten</h2>
+            <h3>Update-Prozess</h3>
+            <pre><code><span class="cmt"># 1. HACS öffnen (Web-UI: Einstellungen → HACS)</span>
+<span class="cmt"># 2. Auf "Updates verfügbar" prüfen</span>
+<span class="cmt"># 3. Gewünschte Komponente auswählen → "Aktualisieren"</span>
+<span class="cmt"># 4. Home Assistant neu starten</span>
+
+<span class="cmt"># Alternativ: Manuelles Update über die Kommandozeile</span>
+<span class="kw">cd</span> /config/custom_components/
+<span class="kw">ls</span> -la  <span class="cmt"># Installierte Komponenten anzeigen</span></code></pre>
+
+            <div class="warning-box">
+                <strong>Update-Hinweis:</strong> Vor dem Update einer HACS-Komponente immer die
+                Release-Notes lesen! Breaking Changes können die Konfiguration invalidieren.
+                Ein Backup vor dem Update ist empfehlenswert.
+            </div>
+
+            <div class="page-nav">
+                <a href="04-konfiguration.html">
+                    <div><div class="label">Zurück</div>Konfiguration</div>
+                </a>
+                <a href="06-dashboards.html">
+                    <div><div class="label">Weiter</div>Dashboards</div>
+                </a>
+            </div>
+            <div class="footer">
+                IceHomeAssist Dokumentation &middot; Erstellt Februar 2026
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) {
+        a.classList.add('active');
+    }
+});
+
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation Inhaltsverzeichnis"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker Container Komponenten"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker Setup"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes Netzwerk"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages Secrets"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Switch WiFi Radar"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive GPS Tracker"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
+];
+
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i =>
+        i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Keine Ergebnisse</div>';
+    } else {
+        results.innerHTML = matches.map(m =>
+            `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`
+        ).join('');
+    }
+    results.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-container')) {
+        document.getElementById('searchResults').classList.remove('active');
+    }
+});
+</script>
+</body>
+</html>

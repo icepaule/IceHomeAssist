@@ -1,0 +1,204 @@
+# =============================================================================
+# SONY BRAVIA / ANDROID TV PAKET
+# =============================================================================
+# Integration für Sony Bravia TV mit Android TV
+# Ermöglicht Dashboard-Anzeige auf dem Fernseher
+# =============================================================================
+#
+# SETUP-ANLEITUNG:
+# ================
+#
+# 1. ANDROID TV INTEGRATION (Built-in):
+#    - Einstellungen → Geräte & Dienste → + Integration
+#    - "Android TV" oder "Android TV Remote" suchen
+#    - IP-Adresse des TVs eingeben
+#    - Pairing-Code vom TV eingeben
+#
+# 2. SONY BRAVIA INTEGRATION (Alternative, für ältere Modelle):
+#    - Einstellungen → Geräte & Dienste → + Integration
+#    - "Sony Bravia TV" suchen
+#    - PSK (Pre-Shared Key) am TV aktivieren:
+#      TV → Einstellungen → Netzwerk → Heimnetzwerk → IP-Steuerung →
+#      Authentifizierung → Normal und Pre-Shared Key
+#
+# 3. DASHBOARD AUF TV ANZEIGEN:
+#    Option A - Home Assistant Cast (empfohlen):
+#    - HACS → Frontend → "Home Assistant Cast" installieren
+#    - Dashboard auf Chromecast/Android TV streamen
+#
+#    Option B - Fully Kiosk Browser (kostenpflichtig, aber mächtig):
+#    - Fully Kiosk Browser aus Play Store auf Android TV installieren
+#    - URL: http://192.168.178.108:8123/lovelace
+#    - Als Startbildschirm einrichten
+#
+#    Option C - Wallpanel App (kostenlos):
+#    - WallPanel aus Play Store installieren
+#    - HA Dashboard URL eingeben
+#
+#    Option D - Native HA Android App:
+#    - Home Assistant App aus Play Store auf Android TV
+#    - Login mit HA Zugangsdaten
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Template Sensoren für TV-Status
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      # TV Zustand lesbar
+      - name: "Sony TV Status"
+        unique_id: sony_tv_status
+        state: >
+          {% set state = states('media_player.kd_55xe8505') %}
+          {% set mapping = {
+            'off': 'Aus',
+            'on': 'An',
+            'playing': 'Wiedergabe',
+            'paused': 'Pausiert',
+            'idle': 'Bereit',
+            'standby': 'Standby',
+            'unavailable': 'Nicht erreichbar'
+          } %}
+          {{ mapping.get(state, state) }}
+        icon: mdi:television
+
+      # Aktuelle App/Quelle
+      - name: "Sony TV App"
+        unique_id: sony_tv_app
+        state: >
+          {{ state_attr('media_player.kd_55xe8505', 'source') | default('Unbekannt') }}
+        icon: mdi:apps
+
+  - binary_sensor:
+      # TV eingeschaltet?
+      - name: "Sony TV An"
+        unique_id: sony_tv_an
+        state: >
+          {{ states('media_player.kd_55xe8505') not in ['off', 'unavailable', 'unknown'] }}
+        device_class: running
+        icon: mdi:television
+
+# -----------------------------------------------------------------------------
+# Scripts für TV-Steuerung
+# -----------------------------------------------------------------------------
+script:
+  # TV einschalten
+  tv_einschalten:
+    alias: "TV Einschalten"
+    icon: mdi:television
+    sequence:
+      - service: media_player.turn_on
+        target:
+          entity_id: media_player.kd_55xe8505  # Anpassen!
+
+  # TV ausschalten
+  tv_ausschalten:
+    alias: "TV Ausschalten"
+    icon: mdi:television-off
+    sequence:
+      - service: media_player.turn_off
+        target:
+          entity_id: media_player.kd_55xe8505  # Anpassen!
+
+  # Home Assistant Dashboard auf TV anzeigen (via Cast)
+  tv_dashboard_anzeigen:
+    alias: "Dashboard auf TV anzeigen"
+    icon: mdi:cast
+    fields:
+      dashboard:
+        description: "Dashboard-Pfad (z.B. lovelace-energie)"
+        example: "lovelace-energie"
+    sequence:
+      # Benötigt Home Assistant Cast Integration
+      - service: cast.show_lovelace_view
+        target:
+          entity_id: media_player.kd_55xe8505  # Anpassen!
+        data:
+          dashboard_path: "{{ dashboard | default('lovelace') }}"
+          view_path: "default_view"
+
+  # TV auf bestimmte App/Quelle schalten
+  tv_app_starten:
+    alias: "TV App starten"
+    icon: mdi:apps
+    fields:
+      app:
+        description: "App-Name"
+        example: "Netflix"
+    sequence:
+      - service: media_player.select_source
+        target:
+          entity_id: media_player.kd_55xe8505  # Anpassen!
+        data:
+          source: "{{ app }}"
+
+  # Lautstärke setzen
+  tv_lautstaerke:
+    alias: "TV Lautstärke"
+    icon: mdi:volume-high
+    fields:
+      level:
+        description: "Lautstärke (0-100)"
+        example: 20
+    sequence:
+      - service: media_player.volume_set
+        target:
+          entity_id: media_player.kd_55xe8505  # Anpassen!
+        data:
+          volume_level: "{{ level / 100 }}"
+
+# -----------------------------------------------------------------------------
+# Input Helpers für TV
+# -----------------------------------------------------------------------------
+input_select:
+  tv_favoriten_app:
+    name: TV Favoriten App
+    options:
+      - "Home Assistant"
+      - "Netflix"
+      - "Amazon Prime"
+      - "YouTube"
+      - "Disney+"
+      - "ZDF Mediathek"
+      - "ARD Mediathek"
+      - "Kodi"
+    initial: "Home Assistant"
+    icon: mdi:apps
+
+input_boolean:
+  tv_dashboard_modus:
+    name: TV Dashboard Modus
+    icon: mdi:view-dashboard
+
+# -----------------------------------------------------------------------------
+# Automationen für TV
+# -----------------------------------------------------------------------------
+automation:
+  # Dashboard auf TV bei Schalter-Aktivierung
+  - id: tv_dashboard_aktivieren
+    alias: "TV Dashboard Modus aktivieren"
+    description: "Zeigt HA Dashboard auf TV wenn Modus aktiviert"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.tv_dashboard_modus
+        to: "on"
+    action:
+      - service: script.tv_einschalten
+      - delay:
+          seconds: 10
+      - service: script.tv_dashboard_anzeigen
+        data:
+          dashboard: "lovelace-energie"
+    mode: single
+
+  # TV ausschalten wenn Dashboard Modus deaktiviert
+  - id: tv_dashboard_deaktivieren
+    alias: "TV Dashboard Modus deaktivieren"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.tv_dashboard_modus
+        to: "off"
+    action:
+      - service: script.tv_ausschalten
+    mode: single

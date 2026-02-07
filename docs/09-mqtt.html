@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html" class="active">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Komponenten
+                    <span class="separator">&rsaquo;</span>
+                    MQTT
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>MQTT - Message Queuing Telemetry Transport</h1>
+
+            <p>
+                MQTT ist das zentrale Kommunikationsprotokoll in unserem Smart Home. Es verbindet alle Tasmota-basierten
+                Energiesensoren, WiFi-Buttons und weitere IoT-Geräte mit Home Assistant. Der Mosquitto Broker läuft
+                als Addon direkt in Home Assistant und verwaltet sämtliche Nachrichten zwischen den Geräten.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>Mosquitto Addon - Setup und Konfiguration</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Der Mosquitto MQTT Broker ist als offizielles Home Assistant Addon installiert. Er ist die
+                zentrale Nachrichtenvermittlung für alle MQTT-fähigen Geräte im Netzwerk.
+            </p>
+
+            <h3>Installation</h3>
+            <p>
+                Das Mosquitto Addon wird über den Add-on Store in Home Assistant installiert:
+            </p>
+            <ol>
+                <li><strong>Einstellungen</strong> &rarr; <strong>Add-ons</strong> &rarr; <strong>Add-on Store</strong></li>
+                <li>Nach <em>Mosquitto broker</em> suchen</li>
+                <li><strong>Installieren</strong> klicken und warten bis die Installation abgeschlossen ist</li>
+                <li>Unter <strong>Konfiguration</strong> die gewünschten Einstellungen vornehmen</li>
+                <li><strong>Starten</strong> und <em>Bei Systemstart starten</em> aktivieren</li>
+            </ol>
+
+            <h3>Addon-Konfiguration</h3>
+            <p>
+                Die Mosquitto-Konfiguration erfolgt über die Addon-Oberfläche. Hier die wichtigsten Einstellungen:
+            </p>
+            <pre><code># Mosquitto Addon Konfiguration
+logins:
+  - username: mqtt_user
+    password: "!secret mqtt_password"
+require_certificate: false
+certfile: fullchain.pem
+keyfile: privkey.pem
+customize:
+  active: false
+  folder: mosquitto</code></pre>
+
+            <h3>Benutzer anlegen</h3>
+            <p>
+                Für die MQTT-Authentifizierung wird ein dedizierter Benutzer in Home Assistant angelegt:
+            </p>
+            <ol>
+                <li><strong>Einstellungen</strong> &rarr; <strong>Personen</strong> &rarr; <strong>Benutzer</strong></li>
+                <li>Neuen Benutzer erstellen (z.B. <code>mqtt_user</code>)</li>
+                <li>Diesem Benutzer <em>keine</em> Administrator-Rechte geben</li>
+                <li>Benutzername und Passwort in <code>secrets.yaml</code> hinterlegen</li>
+            </ol>
+
+            <h3>Ports und Protokolle</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Port</th>
+                        <th>Protokoll</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>1883</code></td>
+                        <td>MQTT (unverschlüsselt)</td>
+                        <td>Standard-Port für lokale Geräte</td>
+                    </tr>
+                    <tr>
+                        <td><code>8883</code></td>
+                        <td>MQTT over TLS</td>
+                        <td>Verschlüsselte Verbindung (optional)</td>
+                    </tr>
+                    <tr>
+                        <td><code>1884</code></td>
+                        <td>WebSocket</td>
+                        <td>Für Browser-basierte Clients</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================ -->
+            <h2>Tasmota Energiesensoren</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Im Netzwerk befinden sich sechs Tasmota-geflashte Steckdosen bzw. Energiemessgeräte, die über MQTT
+                ihre Messwerte an Home Assistant senden. Jedes Gerät meldet regelmäßig Spannung, Strom, Leistung
+                und den kumulierten Energieverbrauch.
+            </p>
+
+            <h3>Geräteübersicht</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Gerät</th>
+                        <th>MQTT Topic-Prefix</th>
+                        <th>Beschreibung</th>
+                        <th>Messbereich</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Strom-PV</strong></td>
+                        <td><code>Strom-PV</code></td>
+                        <td>Photovoltaik-Anlage Einspeise-/Bezugsmessung</td>
+                        <td>0-3680W</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Strom-Server</strong></td>
+                        <td><code>Strom-Server</code></td>
+                        <td>Server-Rack und NUC im Keller</td>
+                        <td>0-3680W</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Strom-Trockner</strong></td>
+                        <td><code>Strom-Trockner</code></td>
+                        <td>Wäschetrockner im Hauswirtschaftsraum</td>
+                        <td>0-3680W</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Strom-Wasch</strong></td>
+                        <td><code>Strom-Wasch</code></td>
+                        <td>Waschmaschine im Hauswirtschaftsraum</td>
+                        <td>0-3680W</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Strom-KE_B51903</strong></td>
+                        <td><code>Strom-KE_B51903</code></td>
+                        <td>Küche - Energiemessung</td>
+                        <td>0-3680W</td>
+                    </tr>
+                    <tr>
+                        <td><strong>AZ_C8B675</strong></td>
+                        <td><code>AZ_C8B675</code></td>
+                        <td>Arbeitszimmer - Energiemessung</td>
+                        <td>0-3680W</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Tasmota MQTT-Konfiguration</h3>
+            <p>
+                Jedes Tasmota-Gerät wird über die Web-Oberfläche (erreichbar unter der jeweiligen IP) konfiguriert.
+                Die MQTT-Einstellungen müssen wie folgt gesetzt werden:
+            </p>
+            <pre><code># Tasmota MQTT Einstellungen (pro Gerät)
+Host:     homeassistant.local   (oder IP des HA Servers)
+Port:     1883
+Client:   DVES_%06X            (automatisch generiert)
+User:     mqtt_user
+Password: [aus secrets.yaml]
+Topic:    [Gerätename, z.B. Strom-PV]
+Full Topic: %prefix%/%topic%/</code></pre>
+
+            <p>
+                Nach dem Speichern startet das Gerät neu und verbindet sich automatisch mit dem Mosquitto Broker.
+                Im Tasmota-Log sollte die Meldung <code>MQT: Connected</code> erscheinen.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>MQTT Topic-Struktur</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Tasmota verwendet eine standardisierte Topic-Struktur mit drei Präfixen. Das Verständnis dieser
+                Struktur ist entscheidend für die korrekte Konfiguration in Home Assistant.
+            </p>
+
+            <h3>Telemetrie-Topics (tele/)</h3>
+            <p>
+                Telemetrie-Nachrichten werden periodisch gesendet (Standard: alle 300 Sekunden) und enthalten
+                die aktuellen Sensorwerte.
+            </p>
+            <pre><code># Telemetrie-Topic mit Sensorwerten (alle 300s)
+Topic: tele/Strom-PV/SENSOR
+
+Payload (JSON):
+{
+  "Time": "2026-02-07T14:30:00",
+  "ENERGY": {
+    "TotalStartTime": "2024-01-15T00:00:00",
+    "Total": 1523.456,
+    "Yesterday": 4.231,
+    "Today": 2.876,
+    "Power": 187,
+    "ApparentPower": 192,
+    "ReactivePower": 45,
+    "Factor": 0.97,
+    "Voltage": 233,
+    "Current": 0.824
+  }
+}
+
+# Weitere Telemetrie-Topics:
+tele/Strom-PV/STATE          # Gerätestatus (Uptime, WiFi-Signal, etc.)
+tele/Strom-PV/LWT            # Last Will and Testament (Online/Offline)</code></pre>
+
+            <h3>Status-Topics (stat/)</h3>
+            <p>
+                Status-Topics enthalten die Antworten auf Befehle und den aktuellen Schaltzustand des Geräts.
+            </p>
+            <pre><code># Schaltzustand des Geräts
+Topic: stat/Strom-PV/POWER
+Payload: ON oder OFF
+
+# Ergebnis eines Befehls
+Topic: stat/Strom-PV/RESULT
+Payload: {"POWER":"ON"}
+
+# WiFi-Button Ergebnis
+Topic: stat/wifibutton1/RESULT
+Payload: {"Button1":{"Action":"SINGLE"}}
+         {"Button2":{"Action":"SINGLE"}}
+         {"Button3":{"Action":"SINGLE"}}
+         {"Button4":{"Action":"0xD26F68"}}   # RF Button
+         {"Button5":{"Action":"0xDD21A8"}}   # RF Button</code></pre>
+
+            <h3>Kommando-Topics (cmnd/)</h3>
+            <p>
+                Über Kommando-Topics können Geräte gesteuert und konfiguriert werden.
+            </p>
+            <pre><code># Gerät ein-/ausschalten
+Topic: cmnd/Strom-PV/POWER
+Payload: ON / OFF / TOGGLE
+
+# Telemetrie-Intervall ändern (in Sekunden)
+Topic: cmnd/Strom-PV/TelePeriod
+Payload: 60    (Minimum: 10, Maximum: 3600)
+
+# Status abfragen
+Topic: cmnd/Strom-PV/Status
+Payload: 0     (0 = alle Statusmeldungen)
+
+# Energiezähler zurücksetzen
+Topic: cmnd/Strom-PV/EnergyReset
+Payload: 0     (Total auf 0 setzen)</code></pre>
+
+            <h3>Topic-Übersicht pro Gerät</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Prefix</th>
+                        <th>Topic</th>
+                        <th>Richtung</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>tele/</code></td>
+                        <td><code>tele/DEVICE/SENSOR</code></td>
+                        <td>Gerät &rarr; HA</td>
+                        <td>Periodische Sensorwerte</td>
+                    </tr>
+                    <tr>
+                        <td><code>tele/</code></td>
+                        <td><code>tele/DEVICE/STATE</code></td>
+                        <td>Gerät &rarr; HA</td>
+                        <td>Gerätestatus</td>
+                    </tr>
+                    <tr>
+                        <td><code>tele/</code></td>
+                        <td><code>tele/DEVICE/LWT</code></td>
+                        <td>Gerät &rarr; HA</td>
+                        <td>Online/Offline Status</td>
+                    </tr>
+                    <tr>
+                        <td><code>stat/</code></td>
+                        <td><code>stat/DEVICE/POWER</code></td>
+                        <td>Gerät &rarr; HA</td>
+                        <td>Aktueller Schaltzustand</td>
+                    </tr>
+                    <tr>
+                        <td><code>stat/</code></td>
+                        <td><code>stat/DEVICE/RESULT</code></td>
+                        <td>Gerät &rarr; HA</td>
+                        <td>Befehlsantwort</td>
+                    </tr>
+                    <tr>
+                        <td><code>cmnd/</code></td>
+                        <td><code>cmnd/DEVICE/POWER</code></td>
+                        <td>HA &rarr; Gerät</td>
+                        <td>Schaltbefehl</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================ -->
+            <h2>WiFi-Button MQTT-Konfiguration</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Der WiFi-Button basiert auf einem ESP32-S3 mit Tasmota-Firmware. Er verfügt über drei physische
+                Taster und empfängt zusätzlich zwei RF-Signale über einen 433MHz-Empfänger. Alle Button-Events
+                werden über das Topic <code>stat/wifibutton1/RESULT</code> veröffentlicht.
+            </p>
+
+            <h3>Button-Zuordnung</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Button</th>
+                        <th>Typ</th>
+                        <th>GPIO / RF-Code</th>
+                        <th>MQTT Payload</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Button1</td>
+                        <td>Physisch</td>
+                        <td>GPIO42</td>
+                        <td><code>{"Button1":{"Action":"SINGLE"}}</code></td>
+                    </tr>
+                    <tr>
+                        <td>Button2</td>
+                        <td>Physisch</td>
+                        <td>GPIO41</td>
+                        <td><code>{"Button2":{"Action":"SINGLE"}}</code></td>
+                    </tr>
+                    <tr>
+                        <td>Button3</td>
+                        <td>Physisch</td>
+                        <td>GPIO40</td>
+                        <td><code>{"Button3":{"Action":"SINGLE"}}</code></td>
+                    </tr>
+                    <tr>
+                        <td>Button4</td>
+                        <td>RF 433MHz</td>
+                        <td>0xD26F68</td>
+                        <td><code>{"Button4":{"Action":"0xD26F68"}}</code></td>
+                    </tr>
+                    <tr>
+                        <td>Button5</td>
+                        <td>RF 433MHz</td>
+                        <td>0xDD21A8</td>
+                        <td><code>{"Button5":{"Action":"0xDD21A8"}}</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                Die Aktionszuordnung der Buttons wird über <code>input_select</code> Helper in Home Assistant
+                konfiguriert. Die eigentliche Automatisierung erfolgt über Node-RED (siehe
+                <a href="08-nodered.html">Node-RED Dokumentation</a>). Die Home Assistant Automationen sind
+                mit <code>initial_state: false</code> deaktiviert, da Node-RED die Steuerung übernimmt.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>YAML-Konfiguration in Home Assistant</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Die MQTT-Integration wird in der <code>configuration.yaml</code> bzw. in den Package-Dateien
+                konfiguriert. Hier werden Sensoren, Schalter und weitere Entities für die Tasmota-Geräte definiert.
+            </p>
+
+            <h3>MQTT Sensoren (configuration.yaml)</h3>
+            <pre><code># configuration.yaml - MQTT Sensor Konfiguration
+mqtt:
+  sensor:
+    # ========================================
+    # Photovoltaik - Strom-PV
+    # ========================================
+    - name: "PV Leistung"
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      unique_id: "strom_pv_power"
+      availability:
+        - topic: "tele/Strom-PV/LWT"
+          payload_available: "Online"
+          payload_not_available: "Offline"
+
+    - name: "PV Energie Heute"
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_pv_energy_today"
+
+    - name: "PV Energie Gesamt"
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_pv_energy_total"
+
+    - name: "PV Spannung"
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Voltage }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      unique_id: "strom_pv_voltage"
+
+    - name: "PV Strom"
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Current }}"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      unique_id: "strom_pv_current"
+
+    # ========================================
+    # Server - Strom-Server
+    # ========================================
+    - name: "Server Leistung"
+      state_topic: "tele/Strom-Server/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      unique_id: "strom_server_power"
+
+    - name: "Server Energie Heute"
+      state_topic: "tele/Strom-Server/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_server_energy_today"
+
+    - name: "Server Energie Gesamt"
+      state_topic: "tele/Strom-Server/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_server_energy_total"
+
+    # ========================================
+    # Trockner - Strom-Trockner
+    # ========================================
+    - name: "Trockner Leistung"
+      state_topic: "tele/Strom-Trockner/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      unique_id: "strom_trockner_power"
+
+    - name: "Trockner Energie Heute"
+      state_topic: "tele/Strom-Trockner/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_trockner_energy_today"
+
+    - name: "Trockner Energie Gesamt"
+      state_topic: "tele/Strom-Trockner/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_trockner_energy_total"
+
+    # ========================================
+    # Waschmaschine - Strom-Wasch
+    # ========================================
+    - name: "Waschmaschine Leistung"
+      state_topic: "tele/Strom-Wasch/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      unique_id: "strom_wasch_power"
+
+    - name: "Waschmaschine Energie Heute"
+      state_topic: "tele/Strom-Wasch/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_wasch_energy_today"
+
+    - name: "Waschmaschine Energie Gesamt"
+      state_topic: "tele/Strom-Wasch/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_wasch_energy_total"
+
+    # ========================================
+    # Küche - Strom-KE_B51903
+    # ========================================
+    - name: "Küche Leistung"
+      state_topic: "tele/Strom-KE_B51903/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      unique_id: "strom_kueche_power"
+
+    - name: "Küche Energie Heute"
+      state_topic: "tele/Strom-KE_B51903/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_kueche_energy_today"
+
+    - name: "Küche Energie Gesamt"
+      state_topic: "tele/Strom-KE_B51903/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_kueche_energy_total"
+
+    # ========================================
+    # Arbeitszimmer - AZ_C8B675
+    # ========================================
+    - name: "Arbeitszimmer Leistung"
+      state_topic: "tele/AZ_C8B675/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      unique_id: "strom_az_power"
+
+    - name: "Arbeitszimmer Energie Heute"
+      state_topic: "tele/AZ_C8B675/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_az_energy_today"
+
+    - name: "Arbeitszimmer Energie Gesamt"
+      state_topic: "tele/AZ_C8B675/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      unique_id: "strom_az_energy_total"</code></pre>
+
+            <h3>MQTT Switches</h3>
+            <pre><code># configuration.yaml - MQTT Switch Konfiguration
+mqtt:
+  switch:
+    # ========================================
+    # Schaltbare Steckdosen
+    # ========================================
+    - name: "PV Steckdose"
+      state_topic: "stat/Strom-PV/POWER"
+      command_topic: "cmnd/Strom-PV/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      availability:
+        - topic: "tele/Strom-PV/LWT"
+          payload_available: "Online"
+          payload_not_available: "Offline"
+      unique_id: "strom_pv_switch"
+
+    - name: "Server Steckdose"
+      state_topic: "stat/Strom-Server/POWER"
+      command_topic: "cmnd/Strom-Server/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      unique_id: "strom_server_switch"
+
+    - name: "Trockner Steckdose"
+      state_topic: "stat/Strom-Trockner/POWER"
+      command_topic: "cmnd/Strom-Trockner/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      unique_id: "strom_trockner_switch"
+
+    - name: "Waschmaschine Steckdose"
+      state_topic: "stat/Strom-Wasch/POWER"
+      command_topic: "cmnd/Strom-Wasch/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      unique_id: "strom_wasch_switch"
+
+    - name: "Küche Steckdose"
+      state_topic: "stat/Strom-KE_B51903/POWER"
+      command_topic: "cmnd/Strom-KE_B51903/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      unique_id: "strom_kueche_switch"
+
+    - name: "Arbeitszimmer Steckdose"
+      state_topic: "stat/AZ_C8B675/POWER"
+      command_topic: "cmnd/AZ_C8B675/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      unique_id: "strom_az_switch"</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>MQTT Debugging und Monitoring</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Für die Fehlersuche und das Monitoring der MQTT-Kommunikation stehen verschiedene Werkzeuge
+                zur Verfügung.
+            </p>
+
+            <h3>MQTT Explorer (Desktop-Tool)</h3>
+            <p>
+                Der <strong>MQTT Explorer</strong> ist ein grafisches Tool zum Beobachten aller MQTT-Topics
+                in Echtzeit. Er zeigt die Topic-Hierarchie, aktuelle Werte und den Verlauf an.
+            </p>
+            <pre><code># Verbindungseinstellungen für MQTT Explorer:
+Host:     IP-Adresse des Home Assistant Servers
+Port:     1883
+Username: mqtt_user
+Password: [aus secrets.yaml]</code></pre>
+
+            <h3>mosquitto_sub (Kommandozeile)</h3>
+            <p>
+                Mit dem Kommandozeilen-Tool <code>mosquitto_sub</code> können Topics direkt abonniert werden:
+            </p>
+            <pre><code># Alle Topics eines Geräts mithören
+mosquitto_sub -h homeassistant.local -u mqtt_user -P "password" \
+  -t "tele/Strom-PV/#" -v
+
+# Alle Telemetrie-Topics aller Geräte
+mosquitto_sub -h homeassistant.local -u mqtt_user -P "password" \
+  -t "tele/+/SENSOR" -v
+
+# WiFi-Button Events mithören
+mosquitto_sub -h homeassistant.local -u mqtt_user -P "password" \
+  -t "stat/wifibutton1/RESULT" -v
+
+# Alle Topics (Vorsicht: sehr viele Nachrichten!)
+mosquitto_sub -h homeassistant.local -u mqtt_user -P "password" \
+  -t "#" -v</code></pre>
+
+            <h3>mosquitto_pub (Befehle senden)</h3>
+            <pre><code># Gerät einschalten
+mosquitto_pub -h homeassistant.local -u mqtt_user -P "password" \
+  -t "cmnd/Strom-PV/POWER" -m "ON"
+
+# Status abfragen
+mosquitto_pub -h homeassistant.local -u mqtt_user -P "password" \
+  -t "cmnd/Strom-PV/Status" -m "0"
+
+# Telemetrie sofort auslösen
+mosquitto_pub -h homeassistant.local -u mqtt_user -P "password" \
+  -t "cmnd/Strom-PV/TelePeriod" -m "10"</code></pre>
+
+            <h3>Home Assistant MQTT Tool</h3>
+            <p>
+                Home Assistant bietet unter <strong>Einstellungen</strong> &rarr; <strong>Geräte &amp; Dienste</strong>
+                &rarr; <strong>MQTT</strong> &rarr; <strong>Konfigurieren</strong> ein integriertes Tool zum
+                Abhören und Senden von MQTT-Nachrichten. Dies ist besonders nützlich für schnelle Tests ohne
+                externe Tools.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>Tasmota Auto-Discovery</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Tasmota unterstützt die automatische Erkennung über MQTT Discovery. Wenn aktiviert, registrieren
+                sich Tasmota-Geräte automatisch in Home Assistant, ohne dass manuelle YAML-Konfiguration nötig ist.
+            </p>
+            <pre><code># Tasmota Discovery aktivieren (in Tasmota Konsole):
+SetOption19 0    # Native Discovery deaktivieren (alt)
+SetOption73 1    # MQTT Discovery aktivieren (neu, empfohlen)
+
+# Home Assistant erkennt das Gerät automatisch unter:
+# Einstellungen > Geräte & Dienste > MQTT > Geräte</code></pre>
+
+            <p>
+                <strong>Hinweis:</strong> In diesem Setup wird die manuelle YAML-Konfiguration bevorzugt, da sie
+                mehr Kontrolle über Entity-Namen, Unique-IDs und Verfügbarkeits-Topics bietet. Die Auto-Discovery
+                kann jedoch für neue Geräte als Ausgangspunkt genutzt werden.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>Häufige Probleme</h2>
+            <!-- ============================================================ -->
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Ursache</th>
+                        <th>Lösung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Sensor zeigt <code>unavailable</code></td>
+                        <td>Gerät offline oder LWT-Topic nicht konfiguriert</td>
+                        <td>Tasmota-Gerät prüfen, WLAN-Verbindung sicherstellen</td>
+                    </tr>
+                    <tr>
+                        <td>Werte aktualisieren sich nicht</td>
+                        <td>TelePeriod zu hoch oder Topic falsch</td>
+                        <td><code>cmnd/DEVICE/TelePeriod 60</code> setzen</td>
+                    </tr>
+                    <tr>
+                        <td>Doppelte Entities</td>
+                        <td>Auto-Discovery und manuelle Konfiguration gleichzeitig</td>
+                        <td>Entweder Discovery oder YAML verwenden</td>
+                    </tr>
+                    <tr>
+                        <td>Verbindung wird ständig getrennt</td>
+                        <td>Gleiche Client-ID bei mehreren Geräten</td>
+                        <td>Eindeutige Client-IDs in Tasmota setzen</td>
+                    </tr>
+                    <tr>
+                        <td>Authentifizierungsfehler</td>
+                        <td>Falscher Benutzername oder Passwort</td>
+                        <td>Zugangsdaten in Tasmota und Mosquitto prüfen</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="page-nav">
+                <a href="08-nodered.html"><div><div class="label">Zurück</div>Node-RED</div></a>
+                <a href="10-energie.html"><div><div class="label">Weiter</div>Energie</div></a>
+            </div>
+            <div class="footer">IceHomeAssist Dokumentation &middot; Erstellt Februar 2026</div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) a.classList.add('active');
+});
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs"},
+];
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i => i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q));
+    results.innerHTML = matches.length === 0 ? '<div class="search-result-item">Keine Ergebnisse</div>' :
+        matches.map(m => `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`).join('');
+    results.classList.add('active');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.search-container')) document.getElementById('searchResults').classList.remove('active'); });
+</script>
+</body>
+</html>

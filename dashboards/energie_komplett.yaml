@@ -1,0 +1,322 @@
+title: Energie
+views:
+  # ===========================================================================
+  # ÜBERSICHT
+  # ===========================================================================
+  - title: Übersicht
+    path: uebersicht
+    icon: mdi:flash
+    cards:
+      # Aktuelle Leistung Zusammenfassung
+      - type: markdown
+        content: |
+          ## ⚡ Energie Übersicht
+
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.pv_leistung
+            name: "☀️ PV Erzeugung"
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.tibber_power
+            name: "🏠 Verbrauch (Netz)"
+            icon: mdi:transmission-tower
+
+      # PV Gauge
+      - type: gauge
+        entity: sensor.pv_leistung
+        name: PV Einspeisung
+        min: 0
+        max: 600
+        severity:
+          green: 300
+          yellow: 100
+          red: 0
+        needle: true
+
+      # Strompreis
+      - type: entity
+        entity: sensor.tibber_prices
+        name: Aktueller Strompreis
+        icon: mdi:currency-eur
+        attribute: current_price
+
+      # Verbraucher Übersicht
+      - type: entities
+        title: Verbraucher
+        show_header_toggle: false
+        entities:
+          - entity: sensor.server_leistung
+            name: Server
+            icon: mdi:server
+          - entity: sensor.kueche_leistung
+            name: Küche
+            icon: mdi:countertop
+          - entity: sensor.waschmaschine_leistung
+            name: Waschmaschine
+            icon: mdi:washing-machine
+          - entity: sensor.trockner_leistung
+            name: Trockner
+            icon: mdi:tumble-dryer
+
+      # PV Graph
+      - type: history-graph
+        title: PV Erzeugung (24h)
+        hours_to_show: 24
+        entities:
+          - entity: sensor.pv_leistung
+            name: PV
+
+      # Energie heute
+      - type: entities
+        title: Energie Heute
+        entities:
+          - entity: sensor.pv_energie_heute
+            name: PV erzeugt
+          - entity: sensor.tibber_consumption_today
+            name: Verbrauch (Netz)
+          - entity: sensor.server_energie_heute
+            name: Server
+          - entity: sensor.kueche_energie_heute
+            name: Küche
+
+  # ===========================================================================
+  # STROMPREISE - TIBBER
+  # ===========================================================================
+  - title: Strompreise
+    path: strompreise
+    icon: mdi:currency-eur
+    cards:
+      - type: markdown
+        content: |
+          ## 💰 Tibber Strompreise
+
+          Beste Zeiten für Waschmaschine & Spülmaschine finden!
+
+      # Aktueller Preis
+      - type: entity
+        entity: sensor.tibber_prices
+        name: Aktueller Preis
+        attribute: current_price
+
+      # Preisübersicht Heute (manuell erstellt)
+      - type: markdown
+        content: |
+          ### Heute
+
+          Die Tibber Integration liefert Preisdaten als Attribute.
+          Nutze die **Tibber App** oder richte **ApexCharts** (HACS) ein
+          für eine detaillierte Preisübersicht.
+
+      # Hinweis zur Einrichtung
+      - type: markdown
+        content: |
+          ### 📊 Erweiterte Preisanzeige
+
+          Für die detaillierte 30-Minuten-Slots Anzeige installiere:
+
+          1. **HACS** → Integrationen → ApexCharts Card
+          2. Oder nutze die Tibber App direkt
+
+          Die Tibber-Entität `sensor.tibber_prices` enthält alle
+          Preisinformationen als Attribute.
+
+  # ===========================================================================
+  # PV ANLAGE
+  # ===========================================================================
+  - title: PV Anlage
+    path: pv
+    icon: mdi:solar-power
+    cards:
+      - type: markdown
+        content: "## ☀️ Photovoltaik"
+
+      - type: gauge
+        entity: sensor.pv_leistung
+        name: Aktuelle Einspeisung
+        min: 0
+        max: 600
+        severity:
+          green: 400
+          yellow: 200
+          red: 0
+
+      - type: entities
+        title: Live Daten
+        entities:
+          - entity: sensor.pv_leistung
+            name: Leistung
+          - entity: sensor.pv_spannung
+            name: Spannung
+          - entity: sensor.pv_strom
+            name: Strom
+          - entity: switch.strom_pv
+            name: Schalter
+
+      - type: entities
+        title: Energie
+        entities:
+          - entity: sensor.pv_energie_heute
+            name: Heute
+          - entity: sensor.pv_energie_gestern
+            name: Gestern
+          - entity: sensor.pv_energie_gesamt
+            name: Gesamt (seit 01.09.2023)
+
+      - type: history-graph
+        title: Leistungsverlauf (48h)
+        hours_to_show: 48
+        entities:
+          - entity: sensor.pv_leistung
+
+  # ===========================================================================
+  # VERBRAUCHER
+  # ===========================================================================
+  - title: Verbraucher
+    path: verbraucher
+    icon: mdi:power-plug
+    cards:
+      - type: markdown
+        content: "## 🔌 Stromverbraucher"
+
+      # Server
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: "### 🖥️ Server"
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: sensor.server_leistung
+                name: Leistung
+              - type: entity
+                entity: sensor.server_energie_heute
+                name: Heute
+          - type: entity
+            entity: sensor.server_energie_gesamt
+            name: Gesamt
+
+      # Küche
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: "### 🍳 Küche"
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: sensor.kueche_leistung
+                name: Leistung
+              - type: entity
+                entity: sensor.kueche_energie_heute
+                name: Heute
+          - type: entity
+            entity: sensor.kueche_energie_gesamt
+            name: Gesamt
+
+      # Waschmaschine
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: "### 🧺 Waschmaschine"
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: sensor.waschmaschine_leistung
+                name: Leistung
+              - type: entity
+                entity: sensor.waschmaschine_energie_heute
+                name: Heute
+          - type: entity
+            entity: sensor.waschmaschine_energie_gesamt
+            name: Gesamt
+          - type: entity
+            entity: switch.strom_waschmaschine
+            name: Schalter
+
+      # Trockner
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: "### 🌀 Trockner"
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: sensor.trockner_leistung
+                name: Leistung
+              - type: entity
+                entity: sensor.trockner_energie_heute
+                name: Heute
+          - type: entity
+            entity: sensor.trockner_energie_gesamt
+            name: Gesamt
+          - type: entity
+            entity: switch.strom_trockner
+            name: Schalter
+
+      # History
+      - type: history-graph
+        title: Verbrauch 24h
+        hours_to_show: 24
+        entities:
+          - entity: sensor.server_leistung
+            name: Server
+          - entity: sensor.kueche_leistung
+            name: Küche
+
+  # ===========================================================================
+  # KOSTEN / STATISTIK
+  # ===========================================================================
+  - title: Statistik
+    path: statistik
+    icon: mdi:chart-line
+    cards:
+      - type: markdown
+        content: |
+          ## 📊 Energie Statistik & Kosten
+
+      # Energie Übersicht
+      - type: entities
+        title: Energie Heute
+        entities:
+          - entity: sensor.pv_energie_heute
+            name: "☀️ PV Erzeugt"
+          - entity: sensor.server_energie_heute
+            name: "🖥️ Server"
+          - entity: sensor.kueche_energie_heute
+            name: "🍳 Küche"
+          - entity: sensor.waschmaschine_energie_heute
+            name: "🧺 Waschmaschine"
+          - entity: sensor.trockner_energie_heute
+            name: "🌀 Trockner"
+
+      # Energie Gesamt
+      - type: entities
+        title: Energie Gesamt (kWh)
+        entities:
+          - entity: sensor.pv_energie_gesamt
+            name: "☀️ PV Erzeugt"
+          - entity: sensor.server_energie_gesamt
+            name: "🖥️ Server"
+          - entity: sensor.kueche_energie_gesamt
+            name: "🍳 Küche"
+          - entity: sensor.waschmaschine_energie_gesamt
+            name: "🧺 Waschmaschine"
+          - entity: sensor.trockner_energie_gesamt
+            name: "🌀 Trockner"
+
+      - type: markdown
+        content: |
+          ### 💶 Kostenberechnung
+
+          Für automatische Kostenberechnung:
+
+          1. **Einstellungen** → **Energie** Dashboard öffnen
+          2. **Stromverbrauch** hinzufügen (Tibber)
+          3. **Solarproduktion** hinzufügen (sensor.pv_energie_heute)
+          4. **Einzelne Geräte** hinzufügen (Server, Waschmaschine, etc.)
+
+          Das Energy Dashboard berechnet dann automatisch:
+          - Kosten basierend auf Tibber-Preisen
+          - Ersparnis durch PV-Eigenverbrauch
+          - Kosten pro Gerät

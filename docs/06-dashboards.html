@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboards - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Dashboards
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Dashboards</h1>
+            <p>
+                Das IceHomeAssist-System verfügt über 11 YAML-basierte Dashboards, die verschiedene
+                Aspekte des Smart Homes abdecken. Alle Dashboards sind im YAML-Modus konfiguriert
+                und werden über separate Dateien im Verzeichnis <code>dashboards/</code> verwaltet.
+            </p>
+
+            <!-- YAML vs Storage -->
+            <h2>YAML-Modus vs. Storage-Modus</h2>
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Eigenschaft</th>
+                            <th>YAML-Modus</th>
+                            <th>Storage-Modus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Bearbeitung</strong></td>
+                            <td>Texteditor / Code</td>
+                            <td>Grafischer Editor in der UI</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Versionskontrolle</strong></td>
+                            <td>Ja (Git-kompatibel)</td>
+                            <td>Nein (in .storage gespeichert)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Backup</strong></td>
+                            <td>Einfach (Dateikopie)</td>
+                            <td>Nur über HA-Backup</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Komplexität</strong></td>
+                            <td>Mehr Kontrolle, steile Lernkurve</td>
+                            <td>Einfacher, aber eingeschränkter</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Verwendung hier</strong></td>
+                            <td><strong>Alle 11 Dashboards</strong></td>
+                            <td>Nicht verwendet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-box">
+                <strong>Warum YAML-Modus?</strong> Der YAML-Modus ermöglicht die vollständige
+                Versionskontrolle mit Git, einfache Backups durch Dateikopien und die Möglichkeit,
+                Dashboards zwischen Installationen zu übertragen. Außerdem bietet er mehr Kontrolle
+                über das Layout und erweiterte Kartenkonfigurationen.
+            </div>
+
+            <!-- Dashboard-Konfiguration -->
+            <h2>Dashboard-Konfiguration</h2>
+            <h3>Einbindung in configuration.yaml</h3>
+            <pre><code><span class="cmt"># configuration.yaml - Lovelace Dashboard-Konfiguration</span>
+
+<span class="kw">lovelace:</span>
+  <span class="kw">mode:</span> <span class="val">yaml</span>
+  <span class="kw">resources:</span> <span class="val">[]</span>
+  <span class="kw">dashboards:</span>
+    <span class="kw">home-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/home.yaml</span>
+      <span class="kw">title:</span> <span class="str">Home</span>
+      <span class="kw">icon:</span> <span class="str">mdi:home</span>
+      <span class="kw">show_in_sidebar:</span> <span class="val">true</span>
+    <span class="kw">energie-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/energie.yaml</span>
+      <span class="kw">title:</span> <span class="str">Energie</span>
+      <span class="kw">icon:</span> <span class="str">mdi:solar-power</span>
+      <span class="kw">show_in_sidebar:</span> <span class="val">true</span>
+    <span class="kw">wetter-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/wetter.yaml</span>
+      <span class="kw">title:</span> <span class="str">Wetter</span>
+      <span class="kw">icon:</span> <span class="str">mdi:weather-partly-cloudy</span>
+      <span class="kw">show_in_sidebar:</span> <span class="val">true</span>
+    <span class="kw">raeume-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/raeume.yaml</span>
+      <span class="kw">title:</span> <span class="str">Räume</span>
+      <span class="kw">icon:</span> <span class="str">mdi:floor-plan</span>
+    <span class="kw">medien-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/medien.yaml</span>
+      <span class="kw">title:</span> <span class="str">Medien</span>
+      <span class="kw">icon:</span> <span class="str">mdi:play-circle</span>
+    <span class="kw">staubsauger-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/staubsauger.yaml</span>
+      <span class="kw">title:</span> <span class="str">Staubsauger</span>
+      <span class="kw">icon:</span> <span class="str">mdi:robot-vacuum</span>
+    <span class="kw">system-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/system.yaml</span>
+      <span class="kw">title:</span> <span class="str">System</span>
+      <span class="kw">icon:</span> <span class="str">mdi:cog</span>
+    <span class="kw">thw-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/thw.yaml</span>
+      <span class="kw">title:</span> <span class="str">THW</span>
+      <span class="kw">icon:</span> <span class="str">mdi:shield-alert</span>
+    <span class="kw">netzwerk-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/netzwerk.yaml</span>
+      <span class="kw">title:</span> <span class="str">Netzwerk</span>
+      <span class="kw">icon:</span> <span class="str">mdi:lan</span>
+    <span class="kw">charly-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/charly.yaml</span>
+      <span class="kw">title:</span> <span class="str">Charly</span>
+      <span class="kw">icon:</span> <span class="str">mdi:cat</span>
+    <span class="kw">kiosk-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/kiosk.yaml</span>
+      <span class="kw">title:</span> <span class="str">Kiosk</span>
+      <span class="kw">icon:</span> <span class="str">mdi:tablet-dashboard</span></code></pre>
+
+            <!-- Übersicht der Dashboards -->
+            <h2>Die 11 Dashboards</h2>
+
+            <div class="card">
+                <h3>1. Home</h3>
+                <p>
+                    Das Haupt-Dashboard mit einer Übersicht über alle wichtigen Informationen:
+                    aktuelle Raumtemperaturen, Energieverbrauch, Wetter, aktive Geräte und
+                    Schnellzugriff auf häufig verwendete Steuerungen.
+                </p>
+                <p><strong>Typische Karten:</strong> Wetter-Forecast, Energieverbrauch-Gauge, Geräte-Status, Szenen-Buttons</p>
+            </div>
+
+            <div class="card">
+                <h3>2. Energie</h3>
+                <p>
+                    Umfassendes Energiemonitoring mit Echtzeit-Verbrauchsdaten aller Tasmota-Sensoren
+                    (PV, Server, Trockner, Waschmaschine, Küche, Arbeitszimmer), Tibber-Strompreisen
+                    und Tages-/Wochen-/Monatsstatistiken.
+                </p>
+                <p><strong>Typische Karten:</strong> Echtzeit-Leistungsanzeigen, Strompreis-Graph, Tagesverbrauch-Verlauf, PV-Ertrag</p>
+            </div>
+
+            <div class="card">
+                <h3>3. Wetter</h3>
+                <p>
+                    Wetterdaten vom Deutschen Wetterdienst (DWD) mit aktueller Temperatur,
+                    Niederschlagsradar, Vorhersage für die nächsten Tage und Wetterwarnungen.
+                </p>
+                <p><strong>Typische Karten:</strong> Wetter-Forecast, Niederschlagsdiagramm, Temperaturverlauf, Warnungen</p>
+            </div>
+
+            <div class="card">
+                <h3>4. Räume</h3>
+                <p>
+                    Raumweise Ansicht mit Temperatur, Luftfeuchtigkeit und aktiven Geräten
+                    pro Raum. Ermöglicht die schnelle Steuerung von Geräten in einem bestimmten Raum.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>5. Medien</h3>
+                <p>
+                    Steuerung aller Mediengeräte: Amazon Echo Show 8, Sony Bravia TV, Musik-Wiedergabe.
+                    Enthält Media-Player-Karten mit Lautstärke, Wiedergabesteuerung und Quellenwahl.
+                </p>
+                <p><strong>Typische Karten:</strong> Mini Media Player, Media Control, TTS-Eingabe</p>
+            </div>
+
+            <div class="card">
+                <h3>6. Staubsauger</h3>
+                <p>
+                    Steuerung des Dreame Staubsaugerroboters mit Live-Karte (via Xiaomi Cloud Map
+                    Extractor), Reinigungsverlauf, Verbrauchsmaterialien-Status und Raum-Auswahl.
+                </p>
+                <p><strong>Typische Karten:</strong> Vacuum Map, Status-Entity, Raum-Buttons, Verbrauchsmaterialien</p>
+            </div>
+
+            <div class="card">
+                <h3>7. System</h3>
+                <p>
+                    System-Monitoring: Home-Assistant-Version, CPU/RAM-Auslastung, Festplattenspeicher,
+                    Datenbank-Größe, Addon-Status, Update-Verfügbarkeit und Log-Auszüge.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>8. THW</h3>
+                <p>
+                    Dashboard für das Technische Hilfswerk (THW): Aktuelle Divera-Alarme,
+                    NINA-Warnmeldungen, Einsatzübersicht und Verfügbarkeitsstatus.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>9. Netzwerk</h3>
+                <p>
+                    Netzwerk-Monitoring: UniFi Switch/AP-Status, verbundene Clients, Fritz!Box
+                    DSL-Statistiken, VPN-Verbindungen, Internet-Geschwindigkeit und Geräteerkennung.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>10. Charly</h3>
+                <p>
+                    Spezialdashboard für die Katze Charly: PetKit-Futterautomat-Status, Fütterungsplan,
+                    Trinkbrunnen-Status und Aktivitätsübersicht.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>11. Kiosk</h3>
+                <p>
+                    Vereinfachtes Dashboard für den Kiosk-Modus (z.B. auf einem Tablet an der Wand).
+                    Zeigt nur die wichtigsten Informationen ohne Navigationsleiste und mit
+                    größeren Touch-Zielen.
+                </p>
+            </div>
+
+            <!-- Kartentypen -->
+            <h2>Verwendete Kartentypen</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Kartentyp</th>
+                        <th>Verwendung</th>
+                        <th>Dashboard(s)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>entities</code></td>
+                        <td>Liste von Entitäten mit Status</td>
+                        <td>Alle</td>
+                    </tr>
+                    <tr>
+                        <td><code>gauge</code></td>
+                        <td>Runde Anzeige für Zahlenwerte</td>
+                        <td>Energie, System</td>
+                    </tr>
+                    <tr>
+                        <td><code>history-graph</code></td>
+                        <td>Zeitverlauf von Sensorwerten</td>
+                        <td>Energie, Wetter</td>
+                    </tr>
+                    <tr>
+                        <td><code>weather-forecast</code></td>
+                        <td>Wettervorhersage-Karte</td>
+                        <td>Wetter, Home</td>
+                    </tr>
+                    <tr>
+                        <td><code>media-control</code></td>
+                        <td>Media-Player-Steuerung</td>
+                        <td>Medien</td>
+                    </tr>
+                    <tr>
+                        <td><code>map</code></td>
+                        <td>Kartenansicht für GPS-Tracker</td>
+                        <td>Charly</td>
+                    </tr>
+                    <tr>
+                        <td><code>picture-elements</code></td>
+                        <td>Bild mit überlagerten Elementen</td>
+                        <td>Staubsauger, Räume</td>
+                    </tr>
+                    <tr>
+                        <td><code>vertical-stack</code></td>
+                        <td>Vertikale Karten-Gruppierung</td>
+                        <td>Alle</td>
+                    </tr>
+                    <tr>
+                        <td><code>horizontal-stack</code></td>
+                        <td>Horizontale Karten-Gruppierung</td>
+                        <td>Alle</td>
+                    </tr>
+                    <tr>
+                        <td><code>conditional</code></td>
+                        <td>Bedingt angezeigte Karten</td>
+                        <td>THW, System</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Beispiel: Einfache Dashboard-Datei</h3>
+            <pre><code><span class="cmt"># dashboards/home.yaml - Beispiel-Struktur</span>
+
+<span class="kw">title:</span> <span class="str">Home</span>
+<span class="kw">views:</span>
+  - <span class="kw">title:</span> <span class="str">Übersicht</span>
+    <span class="kw">path:</span> <span class="val">overview</span>
+    <span class="kw">icon:</span> <span class="str">mdi:home</span>
+    <span class="kw">cards:</span>
+      - <span class="kw">type:</span> <span class="val">weather-forecast</span>
+        <span class="kw">entity:</span> <span class="val">weather.dwd_home</span>
+        <span class="kw">forecast_type:</span> <span class="val">daily</span>
+
+      - <span class="kw">type:</span> <span class="val">gauge</span>
+        <span class="kw">entity:</span> <span class="val">sensor.pv_leistung</span>
+        <span class="kw">name:</span> <span class="str">PV Leistung</span>
+        <span class="kw">min:</span> <span class="val">0</span>
+        <span class="kw">max:</span> <span class="val">5000</span>
+        <span class="kw">severity:</span>
+          <span class="kw">green:</span> <span class="val">1000</span>
+          <span class="kw">yellow:</span> <span class="val">500</span>
+          <span class="kw">red:</span> <span class="val">0</span>
+
+      - <span class="kw">type:</span> <span class="val">entities</span>
+        <span class="kw">title:</span> <span class="str">Geräte</span>
+        <span class="kw">entities:</span>
+          - <span class="val">media_player.marcus_echo_show_8_2nd_gen</span>
+          - <span class="val">media_player.sony_bravia_tv</span>
+          - <span class="val">vacuum.dreame_staubsauger</span>
+
+      - <span class="kw">type:</span> <span class="val">horizontal-stack</span>
+        <span class="kw">cards:</span>
+          - <span class="kw">type:</span> <span class="val">button</span>
+            <span class="kw">entity:</span> <span class="val">scene.abend</span>
+            <span class="kw">name:</span> <span class="str">Abend</span>
+          - <span class="kw">type:</span> <span class="val">button</span>
+            <span class="kw">entity:</span> <span class="val">scene.film</span>
+            <span class="kw">name:</span> <span class="str">Film</span></code></pre>
+
+            <div class="info-box">
+                <strong>Tipp:</strong> Nach Änderungen an Dashboard-YAML-Dateien kann das Dashboard
+                über den Browser-Refresh (F5) oder über das Drei-Punkte-Menü im Dashboard mit
+                "YAML-Konfiguration neu laden" aktualisiert werden, ohne Home Assistant neu zu starten.
+            </div>
+
+            <div class="page-nav">
+                <a href="05-integrationen.html">
+                    <div><div class="label">Zurück</div>Integrationen</div>
+                </a>
+                <a href="07-automatisierungen.html">
+                    <div><div class="label">Weiter</div>Automatisierungen</div>
+                </a>
+            </div>
+            <div class="footer">
+                IceHomeAssist Dokumentation &middot; Erstellt Februar 2026
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) {
+        a.classList.add('active');
+    }
+});
+
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation Inhaltsverzeichnis"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker Container Komponenten"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker Setup"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes Netzwerk"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages Secrets"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Switch WiFi Radar"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive GPS Tracker"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
+];
+
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i =>
+        i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Keine Ergebnisse</div>';
+    } else {
+        results.innerHTML = matches.map(m =>
+            `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`
+        ).join('');
+    }
+    results.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-container')) {
+        document.getElementById('searchResults').classList.remove('active');
+    }
+});
+</script>
+</body>
+</html>

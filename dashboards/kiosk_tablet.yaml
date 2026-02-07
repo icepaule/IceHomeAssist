@@ -1,0 +1,478 @@
+# =============================================================================
+# KIOSK TABLET DASHBOARD - Galaxy Tab Bedienkonsole
+# =============================================================================
+# URL: /lovelace-kiosk/home?kiosk (mit kiosk-mode)
+
+title: Kiosk
+views:
+  - title: Home
+    path: home
+    icon: mdi:tablet-dashboard
+    kiosk_mode:
+      kiosk: true
+    cards:
+      # =============================================
+      # KOPFZEILE: Uhrzeit, Datum, Wetter
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: markdown
+            content: |
+              # {{ now().strftime('%H:%M') }}
+              {{ now().strftime('%A, %d. %B %Y') }}
+          - type: weather-forecast
+            entity: weather.forecast_home
+            show_forecast: false
+
+      # =============================================
+      # WARNUNGEN (nur wenn aktiv)
+      # =============================================
+      - type: conditional
+        conditions:
+          - entity: sensor.nina_munchen_warnungen_anzahl
+            state_not: "0"
+        card:
+          type: custom:mushroom-template-card
+          primary: "{{ states('sensor.nina_munchen_warnung_aktuell') }}"
+          secondary: "Schwere: {{ states('sensor.nina_munchen_warnung_schwere') }}"
+          icon: mdi:alert
+          icon_color: red
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace-wetter/warnungen
+
+      # Strompreis-Hinweis
+      - type: conditional
+        conditions:
+          - entity: sensor.tibber_preis_status
+            state: "günstig"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Strom gerade günstig: {{ states('sensor.tibber_preis_aktuell') }} ct/kWh"
+          secondary: "Guter Zeitpunkt für Waschmaschine oder Trockner"
+          icon: mdi:flash
+          icon_color: green
+
+      # =============================================
+      # ENERGIE ÜBERSICHT
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Strompreis
+            secondary: "{{ states('sensor.tibber_preis_aktuell') }} ct"
+            icon: mdi:currency-eur
+            icon_color: >
+              {% set s = states('sensor.tibber_preis_status') %}
+              {% if s == 'günstig' %}green
+              {% elif s == 'teuer' %}red
+              {% else %}orange{% endif %}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-energie/preise
+          - type: custom:mushroom-template-card
+            primary: PV
+            secondary: "{{ states('sensor.pv_leistung') }} W"
+            icon: mdi:solar-power
+            icon_color: yellow
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-energie/pv
+          - type: custom:mushroom-template-card
+            primary: Netz
+            secondary: "{{ states('sensor.tibber_pulse_paule_power') }} W"
+            icon: mdi:transmission-tower
+            icon_color: blue
+          - type: custom:mushroom-template-card
+            primary: Kosten
+            secondary: "{{ states('sensor.stromkosten_heute') }} €"
+            icon: mdi:cash-multiple
+            icon_color: green
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-energie/preise
+
+      # =============================================
+      # SCHNELLSCHALTER
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-light-card
+            entity: light.wled2
+            name: WLED
+            layout: vertical
+            fill_container: true
+          - type: custom:mushroom-entity-card
+            entity: switch.licht_wz_mss210_main_channel
+            name: Licht WZ
+            icon: mdi:lightbulb
+            layout: vertical
+            fill_container: true
+            tap_action:
+              action: toggle
+          - type: custom:mushroom-entity-card
+            entity: switch.strom_arbeitszimmer
+            name: Büro
+            icon: mdi:desk-lamp
+            layout: vertical
+            fill_container: true
+            tap_action:
+              action: toggle
+          - type: custom:mushroom-entity-card
+            entity: media_player.kd_55xe8505
+            name: TV
+            icon: mdi:television
+            layout: vertical
+            fill_container: true
+            tap_action:
+              action: toggle
+
+      # =============================================
+      # STAUBSAUGER
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Staubsauger
+            secondary: >
+              {{ states('sensor.willi_robby_status') }}
+              ({{ states('sensor.willi_robby_battery_level') }}%)
+            icon: mdi:robot-vacuum
+            icon_color: >
+              {% set s = states('vacuum.willi_robby') %}
+              {% if s == 'cleaning' %}green
+              {% elif s == 'returning' %}blue
+              {% elif s == 'paused' %}orange
+              {% elif s == 'docked' %}grey
+              {% elif s == 'error' %}red
+              {% else %}orange{% endif %}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-vacuum/staubsauger
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: action
+                icon: mdi:play
+                tap_action:
+                  action: call-service
+                  service: vacuum.start
+                  target:
+                    entity_id: vacuum.willi_robby
+              - type: action
+                icon: mdi:pause
+                tap_action:
+                  action: call-service
+                  service: vacuum.pause
+                  target:
+                    entity_id: vacuum.willi_robby
+              - type: action
+                icon: mdi:stop
+                tap_action:
+                  action: call-service
+                  service: vacuum.stop
+                  target:
+                    entity_id: vacuum.willi_robby
+              - type: action
+                icon: mdi:home
+                tap_action:
+                  action: call-service
+                  service: vacuum.return_to_base
+                  target:
+                    entity_id: vacuum.willi_robby
+
+      # =============================================
+      # WASCHRAUM & KÜCHE
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Waschmaschine
+            secondary: "{{ states('sensor.waschmaschine_leistung') }} W"
+            icon: mdi:washing-machine
+            icon_color: >
+              {% if states('sensor.waschmaschine_leistung')|float(0) > 10 %}green{% else %}grey{% endif %}
+          - type: custom:mushroom-template-card
+            primary: Trockner
+            secondary: "{{ states('sensor.trockner_leistung') }} W"
+            icon: mdi:tumble-dryer
+            icon_color: >
+              {% if states('sensor.trockner_leistung')|float(0) > 10 %}green{% else %}grey{% endif %}
+          - type: custom:mushroom-template-card
+            primary: Küche
+            secondary: "{{ states('sensor.kueche_leistung') }} W"
+            icon: mdi:countertop
+            icon_color: >
+              {% if states('sensor.kueche_leistung')|float(0) > 10 %}green{% else %}grey{% endif %}
+
+      # =============================================
+      # ANWESENHEIT & EINKAUF
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-person-card
+            entity: person.marcus
+            layout: horizontal
+          - type: custom:mushroom-template-card
+            primary: Einkaufsliste
+            secondary: "{{ states('sensor.einkaufsliste_anzahl') }} Artikel"
+            icon: mdi:cart
+            icon_color: >
+              {% if states('sensor.einkaufsliste_anzahl')|int(0) > 0 %}orange{% else %}green{% endif %}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-wetter/familie
+
+      # =============================================
+      # THW / DIVERA 24/7
+      # =============================================
+      # Alarm-Banner (nur bei aktiven Alarmen)
+      - type: conditional
+        conditions:
+          - condition: numeric_state
+            entity: sensor.divera_open_alarms_helper
+            above: 0
+        card:
+          type: custom:mushroom-template-card
+          primary: >
+            {% set alarms = states.sensor
+              | selectattr('entity_id', 'search', '_alarm_')
+              | selectattr('attributes.closed', 'eq', false)
+              | list %}
+            {% if alarms | length > 0 %}
+              ALARM: {{ alarms[0].state }}
+            {% else %}
+              Divera Alarm aktiv!
+            {% endif %}
+          secondary: >
+            {% set alarms = states.sensor
+              | selectattr('entity_id', 'search', '_alarm_')
+              | selectattr('attributes.closed', 'eq', false)
+              | list %}
+            {% if alarms | length > 0 %}
+              {{ alarms[0].attributes.get('address', '') }}
+            {% endif %}
+          icon: mdi:alarm-light
+          icon_color: red
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 0, 0, 0.15) !important;
+                border: 2px solid red !important;
+                animation: pulse 2s infinite;
+              }
+              @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+              }
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace-thw/alarm-details
+
+      # Nächster Divera-Termin
+      - type: custom:mushroom-template-card
+        primary: >
+          {% set cals = states.calendar
+            | selectattr('entity_id', 'search', '450712')
+            | list %}
+          {% if cals | length > 0 and cals[0].state == 'on' %}
+            THW: {{ cals[0].attributes.get('message', 'Termin') }}
+          {% else %}
+            THW: Kein Termin
+          {% endif %}
+        secondary: >
+          {% set cals = states.calendar
+            | selectattr('entity_id', 'search', '450712')
+            | list %}
+          {% if cals | length > 0 and cals[0].attributes.get('start_time') %}
+            {{ cals[0].attributes.get('start_time', '') }}
+          {% else %}
+            —
+          {% endif %}
+        icon: mdi:fire-truck
+        icon_color: >
+          {% set open = states('sensor.divera_open_alarms_helper') | int(0) %}
+          {% if open > 0 %}red{% else %}blue{% endif %}
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace-thw/uebersicht
+
+      # =============================================
+      # SCHUPPEN WETTER (Außensensor)
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Außen
+            secondary: "{{ states('sensor.luft1_wetterstation_schuppen_temperatur') }}°C"
+            icon: mdi:thermometer
+            icon_color: >
+              {% set t = states('sensor.luft1_wetterstation_schuppen_temperatur')|float(0) %}
+              {% if t > 25 %}red{% elif t > 10 %}green{% else %}blue{% endif %}
+          - type: custom:mushroom-template-card
+            primary: Feuchte
+            secondary: "{{ states('sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit') }}%"
+            icon: mdi:water-percent
+            icon_color: cyan
+          - type: custom:mushroom-template-card
+            primary: Druck
+            secondary: "{{ states('sensor.luft1_wetterstation_schuppen_luftdruck') }} hPa"
+            icon: mdi:gauge
+            icon_color: purple
+
+      # =============================================
+      # INTERNET & FRITZ!BOX
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Internet
+            secondary: >
+              {% if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') %}
+                Verbunden — {{ states('sensor.fritz_uptime') }}
+              {% else %}
+                Getrennt!
+              {% endif %}
+            icon: >
+              {% if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') %}
+                mdi:web-check
+              {% else %}
+                mdi:web-off
+              {% endif %}
+            icon_color: >
+              {% if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') %}green{% else %}red{% endif %}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-system/netzwerk-details
+          - type: custom:mushroom-template-card
+            primary: "↓{{ states('sensor.speedtest_download') }}"
+            secondary: "Mbit/s"
+            icon: mdi:download-network
+            icon_color: green
+          - type: custom:mushroom-template-card
+            primary: "↑{{ states('sensor.speedtest_upload') }}"
+            secondary: "Mbit/s"
+            icon: mdi:upload-network
+            icon_color: blue
+          - type: custom:mushroom-template-card
+            primary: "{{ states('sensor.speedtest_ping') }} ms"
+            secondary: "Ping"
+            icon: mdi:lan-pending
+            icon_color: >
+              {% set p = states('sensor.speedtest_ping')|float(0) %}
+              {% if p < 20 %}green{% elif p < 50 %}orange{% else %}red{% endif %}
+
+      # =============================================
+      # ICEWIFI NETZWERK STATUS
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: WiFi
+            secondary: >
+              {% set s = states('sensor.netzwerk_status') %}
+              {% set clients = states('sensor.unifi_clients_total') %}
+              {{ s }} — {{ clients }} Clients
+            icon: >
+              {% set s = states('sensor.netzwerk_status') %}
+              {% if s == 'Alles OK' %}mdi:wifi-check
+              {% elif s == 'Eingeschraenkt' %}mdi:wifi-alert
+              {% else %}mdi:wifi-off{% endif %}
+            icon_color: >
+              {% set s = states('sensor.netzwerk_status') %}
+              {% if s == 'Alles OK' %}green
+              {% elif s == 'Eingeschraenkt' %}orange
+              {% else %}red{% endif %}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-network/overview
+          - type: custom:mushroom-template-card
+            primary: "INet: {{ states('sensor.wifi_clients_bad_inet') }}"
+            secondary: "IoT: {{ states('sensor.wifi_clients_bad_iot') }}"
+            icon: mdi:access-point
+            icon_color: blue
+          - type: custom:mushroom-template-card
+            primary: "APs"
+            secondary: "{{ states('sensor.unifi_aps_online') }}/{{ states('sensor.unifi_aps_gesamt') }}"
+            icon: >
+              {% set online = states('sensor.unifi_aps_online') | int(0) %}
+              {% set total = states('sensor.unifi_aps_gesamt') | int(2) %}
+              {% if online >= total %}mdi:access-point-check
+              {% elif online > 0 %}mdi:access-point-minus
+              {% else %}mdi:access-point-off{% endif %}
+            icon_color: >
+              {% set online = states('sensor.unifi_aps_online') | int(0) %}
+              {% set total = states('sensor.unifi_aps_gesamt') | int(2) %}
+              {% if online >= total %}green
+              {% elif online > 0 %}orange
+              {% else %}red{% endif %}
+          - type: custom:mushroom-template-card
+            primary: "Tor"
+            secondary: "{{ states('sensor.wifi_clients_bad_bad') }} Clients"
+            icon: mdi:incognito
+            icon_color: >
+              {% if states('sensor.wifi_clients_bad_bad') | int(0) > 0 %}purple{% else %}grey{% endif %}
+
+      # =============================================
+      # NAVIGATION ZU DASHBOARDS
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Energie
+            icon: mdi:flash
+            layout: vertical
+            icon_color: yellow
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-energie
+          - type: custom:mushroom-template-card
+            primary: THW
+            icon: mdi:fire-truck
+            layout: vertical
+            icon_color: >
+              {% set open = states('sensor.divera_open_alarms_helper') | int(0) %}
+              {% if open > 0 %}red{% else %}blue{% endif %}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw
+          - type: custom:mushroom-template-card
+            primary: Wetter
+            icon: mdi:weather-cloudy
+            layout: vertical
+            icon_color: blue
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-wetter
+          - type: custom:mushroom-template-card
+            primary: Sauger
+            icon: mdi:robot-vacuum
+            layout: vertical
+            icon_color: teal
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-vacuum
+          - type: custom:mushroom-template-card
+            primary: Räume
+            icon: mdi:floor-plan
+            layout: vertical
+            icon_color: purple
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-raeume
+          - type: custom:mushroom-template-card
+            primary: Medien
+            icon: mdi:television
+            layout: vertical
+            icon_color: pink
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-medien
+          - type: custom:mushroom-template-card
+            primary: System
+            icon: mdi:cog
+            layout: vertical
+            icon_color: grey
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-system

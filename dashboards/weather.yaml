@@ -1,0 +1,253 @@
+# Wetter Dashboard
+# Basiert auf VIS Views 800-899
+# Wetter, Pollen, Regenradar
+
+title: Wetter
+views:
+  - title: Wetter
+    path: wetter
+    icon: mdi:weather-partly-cloudy
+    type: sections
+    max_columns: 3
+    sections:
+      # ===== AKTUELLES WETTER =====
+      - type: grid
+        title: Aktuell
+        cards:
+          - type: weather-forecast
+            entity: weather.home
+            show_forecast: true
+            forecast_type: hourly
+
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: entity
+                entity: sensor.temperature_outside
+                icon: mdi:thermometer
+              - type: entity
+                entity: sensor.humidity_outside
+                icon: mdi:water-percent
+              - type: entity
+                entity: sensor.wind_speed
+                icon: mdi:weather-windy
+              - type: entity
+                entity: sensor.air_pressure
+                icon: mdi:gauge
+
+      # ===== VORHERSAGE =====
+      - type: grid
+        title: 5-Tage Vorhersage
+        cards:
+          - type: weather-forecast
+            entity: weather.home
+            show_forecast: true
+            forecast_type: daily
+
+          # Temperaturverlauf
+          - type: custom:mini-graph-card
+            name: Temperaturverlauf
+            entities:
+              - entity: sensor.temperature_outside
+                name: Außen
+                color: "#e74c3c"
+              - entity: sensor.dwd_temperature_forecast
+                name: Vorhersage
+                color: "#3498db"
+            hours_to_show: 48
+            points_per_hour: 2
+            show:
+              labels: true
+              legend: true
+
+      # ===== SONNE & MOND =====
+      - type: grid
+        title: "☀️ Sonne & Mond"
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Sonnenaufgang
+            secondary: "{{ as_timestamp(state_attr('sun.sun', 'next_rising')) | timestamp_custom('%H:%M') }}"
+            icon: mdi:weather-sunset-up
+            icon_color: amber
+
+          - type: custom:mushroom-template-card
+            primary: Sonnenuntergang
+            secondary: "{{ as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%H:%M') }}"
+            icon: mdi:weather-sunset-down
+            icon_color: orange
+
+          - type: custom:mushroom-template-card
+            primary: Sonnenhöhe
+            secondary: "{{ state_attr('sun.sun', 'elevation') | round(1) }}°"
+            icon: mdi:white-balance-sunny
+            icon_color: >
+              {% set elev = state_attr('sun.sun', 'elevation') %}
+              {% if elev > 30 %}amber{% elif elev > 0 %}orange{% else %}grey{% endif %}
+
+          - type: custom:mushroom-template-card
+            primary: UV-Index
+            secondary: "{{ states('sensor.uv_index') }}"
+            icon: mdi:weather-sunny-alert
+            icon_color: >
+              {% set uv = states('sensor.uv_index')|float %}
+              {% if uv < 3 %}green{% elif uv < 6 %}yellow{% elif uv < 8 %}orange{% else %}red{% endif %}
+
+          # Tageslänge
+          - type: entities
+            entities:
+              - entity: sensor.daylight_duration
+                name: Tageslänge
+                icon: mdi:clock-outline
+
+      # ===== NIEDERSCHLAG =====
+      - type: grid
+        title: "🌧️ Niederschlag"
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Regen heute
+            secondary: "{{ states('sensor.rain_today') }} mm"
+            icon: mdi:weather-rainy
+            icon_color: blue
+
+          - type: custom:mushroom-template-card
+            primary: Regenwahrscheinlichkeit
+            secondary: "{{ states('sensor.rain_probability') }}%"
+            icon: mdi:weather-pouring
+            icon_color: >
+              {% set prob = states('sensor.rain_probability')|float %}
+              {% if prob < 30 %}green{% elif prob < 60 %}yellow{% else %}blue{% endif %}
+
+          # Regenradar (Bild oder iframe)
+          - type: picture
+            image: https://www.dwd.de/DWD/wetter/radar/rad_nid_akt.gif
+            tap_action:
+              action: url
+              url_path: https://www.dwd.de/DE/leistungen/radarbild_film/radarbild_film.html
+
+      # ===== WIND =====
+      - type: grid
+        title: "💨 Wind"
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Windgeschwindigkeit
+            secondary: "{{ states('sensor.wind_speed') }} km/h"
+            icon: mdi:weather-windy
+            icon_color: >
+              {% set wind = states('sensor.wind_speed')|float %}
+              {% if wind < 20 %}green{% elif wind < 40 %}yellow{% elif wind < 60 %}orange{% else %}red{% endif %}
+
+          - type: custom:mushroom-template-card
+            primary: Windrichtung
+            secondary: "{{ states('sensor.wind_bearing') }}° ({{ states('sensor.wind_direction') }})"
+            icon: mdi:compass-outline
+
+          - type: custom:mini-graph-card
+            name: Windverlauf
+            entities:
+              - entity: sensor.wind_speed
+                name: Wind
+              - entity: sensor.wind_gust
+                name: Böen
+                color: red
+            hours_to_show: 24
+
+      # ===== WETTERWARNUNGEN =====
+      - type: grid
+        title: "⚠️ Warnungen"
+        cards:
+          # DWD Warnungen
+          - type: conditional
+            conditions:
+              - entity: sensor.dwd_current_warning_level
+                state_not: "0"
+            card:
+              type: custom:mushroom-template-card
+              primary: DWD Warnung
+              secondary: "{{ states('sensor.dwd_current_warning') }}"
+              icon: mdi:alert
+              icon_color: >
+                {% set level = states('sensor.dwd_current_warning_level')|int %}
+                {% if level == 1 %}yellow{% elif level == 2 %}orange{% elif level >= 3 %}red{% else %}grey{% endif %}
+
+          # NINA Warnungen
+          - type: conditional
+            conditions:
+              - entity: binary_sensor.nina_warning
+                state: "on"
+            card:
+              type: custom:mushroom-template-card
+              primary: NINA Warnung
+              secondary: "{{ states('sensor.nina_warning_headline') }}"
+              icon: mdi:alert-octagon
+              icon_color: red
+
+          # Keine Warnungen
+          - type: conditional
+            conditions:
+              - entity: sensor.dwd_current_warning_level
+                state: "0"
+              - entity: binary_sensor.nina_warning
+                state: "off"
+            card:
+              type: custom:mushroom-template-card
+              primary: Keine Warnungen
+              secondary: Alles OK
+              icon: mdi:check-circle
+              icon_color: green
+
+      # ===== POLLEN =====
+      - type: grid
+        title: "🌸 Pollenflug"
+        cards:
+          - type: entities
+            entities:
+              - entity: sensor.pollen_hasel
+                name: Hasel
+                icon: mdi:tree
+              - entity: sensor.pollen_erle
+                name: Erle
+                icon: mdi:tree
+              - entity: sensor.pollen_birke
+                name: Birke
+                icon: mdi:tree
+              - entity: sensor.pollen_graeser
+                name: Gräser
+                icon: mdi:grass
+              - entity: sensor.pollen_roggen
+                name: Roggen
+                icon: mdi:barley
+              - entity: sensor.pollen_beifuss
+                name: Beifuß
+                icon: mdi:flower
+              - entity: sensor.pollen_ambrosia
+                name: Ambrosia
+                icon: mdi:flower-outline
+
+      # ===== LUFTQUALITÄT =====
+      - type: grid
+        title: "🌬️ Luftqualität"
+        cards:
+          - type: custom:mushroom-template-card
+            primary: PM2.5
+            secondary: "{{ states('sensor.pm25') }} µg/m³"
+            icon: mdi:blur
+            icon_color: >
+              {% set pm = states('sensor.pm25')|float %}
+              {% if pm < 10 %}green{% elif pm < 25 %}yellow{% elif pm < 50 %}orange{% else %}red{% endif %}
+
+          - type: custom:mushroom-template-card
+            primary: PM10
+            secondary: "{{ states('sensor.pm10') }} µg/m³"
+            icon: mdi:blur
+            icon_color: >
+              {% set pm = states('sensor.pm10')|float %}
+              {% if pm < 20 %}green{% elif pm < 50 %}yellow{% elif pm < 100 %}orange{% else %}red{% endif %}
+
+          - type: gauge
+            entity: sensor.air_quality_index
+            name: Luftqualitätsindex
+            min: 0
+            max: 300
+            severity:
+              green: 0
+              yellow: 50
+              red: 100

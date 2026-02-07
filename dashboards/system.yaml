@@ -1,0 +1,591 @@
+# System Dashboard
+# Basiert auf VIS Views 400-499
+# ioBroker, Netzwerk, VMware, Kameras
+
+title: System
+views:
+  - title: System
+    path: system
+    icon: mdi:cog
+    type: sections
+    max_columns: 3
+    sections:
+      # ===== QUICK STATUS =====
+      - type: grid
+        title: Systemstatus
+        cards:
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: template
+                icon: mdi:home-assistant
+                icon_color: green
+                content: HA OK
+              - type: entity
+                entity: sensor.processor_use
+                icon: mdi:cpu-64-bit
+              - type: entity
+                entity: sensor.memory_use_percent
+                icon: mdi:memory
+              - type: entity
+                entity: sensor.disk_use_percent
+                icon: mdi:harddisk
+
+      # ===== HOME ASSISTANT =====
+      - type: grid
+        title: "🏠 Home Assistant"
+        cards:
+          - type: entities
+            entities:
+              - entity: sensor.current_version
+                name: HA Version
+                icon: mdi:home-assistant
+              - entity: sensor.supervisor_updates
+                name: Updates verfügbar
+              - entity: sensor.processor_use
+                name: CPU
+              - entity: sensor.memory_use_percent
+                name: RAM
+              - entity: sensor.disk_use_percent
+                name: Speicher
+
+          - type: custom:mini-graph-card
+            name: CPU & RAM
+            entities:
+              - entity: sensor.processor_use
+                name: CPU
+                color: "#ff6384"
+              - entity: sensor.memory_use_percent
+                name: RAM
+                color: "#36a2eb"
+            hours_to_show: 24
+            line_width: 2
+
+      # ===== NETZWERK =====
+      - type: grid
+        title: "🌐 Netzwerk"
+        cards:
+          # Fritz!Box Status
+          - type: custom:mushroom-template-card
+            primary: Fritz!Box 6591
+            secondary: >
+              {% if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') %}
+                Verbunden — Uptime: {{ states('sensor.fritz_uptime') }}
+              {% else %}
+                Getrennt!
+              {% endif %}
+            icon: mdi:router-wireless
+            icon_color: >
+              {{ 'green' if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') else 'red' }}
+
+          # Fritz!Box Verbindungswerte
+          - type: entities
+            title: Verbindung
+            entities:
+              - entity: sensor.fritz_link_download
+                name: Link Download
+                icon: mdi:download-network-outline
+              - entity: sensor.fritz_link_upload
+                name: Link Upload
+                icon: mdi:upload-network-outline
+              - entity: sensor.fritz_max_download
+                name: Max Download
+                icon: mdi:speedometer
+              - entity: sensor.fritz_max_upload
+                name: Max Upload
+                icon: mdi:speedometer
+              - entity: sensor.fritz_box_6591_cable_vodafone_external_ip
+                name: Externe IP
+                icon: mdi:ip-network
+              - entity: sensor.fritz_box_6591_cable_vodafone_gb_received
+                name: GB empfangen
+                icon: mdi:download
+              - entity: sensor.fritz_box_6591_cable_vodafone_gb_sent
+                name: GB gesendet
+                icon: mdi:upload
+              - entity: sensor.fritz_box_6591_cable_vodafone_cpu_temperature
+                name: CPU Temperatur
+                icon: mdi:thermometer
+
+          # Internet Speedtest
+          - type: entities
+            title: Speedtest
+            entities:
+              - entity: sensor.speedtest_download
+                name: Download
+                icon: mdi:download-network
+              - entity: sensor.speedtest_upload
+                name: Upload
+                icon: mdi:upload-network
+              - entity: sensor.speedtest_ping
+                name: Ping
+                icon: mdi:lan-pending
+              - entity: sensor.speedtest_server
+                name: Server
+                icon: mdi:server-network
+              - entity: sensor.speedtest_letzter_test
+                name: Letzter Test
+                icon: mdi:clock-check
+
+          # Aktueller Durchsatz
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: "↓ {{ states('sensor.internet_download_aktuell') }} kB/s"
+                secondary: Aktuell Download
+                icon: mdi:download
+                icon_color: green
+              - type: custom:mushroom-template-card
+                primary: "↑ {{ states('sensor.internet_upload_aktuell') }} kB/s"
+                secondary: Aktuell Upload
+                icon: mdi:upload
+                icon_color: blue
+
+          # Unifi
+          - type: custom:mushroom-template-card
+            primary: Unifi Controller
+            secondary: "{{ states('sensor.unifi_clients') }} Clients"
+            icon: mdi:access-point-network
+            icon_color: blue
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-system/netzwerk-details
+
+          # WLAN APs
+          - type: entities
+            title: Access Points
+            entities:
+              - entity: sensor.unifi_ap_eg_clients
+                name: AP Erdgeschoss
+                icon: mdi:access-point
+              - entity: sensor.unifi_ap_og_clients
+                name: AP Obergeschoss
+                icon: mdi:access-point
+              - entity: sensor.unifi_ap_pavillon_clients
+                name: AP Pavillon
+                icon: mdi:access-point
+
+          # Pi-hole
+          - type: custom:mushroom-template-card
+            primary: Pi-hole
+            secondary: "{{ states('sensor.pi_hole_ads_blocked_today') }} Werbung blockiert"
+            icon: mdi:shield-check
+            icon_color: "{{ 'green' if is_state('binary_sensor.pi_hole_status', 'on') else 'red' }}"
+
+      # ===== VMWARE =====
+      - type: grid
+        title: "🖥️ VMware"
+        cards:
+          # ESXi Host
+          - type: custom:mushroom-template-card
+            primary: ESXi NUC
+            secondary: >
+              CPU: {{ states('sensor.esxi_nuc_cpu') }}% |
+              RAM: {{ states('sensor.esxi_nuc_memory') }}%
+            icon: mdi:server
+            icon_color: "{{ 'green' if is_state('binary_sensor.esxi_nuc_status', 'on') else 'red' }}"
+
+          # VMs
+          - type: entities
+            title: Virtuelle Maschinen
+            entities:
+              - entity: switch.vm_iobroker
+                name: ioBroker VM
+                icon: mdi:cog
+              - entity: switch.vm_pihole
+                name: Pi-hole VM
+                icon: mdi:shield
+              - entity: switch.vm_unifi
+                name: Unifi Controller
+                icon: mdi:access-point
+
+          # VM Actions
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Alle starten
+                icon: mdi:play
+                icon_color: green
+                tap_action:
+                  action: call-service
+                  service: script.vm_alle_starten
+
+              - type: custom:mushroom-template-card
+                primary: Alle stoppen
+                icon: mdi:stop
+                icon_color: red
+                tap_action:
+                  action: call-service
+                  service: script.vm_alle_stoppen
+                  confirmation:
+                    text: Wirklich alle VMs stoppen?
+
+      # ===== NAS / STORAGE =====
+      - type: grid
+        title: "💾 Speicher"
+        cards:
+          # QNAP
+          - type: custom:mushroom-template-card
+            primary: QNAP NAS
+            secondary: >
+              {{ states('sensor.qnap_free_space') }} frei
+            icon: mdi:nas
+            icon_color: "{{ 'green' if is_state('binary_sensor.qnap_status', 'on') else 'red' }}"
+
+          - type: gauge
+            entity: sensor.qnap_used_space_percent
+            name: QNAP Speicher
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 70
+              red: 90
+
+          # Synology
+          - type: custom:mushroom-template-card
+            primary: Synology
+            secondary: "{{ states('sensor.synology_status') }}"
+            icon: mdi:nas
+            icon_color: blue
+
+      # ===== USV =====
+      - type: grid
+        title: "🔋 USV"
+        cards:
+          - type: custom:mushroom-template-card
+            primary: USV Status
+            secondary: "{{ states('sensor.usv_status') }}"
+            icon: mdi:battery-charging
+            icon_color: >
+              {% set status = states('sensor.usv_status') %}
+              {% if status == 'Online' %}green{% elif status == 'On Battery' %}orange{% else %}red{% endif %}
+
+          - type: gauge
+            entity: sensor.usv_battery_charge
+            name: Ladung
+            min: 0
+            max: 100
+            severity:
+              green: 50
+              yellow: 20
+              red: 0
+
+          - type: entities
+            title: USV Details
+            entities:
+              - entity: sensor.usv_load
+                name: Last
+              - entity: sensor.usv_runtime
+                name: Restlaufzeit
+              - entity: sensor.usv_input_voltage
+                name: Eingangsspannung
+
+      # ===== GERÄTE PING =====
+      - type: grid
+        title: "📡 Geräte"
+        cards:
+          - type: entities
+            title: Ping Status
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.ping_fritzbox
+                name: Fritz!Box
+              - entity: binary_sensor.ping_unifi
+                name: Unifi Controller
+              - entity: binary_sensor.ping_qnap
+                name: QNAP
+              - entity: binary_sensor.ping_esxi
+                name: ESXi
+              - entity: binary_sensor.ping_drucker
+                name: Drucker
+
+  # ===== NETZWERK DETAILS SUBVIEW =====
+  - title: Netzwerk Details
+    path: netzwerk-details
+    icon: mdi:lan
+    subview: true
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-title-card
+            title: Netzwerk Details
+
+          # Aktueller Status
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Internet
+                secondary: >
+                  {% if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') %}
+                    Verbunden — {{ states('sensor.fritz_uptime') }}
+                  {% else %}
+                    Getrennt!
+                  {% endif %}
+                icon: mdi:router-wireless
+                icon_color: >
+                  {{ 'green' if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') else 'red' }}
+              - type: custom:mushroom-template-card
+                primary: "{{ states('sensor.fritz_box_6591_cable_vodafone_external_ip') }}"
+                secondary: Externe IP
+                icon: mdi:ip-network
+                icon_color: blue
+
+          # Speedtest aktuell
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: "{{ states('sensor.speedtest_download') }} Mbit/s"
+                secondary: Download
+                icon: mdi:download-network
+                icon_color: green
+              - type: custom:mushroom-template-card
+                primary: "{{ states('sensor.speedtest_upload') }} Mbit/s"
+                secondary: Upload
+                icon: mdi:upload-network
+                icon_color: blue
+              - type: custom:mushroom-template-card
+                primary: "{{ states('sensor.speedtest_ping') }} ms"
+                secondary: Ping
+                icon: mdi:lan-pending
+                icon_color: >
+                  {% set p = states('sensor.speedtest_ping')|float(0) %}
+                  {% if p < 20 %}green{% elif p < 50 %}orange{% else %}red{% endif %}
+
+          # ---- VERLAUF: TAG (24h) ----
+          - type: custom:mushroom-title-card
+            title: Verlauf - Heute (24h)
+
+          - type: custom:mini-graph-card
+            name: Download & Upload (24h)
+            entities:
+              - entity: sensor.speedtest_download
+                name: Download (Mbit/s)
+                color: "#4CAF50"
+              - entity: sensor.speedtest_upload
+                name: Upload (Mbit/s)
+                color: "#2196F3"
+            hours_to_show: 24
+            points_per_hour: 4
+            line_width: 2
+            show:
+              labels: true
+              legend: true
+              points: true
+
+          - type: custom:mini-graph-card
+            name: Ping (24h)
+            entities:
+              - entity: sensor.speedtest_ping
+                name: Ping (ms)
+                color: "#FF9800"
+            hours_to_show: 24
+            points_per_hour: 4
+            line_width: 2
+            show:
+              labels: true
+              points: true
+
+          # ---- VERLAUF: WOCHE (7 Tage) ----
+          - type: custom:mushroom-title-card
+            title: Verlauf - Woche (7 Tage)
+
+          - type: custom:mini-graph-card
+            name: Download & Upload (7 Tage)
+            entities:
+              - entity: sensor.speedtest_download
+                name: Download (Mbit/s)
+                color: "#4CAF50"
+              - entity: sensor.speedtest_upload
+                name: Upload (Mbit/s)
+                color: "#2196F3"
+            hours_to_show: 168
+            points_per_hour: 0.5
+            line_width: 2
+            show:
+              labels: true
+              legend: true
+
+          - type: custom:mini-graph-card
+            name: Ping (7 Tage)
+            entities:
+              - entity: sensor.speedtest_ping
+                name: Ping (ms)
+                color: "#FF9800"
+            hours_to_show: 168
+            points_per_hour: 0.5
+            line_width: 2
+            show:
+              labels: true
+
+          # ---- VERLAUF: MONAT (30 Tage) ----
+          - type: custom:mushroom-title-card
+            title: Verlauf - Monat (30 Tage)
+
+          - type: statistics-graph
+            title: Download & Upload (30 Tage)
+            entities:
+              - sensor.speedtest_download
+              - sensor.speedtest_upload
+            days_to_show: 30
+            stat_types:
+              - mean
+              - min
+              - max
+            period: day
+
+          - type: statistics-graph
+            title: Ping (30 Tage)
+            entities:
+              - sensor.speedtest_ping
+            days_to_show: 30
+            stat_types:
+              - mean
+              - max
+            period: day
+
+          # ---- VERLAUF: JAHR (365 Tage) ----
+          - type: custom:mushroom-title-card
+            title: Verlauf - Jahr
+
+          - type: statistics-graph
+            title: Download & Upload (Jahr)
+            entities:
+              - sensor.speedtest_download
+              - sensor.speedtest_upload
+            days_to_show: 365
+            stat_types:
+              - mean
+              - min
+              - max
+            period: week
+
+          - type: statistics-graph
+            title: Ping (Jahr)
+            entities:
+              - sensor.speedtest_ping
+            days_to_show: 365
+            stat_types:
+              - mean
+              - max
+            period: week
+
+          # ---- Fritz!Box Durchsatz Live ----
+          - type: custom:mushroom-title-card
+            title: Fritz!Box Durchsatz
+
+          - type: custom:mini-graph-card
+            name: Durchsatz aktuell (kB/s)
+            entities:
+              - entity: sensor.internet_download_aktuell
+                name: Download
+                color: "#4CAF50"
+              - entity: sensor.internet_upload_aktuell
+                name: Upload
+                color: "#2196F3"
+            hours_to_show: 6
+            points_per_hour: 12
+            line_width: 2
+            show:
+              labels: true
+              legend: true
+
+          # Fritz!Box Details
+          - type: entities
+            title: Fritz!Box Details
+            entities:
+              - entity: sensor.fritz_link_download
+                name: Link Download
+                icon: mdi:download-network-outline
+              - entity: sensor.fritz_link_upload
+                name: Link Upload
+                icon: mdi:upload-network-outline
+              - entity: sensor.fritz_max_download
+                name: Max Download
+                icon: mdi:speedometer
+              - entity: sensor.fritz_max_upload
+                name: Max Upload
+                icon: mdi:speedometer
+              - entity: sensor.fritz_box_6591_cable_vodafone_gb_received
+                name: GB empfangen
+                icon: mdi:download
+              - entity: sensor.fritz_box_6591_cable_vodafone_gb_sent
+                name: GB gesendet
+                icon: mdi:upload
+              - entity: sensor.fritz_box_6591_cable_vodafone_cpu_temperature
+                name: Fritz CPU Temp
+                icon: mdi:thermometer
+              - entity: sensor.fritz_box_6591_cable_vodafone_last_restart
+                name: Letzter Neustart
+                icon: mdi:restart
+
+          # Wake on LAN
+          - type: entities
+            title: Wake on LAN
+            show_header_toggle: false
+            entities:
+              - entity: button.wol_desktop_pc
+                name: Desktop PC
+                icon: mdi:desktop-tower
+              - entity: button.wol_nas
+                name: NAS
+                icon: mdi:nas
+              - entity: button.wol_server
+                name: Server
+                icon: mdi:server
+
+  # ===== KAMERAS =====
+  - title: Kameras
+    path: kameras
+    icon: mdi:cctv
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-title-card
+            title: Kameras
+
+          - type: horizontal-stack
+            cards:
+              - type: picture-entity
+                entity: camera.balkon
+                name: Balkon
+                show_state: false
+                camera_view: auto
+
+              - type: picture-entity
+                entity: camera.haustuer
+                name: Haustür
+                show_state: false
+                camera_view: auto
+
+          # Kamera Actions
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: action
+                icon: mdi:cctv
+                tap_action:
+                  action: call-service
+                  service: camera.snapshot
+                  target:
+                    entity_id: camera.haustuer
+                  data:
+                    filename: /config/www/snapshots/haustuer_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg
+              - type: action
+                icon: mdi:record
+                tap_action:
+                  action: call-service
+                  service: camera.record
+                  target:
+                    entity_id: camera.haustuer
+
+  # ===== LOGS =====
+  - title: Logs
+    path: logs
+    icon: mdi:text-box-outline
+    cards:
+      - type: logbook
+        entities:
+          - automation
+          - script
+        hours_to_show: 24
+        title: System Logs

@@ -1,0 +1,306 @@
+# =============================================================================
+# THW / DIVERA 24/7 PAKET
+# =============================================================================
+# Enthält:
+# - REST-Sensor für Divera Events API (Rückmeldungs-Prüfung)
+# - Template-Sensoren als Helfer für Dashboards
+# - Alarm-Benachrichtigungen
+# - Termin-Rückmelde-Erinnerungen
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REST Sensoren - Divera Events API
+# -----------------------------------------------------------------------------
+rest:
+  - resource: "https://app.divera247.com/api/v2/pull/all?accesskey=!secret divera_api_key"
+    scan_interval: 1800
+    sensor:
+      - name: "Divera Unbeantwortete Termine"
+        unique_id: divera_unbeantwortete_termine
+        value_template: >
+          {% set events = value_json.data.events.items.values() | list %}
+          {% set now_ts = now().timestamp() %}
+          {% set ns = namespace(count=0) %}
+          {% for ev in events %}
+            {% if ev.end > now_ts and ev.answerable and ev.participation == 0 %}
+              {% set ns.count = ns.count + 1 %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.count }}
+        unit_of_measurement: "Termine"
+        icon: mdi:calendar-question
+
+      - name: "Divera Nächster Unbeantworteter Termin"
+        unique_id: divera_naechster_unbeantworteter
+        value_template: >
+          {% set events = value_json.data.events.items.values() | list %}
+          {% set now_ts = now().timestamp() %}
+          {% set ns = namespace(next_title='Keiner', next_start=0, next_days=-1) %}
+          {% for ev in events | sort(attribute='start') %}
+            {% if ev.end > now_ts and ev.answerable and ev.participation == 0 and ns.next_start == 0 %}
+              {% set ns.next_title = ev.title %}
+              {% set ns.next_start = ev.start %}
+              {% set ns.next_days = ((ev.start - now_ts) / 86400) | round(0, 'floor') | int %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.next_title }}
+        icon: mdi:calendar-alert
+        json_attributes_path: "$.data.events"
+        json_attributes:
+          - items
+          - sorting
+
+      - name: "Divera Termine Bald Fällig"
+        unique_id: divera_termine_bald_faellig
+        value_template: >
+          {% set events = value_json.data.events.items.values() | list %}
+          {% set now_ts = now().timestamp() %}
+          {% set drei_tage = now_ts + (3 * 86400) %}
+          {% set ns = namespace(titles=[]) %}
+          {% for ev in events | sort(attribute='start') %}
+            {% if ev.end > now_ts and ev.start <= drei_tage and ev.answerable and ev.participation == 0 %}
+              {% set tage = ((ev.start - now_ts) / 86400) | round(0, 'floor') | int %}
+              {% set ns.titles = ns.titles + [ev.title ~ ' (in ' ~ tage ~ 'T)'] %}
+            {% endif %}
+          {% endfor %}
+          {% if ns.titles | length > 0 %}
+            {{ ns.titles | join(', ') }}
+          {% else %}
+            Keine
+          {% endif %}
+        icon: mdi:calendar-clock
+
+# -----------------------------------------------------------------------------
+# Template Sensoren
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      # Anzahl offener Alarme
+      - name: "Divera Open Alarms Helper"
+        unique_id: divera_open_alarms_helper
+        state: >
+          {% set open_alarm_sensors = states.sensor
+            | selectattr('entity_id', 'search', '_open_alarms')
+            | list %}
+          {% if open_alarm_sensors | length > 0 %}
+            {{ open_alarm_sensors[0].state | int(0) }}
+          {% else %}
+            0
+          {% endif %}
+        icon: mdi:alarm-light
+        unit_of_measurement: "Alarme"
+
+      # Aktueller Alarm
+      - name: "Divera Aktueller Alarm"
+        unique_id: divera_aktueller_alarm
+        state: >
+          {% set alarms = states.sensor
+            | selectattr('entity_id', 'search', '_alarm_')
+            | rejectattr('state', 'eq', 'unavailable')
+            | rejectattr('state', 'eq', 'unknown')
+            | list %}
+          {% set open_alarms = [] %}
+          {% for a in alarms %}
+            {% if a.attributes.get('closed', true) == false %}
+              {% set open_alarms = open_alarms + [a] %}
+            {% endif %}
+          {% endfor %}
+          {% if open_alarms | length > 0 %}
+            {{ open_alarms[0].state }}
+          {% else %}
+            Kein Alarm
+          {% endif %}
+        icon: mdi:fire-truck
+        attributes:
+          address: >
+            {% set alarms = states.sensor
+              | selectattr('entity_id', 'search', '_alarm_')
+              | rejectattr('state', 'eq', 'unavailable')
+              | list %}
+            {% set open_alarms = [] %}
+            {% for a in alarms %}
+              {% if a.attributes.get('closed', true) == false %}
+                {% set open_alarms = open_alarms + [a] %}
+              {% endif %}
+            {% endfor %}
+            {% if open_alarms | length > 0 %}
+              {{ open_alarms[0].attributes.get('address', '') }}
+            {% endif %}
+          priority: >
+            {% set alarms = states.sensor
+              | selectattr('entity_id', 'search', '_alarm_')
+              | rejectattr('state', 'eq', 'unavailable')
+              | list %}
+            {% set open_alarms = [] %}
+            {% for a in alarms %}
+              {% if a.attributes.get('closed', true) == false %}
+                {% set open_alarms = open_alarms + [a] %}
+              {% endif %}
+            {% endfor %}
+            {% if open_alarms | length > 0 %}
+              {{ open_alarms[0].attributes.get('priority', false) }}
+            {% else %}
+              false
+            {% endif %}
+
+      # Nächster Divera-Termin
+      - name: "Divera Nächster Termin"
+        unique_id: divera_naechster_termin
+        state: >
+          {% set cals = states.calendar
+            | selectattr('entity_id', 'search', '450712')
+            | list %}
+          {% if cals | length > 0 and cals[0].state == 'on' %}
+            {{ cals[0].attributes.get('message', 'Termin') }}
+          {% else %}
+            Kein Termin
+          {% endif %}
+        icon: mdi:calendar
+
+  - binary_sensor:
+      # Divera Alarm aktiv
+      - name: "Divera Alarm Aktiv"
+        unique_id: divera_alarm_aktiv
+        state: >
+          {{ states('sensor.divera_open_alarms_helper') | int(0) > 0 }}
+        device_class: safety
+        icon: mdi:alarm-light
+
+      # Divera Rückmeldung fällig (innerhalb 3 Tage)
+      - name: "Divera Rückmeldung Fällig"
+        unique_id: divera_rueckmeldung_faellig
+        state: >
+          {{ states('sensor.divera_termine_bald_faellig') != 'Keine' }}
+        icon: mdi:calendar-alert
+
+# -----------------------------------------------------------------------------
+# Automationen
+# -----------------------------------------------------------------------------
+automation:
+  # Alarm-Benachrichtigung
+  - id: divera_alarm_notification
+    alias: "Divera: Neuer Alarm"
+    description: "Benachrichtigt bei neuem Divera-Alarm"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.divera_alarm_aktiv
+        from: "off"
+        to: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "DIVERA ALARM"
+          message: >
+            {{ states('sensor.divera_aktueller_alarm') }}
+
+            Adresse: {{ state_attr('sensor.divera_aktueller_alarm', 'address') }}
+
+            Priorität: {{ 'HOCH' if state_attr('sensor.divera_aktueller_alarm', 'priority') == 'true' else 'Normal' }}
+          notification_id: divera_alarm
+      - service: script.send_notification
+        data:
+          title: "DIVERA ALARM"
+          message: >
+            {{ states('sensor.divera_aktueller_alarm') }}
+            Adresse: {{ state_attr('sensor.divera_aktueller_alarm', 'address') }}
+          priority: "critical"
+    mode: single
+
+  # Alarm-Entwarnung
+  - id: divera_alarm_entwarnung
+    alias: "Divera: Alarm beendet"
+    description: "Benachrichtigt wenn alle Divera-Alarme geschlossen sind"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.divera_alarm_aktiv
+        from: "on"
+        to: "off"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Divera Entwarnung"
+          message: "Alle Alarme wurden geschlossen."
+          notification_id: divera_entwarnung
+    mode: single
+
+  # Rückmeldung-Erinnerung: Täglich um 9 Uhr, wenn Termine in den nächsten 3 Tagen
+  - id: divera_rueckmeldung_erinnerung
+    alias: "Divera: Rückmeldung fällig"
+    description: "Erinnert täglich an unbeantwortete Divera-Termine die in den nächsten 3 Tagen stattfinden"
+    trigger:
+      - platform: time
+        at: "09:00:00"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.divera_rueckmeldung_faellig
+        state: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Divera: Rückmeldung ausstehend!"
+          message: >
+            Du hast noch nicht zu-/abgesagt:
+
+            {{ states('sensor.divera_termine_bald_faellig') }}
+
+            Insgesamt {{ states('sensor.divera_unbeantwortete_termine') }} unbeantwortete Termine.
+
+            Bitte in Divera antworten!
+          notification_id: divera_rueckmeldung
+      - service: script.send_notification
+        data:
+          title: "THW Rückmeldung fällig!"
+          message: >
+            Bitte zu-/absagen: {{ states('sensor.divera_termine_bald_faellig') }}
+            ({{ states('sensor.divera_unbeantwortete_termine') }} Termine insgesamt offen)
+          priority: "high"
+    mode: single
+
+  # Rückmeldung-Erinnerung auch wenn sich Status ändert (neuer unbeantworteter Termin naht)
+  - id: divera_rueckmeldung_neu_faellig
+    alias: "Divera: Neuer Termin bald fällig"
+    description: "Benachrichtigt wenn ein neuer unbeantworteter Termin in die 3-Tage-Frist rutscht"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.divera_rueckmeldung_faellig
+        from: "off"
+        to: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Divera: Termin in Kürze - noch keine Rückmeldung!"
+          message: >
+            {{ states('sensor.divera_termine_bald_faellig') }}
+
+            Bitte in Divera zu-/absagen!
+          notification_id: divera_rueckmeldung_neu
+      - service: script.send_notification
+        data:
+          title: "THW: Termin in Kürze!"
+          message: "Noch nicht zu-/abgesagt: {{ states('sensor.divera_termine_bald_faellig') }}"
+          priority: "high"
+    mode: single
+
+  # Tablet-Benachrichtigung bei Alarm
+  - id: divera_alarm_tablet_notify
+    alias: "Divera: Alarm auf Tablet anzeigen"
+    description: "Zeigt Alarm auf dem Galaxy Tab an"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.divera_alarm_aktiv
+        from: "off"
+        to: "on"
+    action:
+      - service: notify.mobile_app_galaxy_tab
+        data:
+          title: "DIVERA ALARM"
+          message: >
+            {{ states('sensor.divera_aktueller_alarm') }}
+            {{ state_attr('sensor.divera_aktueller_alarm', 'address') }}
+          data:
+            channel: alarm
+            importance: high
+            ttl: 0
+            priority: high
+        continue_on_error: true
+    mode: single

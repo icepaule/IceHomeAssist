@@ -1,0 +1,341 @@
+title: Tibber Preise
+views:
+  # ===========================================================================
+  # ÜBERSICHT
+  # ===========================================================================
+  - title: Übersicht
+    path: uebersicht
+    icon: mdi:currency-eur
+    cards:
+      - type: markdown
+        content: |
+          ## 💰 Tibber Strompreise
+
+          Finde die besten Zeiten für Waschmaschine, Trockner & Spülmaschine!
+
+      # Aktueller Status
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.tibber_preis_aktuell
+            name: Aktueller Preis
+          - type: entity
+            entity: sensor.tibber_preis_status
+            name: Status
+
+      # Preisbereich heute
+      - type: glance
+        title: Preisbereich Heute
+        entities:
+          - entity: sensor.tibber_guenstigster_preis_heute
+            name: Min
+          - entity: sensor.tibber_durchschnittspreis_heute
+            name: Durchschnitt
+          - entity: sensor.tibber_teuerster_preis_heute
+            name: Max
+
+      # Empfehlung
+      - type: conditional
+        conditions:
+          - entity: sensor.tibber_preis_status
+            state: "günstig"
+        card:
+          type: markdown
+          content: |
+            ### ✅ JETZT GÜNSTIG!
+
+            Der Strompreis ist aktuell unter dem Tagesdurchschnitt.
+            **Gute Zeit für Waschmaschine, Trockner oder Spülmaschine!**
+
+      - type: conditional
+        conditions:
+          - entity: sensor.tibber_preis_status
+            state: "teuer"
+        card:
+          type: markdown
+          content: |
+            ### ⚠️ AKTUELL TEUER
+
+            Der Strompreis ist über dem Tagesdurchschnitt.
+            Warte auf einen günstigeren Zeitpunkt!
+
+      - type: conditional
+        conditions:
+          - entity: sensor.tibber_preis_status
+            state: "normal"
+        card:
+          type: markdown
+          content: |
+            ### ℹ️ NORMALER PREIS
+
+            Der Strompreis liegt im durchschnittlichen Bereich.
+
+      # Hinweis auf Tibber App
+      - type: markdown
+        content: |
+          ### 📱 Detaillierte Preisübersicht
+
+          Für die genaue 30-Minuten-Slots Ansicht empfehlen wir:
+
+          **Option 1: Tibber App**
+          - Zeigt alle Preise der nächsten 24-48h
+          - Push-Benachrichtigungen bei günstigen Preisen
+
+          **Option 2: HACS ApexCharts**
+          - Installiere ApexCharts über HACS
+          - Konfiguration siehe unten
+
+  # ===========================================================================
+  # HEUTE
+  # ===========================================================================
+  - title: Heute
+    path: heute
+    icon: mdi:calendar-today
+    cards:
+      - type: markdown
+        content: |
+          ## 📅 Preise Heute
+
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.tibber_guenstigster_preis_heute
+            name: Minimum
+          - type: entity
+            entity: sensor.tibber_teuerster_preis_heute
+            name: Maximum
+
+      # Preis-Timeline (wird von Tibber als Attribute geliefert)
+      - type: markdown
+        content: |
+          ### Stündliche Preise
+
+          Die Tibber-Integration liefert Preise als Attribute im Sensor
+          `sensor.tibber_prices`.
+
+          **Attribute:**
+          - `today`: Liste mit allen Stunden-Preisen für heute
+          - `tomorrow`: Liste mit Preisen für morgen (ab ca. 13:00)
+          - `current_price`: Aktueller Preis
+
+          Für eine grafische Darstellung installiere **ApexCharts Card**
+          via HACS.
+
+      # ApexCharts Beispiel-Konfiguration
+      - type: markdown
+        content: |
+          ### 📊 ApexCharts Konfiguration
+
+          Nach Installation von ApexCharts (HACS) füge diese Karte hinzu:
+
+          ```yaml
+          type: custom:apexcharts-card
+          header:
+            show: true
+            title: Strompreise Heute
+          graph_span: 24h
+          span:
+            start: day
+          series:
+            - entity: sensor.tibber_prices
+              attribute: today
+              data_generator: |
+                return entity.attributes.today.map((item) => {
+                  return [new Date(item.startsAt).getTime(), item.total * 100];
+                });
+              type: column
+              name: ct/kWh
+              color: >
+                return data.y < 25 ? '#4CAF50' : data.y < 35 ? '#FFC107' : '#F44336';
+          ```
+
+  # ===========================================================================
+  # MORGEN
+  # ===========================================================================
+  - title: Morgen
+    path: morgen
+    icon: mdi:calendar-arrow-right
+    cards:
+      - type: markdown
+        content: |
+          ## 📅 Preise Morgen
+
+          Die Preise für morgen werden von Tibber üblicherweise
+          **ab 13:00 Uhr** veröffentlicht.
+
+      - type: markdown
+        content: |
+          ### Verfügbarkeit
+
+          Prüfe das Attribut `tomorrow` im Sensor `sensor.tibber_prices`.
+          Falls leer, sind die Preise noch nicht verfügbar.
+
+          **ApexCharts für Morgen:**
+
+          ```yaml
+          type: custom:apexcharts-card
+          header:
+            show: true
+            title: Strompreise Morgen
+          graph_span: 24h
+          span:
+            start: day
+            offset: +1d
+          series:
+            - entity: sensor.tibber_prices
+              attribute: tomorrow
+              data_generator: |
+                return entity.attributes.tomorrow?.map((item) => {
+                  return [new Date(item.startsAt).getTime(), item.total * 100];
+                }) || [];
+              type: column
+              name: ct/kWh
+          ```
+
+  # ===========================================================================
+  # BESTE ZEITEN
+  # ===========================================================================
+  - title: Beste Zeiten
+    path: beste-zeiten
+    icon: mdi:star
+    cards:
+      - type: markdown
+        content: |
+          ## ⭐ Beste Zeiten für Großverbraucher
+
+          Empfohlene Laufzeiten für energieintensive Geräte.
+
+      # Waschmaschine
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              ### 🧺 Waschmaschine
+
+              **Typischer Verbrauch:** 1-2 kWh pro Waschgang
+              **Dauer:** ca. 2 Stunden
+
+              **Empfehlung:** Starte wenn der Preis unter
+              {{ states('sensor.tibber_durchschnittspreis_heute') }} ct/kWh liegt.
+
+          - type: entity
+            entity: sensor.waschmaschine_leistung
+            name: Aktuelle Leistung
+          - type: entity
+            entity: switch.strom_waschmaschine
+            name: Schalter
+
+      # Trockner
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              ### 🌀 Trockner
+
+              **Typischer Verbrauch:** 2-4 kWh pro Durchgang
+              **Dauer:** ca. 2-3 Stunden
+
+              **Empfehlung:** Nutze die PV-Spitzenzeiten (10-15 Uhr)
+              oder günstige Nachtstunden.
+
+          - type: entity
+            entity: sensor.trockner_leistung
+            name: Aktuelle Leistung
+          - type: entity
+            entity: switch.strom_trockner
+            name: Schalter
+
+      # Tipps
+      - type: markdown
+        content: |
+          ### 💡 Spar-Tipps
+
+          1. **Nutze PV-Strom**: Tagsüber (10-15 Uhr) wenn die Sonne scheint
+          2. **Günstige Nachtzeiten**: Oft 22:00 - 06:00
+          3. **Wochenende**: Preise oft niedriger als werktags
+          4. **Timer nutzen**: Verzögerten Start programmieren
+
+          **Automation Idee:**
+          Erstelle eine Automation die eine Benachrichtigung sendet,
+          wenn der Preis unter X ct/kWh fällt.
+
+  # ===========================================================================
+  # AUTOMATISIERUNG
+  # ===========================================================================
+  - title: Automatisierung
+    path: automatisierung
+    icon: mdi:robot
+    cards:
+      - type: markdown
+        content: |
+          ## 🤖 Preis-Automatisierungen
+
+          Beispiel-Automatisierungen für günstige Stromzeiten.
+
+      - type: markdown
+        content: |
+          ### Benachrichtigung bei günstigem Preis
+
+          ```yaml
+          automation:
+            - alias: "Tibber: Günstig-Alarm"
+              trigger:
+                - platform: numeric_state
+                  entity_id: sensor.tibber_preis_aktuell
+                  below: 20  # unter 20 ct/kWh
+              condition:
+                - condition: time
+                  after: "06:00:00"
+                  before: "22:00:00"
+              action:
+                - service: notify.mobile_app
+                  data:
+                    title: "💰 Günstiger Strom!"
+                    message: >
+                      Aktuell nur {{ states('sensor.tibber_preis_aktuell') }} ct/kWh.
+                      Gute Zeit für Waschmaschine oder Trockner!
+          ```
+
+      - type: markdown
+        content: |
+          ### Automatisch Geräte einschalten
+
+          ```yaml
+          automation:
+            - alias: "Tibber: Auto-Waschmaschine"
+              trigger:
+                - platform: state
+                  entity_id: sensor.tibber_preis_status
+                  to: "günstig"
+              condition:
+                - condition: state
+                  entity_id: input_boolean.waschmaschine_warten
+                  state: "on"
+              action:
+                - service: switch.turn_on
+                  target:
+                    entity_id: switch.strom_waschmaschine
+                - service: input_boolean.turn_off
+                  target:
+                    entity_id: input_boolean.waschmaschine_warten
+                - service: notify.mobile_app
+                  data:
+                    title: "🧺 Waschmaschine gestartet"
+                    message: "Strompreis ist günstig!"
+          ```
+
+      - type: markdown
+        content: |
+          ### Input Helper erstellen
+
+          Füge zu `configuration.yaml` hinzu:
+
+          ```yaml
+          input_boolean:
+            waschmaschine_warten:
+              name: Waschmaschine auf günstigen Strom warten
+              icon: mdi:washing-machine
+            trockner_warten:
+              name: Trockner auf günstigen Strom warten
+              icon: mdi:tumble-dryer
+          ```

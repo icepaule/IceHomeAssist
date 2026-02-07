@@ -1,0 +1,229 @@
+# =============================================================================
+# INTERNET MONITORING PAKET
+# =============================================================================
+# SpeedTest alle 15 Minuten, Fritz!Box Verbindungswerte, MQTT-Speicherung
+# Fritz!Box: 6591 Cable (Vodafone)
+# =============================================================================
+
+# =============================================================================
+# COMMAND LINE SENSOR - SpeedTest
+# =============================================================================
+command_line:
+  - sensor:
+      name: "Speedtest"
+      unique_id: speedtest_result
+      command: >
+        speedtest-cli --json --secure 2>/dev/null ||
+        echo '{"download":0,"upload":0,"ping":0,"server":{"name":"error"}}'
+      scan_interval: 900
+      command_timeout: 120
+      value_template: "{{ value_json.server.name | default('unknown') }}"
+      json_attributes:
+        - download
+        - upload
+        - ping
+        - server
+        - timestamp
+
+# =============================================================================
+# TEMPLATE SENSOREN
+# =============================================================================
+template:
+  - sensor:
+      # --- Speedtest Ergebnisse ---
+
+      - name: "Speedtest Download"
+        unique_id: speedtest_download
+        unit_of_measurement: "Mbit/s"
+        state_class: measurement
+        icon: mdi:download-network
+        state: >
+          {% set dl = state_attr('sensor.speedtest', 'download') %}
+          {{ (dl | float(0) / 1000000) | round(1) if dl else 0 }}
+        availability: >
+          {{ state_attr('sensor.speedtest', 'download') is not none }}
+
+      - name: "Speedtest Upload"
+        unique_id: speedtest_upload
+        unit_of_measurement: "Mbit/s"
+        state_class: measurement
+        icon: mdi:upload-network
+        state: >
+          {% set ul = state_attr('sensor.speedtest', 'upload') %}
+          {{ (ul | float(0) / 1000000) | round(1) if ul else 0 }}
+        availability: >
+          {{ state_attr('sensor.speedtest', 'upload') is not none }}
+
+      - name: "Speedtest Ping"
+        unique_id: speedtest_ping
+        unit_of_measurement: "ms"
+        state_class: measurement
+        icon: mdi:lan-pending
+        state: >
+          {% set p = state_attr('sensor.speedtest', 'ping') %}
+          {{ p | float(0) | round(1) if p else 0 }}
+        availability: >
+          {{ state_attr('sensor.speedtest', 'ping') is not none }}
+
+      - name: "Speedtest Server"
+        unique_id: speedtest_server_name
+        icon: mdi:server-network
+        state: >
+          {% set srv = state_attr('sensor.speedtest', 'server') %}
+          {{ srv.name if srv and srv.name else 'unbekannt' }}
+
+      - name: "Speedtest Letzter Test"
+        unique_id: speedtest_last_run
+        icon: mdi:clock-check
+        device_class: timestamp
+        state: >
+          {% set ts = state_attr('sensor.speedtest', 'timestamp') %}
+          {{ ts if ts else none }}
+
+      # --- Internet Status ---
+
+      - name: "Internet Status"
+        unique_id: internet_connection_status
+        icon: >
+          {% if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') %}
+            mdi:web-check
+          {% else %}
+            mdi:web-off
+          {% endif %}
+        state: >
+          {% if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') %}
+            Verbunden
+          {% else %}
+            Getrennt
+          {% endif %}
+
+      # --- Fritz!Box Durchsatz (Kurzform) ---
+
+      - name: "Internet Download Aktuell"
+        unique_id: internet_download_current
+        unit_of_measurement: "kB/s"
+        state_class: measurement
+        icon: mdi:download
+        state: "{{ states('sensor.fritz_box_6591_cable_vodafone_download_throughput') | float(0) | round(0) }}"
+        availability: >
+          {{ states('sensor.fritz_box_6591_cable_vodafone_download_throughput') not in ['unknown', 'unavailable'] }}
+
+      - name: "Internet Upload Aktuell"
+        unique_id: internet_upload_current
+        unit_of_measurement: "kB/s"
+        state_class: measurement
+        icon: mdi:upload
+        state: "{{ states('sensor.fritz_box_6591_cable_vodafone_upload_throughput') | float(0) | round(0) }}"
+        availability: >
+          {{ states('sensor.fritz_box_6591_cable_vodafone_upload_throughput') not in ['unknown', 'unavailable'] }}
+
+      # --- Fritz!Box Verbindungswerte (Kurzform) ---
+
+      - name: "Fritz Uptime"
+        unique_id: fritz_uptime_short
+        icon: mdi:clock-outline
+        state: >
+          {% set uptime = states('sensor.fritz_box_6591_cable_vodafone_connection_uptime') | float(0) %}
+          {% set days = (uptime / 86400) | int %}
+          {% set hours = ((uptime % 86400) / 3600) | int %}
+          {% set minutes = ((uptime % 3600) / 60) | int %}
+          {% if days > 0 %}{{ days }}d {{ hours }}h
+          {% elif hours > 0 %}{{ hours }}h {{ minutes }}m
+          {% else %}{{ minutes }}m{% endif %}
+
+      - name: "Fritz Link Download"
+        unique_id: fritz_link_download
+        unit_of_measurement: "Mbit/s"
+        icon: mdi:download-network-outline
+        state: >
+          {{ (states('sensor.fritz_box_6591_cable_vodafone_link_download_throughput') | float(0) / 1000) | round(0) }}
+        availability: >
+          {{ states('sensor.fritz_box_6591_cable_vodafone_link_download_throughput') not in ['unknown', 'unavailable'] }}
+
+      - name: "Fritz Link Upload"
+        unique_id: fritz_link_upload
+        unit_of_measurement: "Mbit/s"
+        icon: mdi:upload-network-outline
+        state: >
+          {{ (states('sensor.fritz_box_6591_cable_vodafone_link_upload_throughput') | float(0) / 1000) | round(0) }}
+        availability: >
+          {{ states('sensor.fritz_box_6591_cable_vodafone_link_upload_throughput') not in ['unknown', 'unavailable'] }}
+
+      - name: "Fritz Max Download"
+        unique_id: fritz_max_download
+        unit_of_measurement: "Mbit/s"
+        icon: mdi:speedometer
+        state: >
+          {{ (states('sensor.fritz_box_6591_cable_vodafone_max_connection_download_throughput') | float(0) / 1000) | round(0) }}
+
+      - name: "Fritz Max Upload"
+        unique_id: fritz_max_upload
+        unit_of_measurement: "Mbit/s"
+        icon: mdi:speedometer
+        state: >
+          {{ (states('sensor.fritz_box_6591_cable_vodafone_max_connection_upload_throughput') | float(0) / 1000) | round(0) }}
+
+# =============================================================================
+# AUTOMATIONS
+# =============================================================================
+automation:
+  # Speedtest-Ergebnisse an MQTT senden
+  - id: speedtest_mqtt_publish
+    alias: "Speedtest: Ergebnisse an MQTT senden"
+    trigger:
+      - platform: state
+        entity_id: sensor.speedtest
+    condition:
+      - condition: template
+        value_template: "{{ trigger.to_state.state not in ['unknown', 'unavailable', 'error'] }}"
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "homeassistant/speedtest/download"
+          payload: "{{ (state_attr('sensor.speedtest', 'download') | float(0) / 1000000) | round(1) }}"
+          retain: true
+      - service: mqtt.publish
+        data:
+          topic: "homeassistant/speedtest/upload"
+          payload: "{{ (state_attr('sensor.speedtest', 'upload') | float(0) / 1000000) | round(1) }}"
+          retain: true
+      - service: mqtt.publish
+        data:
+          topic: "homeassistant/speedtest/ping"
+          payload: "{{ state_attr('sensor.speedtest', 'ping') | float(0) | round(1) }}"
+          retain: true
+      - service: mqtt.publish
+        data:
+          topic: "homeassistant/speedtest/server"
+          payload: "{{ state_attr('sensor.speedtest', 'server').name | default('unknown') }}"
+          retain: true
+      - service: mqtt.publish
+        data:
+          topic: "homeassistant/speedtest/timestamp"
+          payload: "{{ now().isoformat() }}"
+          retain: true
+    mode: single
+
+  # Fritz!Box Throughput an MQTT senden (alle 5 Minuten)
+  - id: fritz_throughput_mqtt
+    alias: "Fritz: Throughput an MQTT senden"
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "homeassistant/fritz/download_kbs"
+          payload: "{{ states('sensor.fritz_box_6591_cable_vodafone_download_throughput') }}"
+          retain: true
+      - service: mqtt.publish
+        data:
+          topic: "homeassistant/fritz/upload_kbs"
+          payload: "{{ states('sensor.fritz_box_6591_cable_vodafone_upload_throughput') }}"
+          retain: true
+      - service: mqtt.publish
+        data:
+          topic: "homeassistant/fritz/uptime"
+          payload: "{{ states('sensor.fritz_box_6591_cable_vodafone_connection_uptime') }}"
+          retain: true
+    mode: single

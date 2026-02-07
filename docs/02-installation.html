@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Installation
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Installation</h1>
+            <p>
+                Diese Anleitung beschreibt die vollständige Ersteinrichtung des IceHomeAssist-Systems
+                auf einem Intel NUC &ndash; von der Debian-Installation über Docker bis zum ersten Start
+                von Home Assistant.
+            </p>
+
+            <!-- Voraussetzungen -->
+            <h2>Voraussetzungen</h2>
+            <div class="card">
+                <h3>Hardware-Anforderungen</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Anforderung</th>
+                            <th>Minimum</th>
+                            <th>Empfohlen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Prozessor</strong></td>
+                            <td>x86-64 kompatibel</td>
+                            <td>Intel NUC (i3/i5)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>RAM</strong></td>
+                            <td>4 GB</td>
+                            <td>8 GB oder mehr</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Speicher</strong></td>
+                            <td>32 GB SSD</td>
+                            <td>128 GB SSD oder mehr</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Netzwerk</strong></td>
+                            <td>Ethernet (LAN)</td>
+                            <td>Gigabit Ethernet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>Software-Voraussetzungen</h3>
+                <ul>
+                    <li>Debian 13 (Trixie) oder kompatible Distribution</li>
+                    <li>Docker Engine (aktuelle stabile Version)</li>
+                    <li>sudo-Zugang oder Root-Rechte</li>
+                    <li>SSH-Zugang (empfohlen für Remote-Administration)</li>
+                    <li>Stabile Internetverbindung für Cloud-Integrationen</li>
+                </ul>
+            </div>
+
+            <!-- Debian Installation -->
+            <h2>Schritt 1: Debian installieren</h2>
+            <p>
+                Der Intel NUC wird mit einer frischen Debian-13-Installation eingerichtet. Verwende
+                das offizielle Netinstall-Image für eine minimale Basisinstallation.
+            </p>
+
+            <h3>1.1 Installationsmedium erstellen</h3>
+            <pre><code><span class="cmt"># Debian Netinstall ISO herunterladen</span>
+wget https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-13.*-amd64-netinst.iso
+
+<span class="cmt"># USB-Stick erstellen (Achtung: /dev/sdX anpassen!)</span>
+<span class="kw">sudo</span> dd <span class="val">if</span>=debian-13-amd64-netinst.iso <span class="val">of</span>=/dev/sdX bs=4M status=progress
+<span class="kw">sync</span></code></pre>
+
+            <h3>1.2 Installationsoptionen</h3>
+            <div class="info-box">
+                <strong>Empfohlene Auswahl während der Installation:</strong>
+                <ul>
+                    <li>Sprache: Deutsch oder Englisch</li>
+                    <li>Partitionierung: Geführt &ndash; gesamte Platte verwenden</li>
+                    <li>Software-Auswahl: Nur <strong>SSH-Server</strong> und <strong>Standard-Systemwerkzeuge</strong> (keine Desktop-Umgebung)</li>
+                    <li>GRUB-Bootloader installieren: Ja</li>
+                </ul>
+            </div>
+
+            <h3>1.3 System nach Installation einrichten</h3>
+            <pre><code><span class="cmt"># System aktualisieren</span>
+<span class="kw">sudo</span> apt update && <span class="kw">sudo</span> apt upgrade -y
+
+<span class="cmt"># Grundlegende Pakete installieren</span>
+<span class="kw">sudo</span> apt install -y \
+    curl \
+    wget \
+    git \
+    vim \
+    htop \
+    net-tools \
+    ca-certificates \
+    gnupg \
+    lsb-release
+
+<span class="cmt"># Statische IP-Adresse konfigurieren (empfohlen)</span>
+<span class="kw">sudo</span> vim /etc/network/interfaces</code></pre>
+
+            <div class="card">
+                <h3>Beispiel: Statische IP-Konfiguration</h3>
+                <pre><code><span class="cmt"># /etc/network/interfaces</span>
+<span class="kw">auto</span> enp0s31f6
+<span class="kw">iface</span> enp0s31f6 inet <span class="val">static</span>
+    address <span class="val">192.168.1.100</span>
+    netmask <span class="val">255.255.255.0</span>
+    gateway <span class="val">192.168.1.1</span>
+    dns-nameservers <span class="val">192.168.1.1 8.8.8.8</span></code></pre>
+            </div>
+
+            <!-- Docker Installation -->
+            <h2>Schritt 2: Docker installieren</h2>
+            <p>
+                Docker ist die Grundlage für den Home-Assistant-Container. Wir verwenden die offizielle
+                Docker-Repository-Methode für die Installation.
+            </p>
+
+            <h3>2.1 Docker-Repository einrichten</h3>
+            <pre><code><span class="cmt"># Alte Docker-Pakete entfernen (falls vorhanden)</span>
+<span class="kw">sudo</span> apt remove docker docker-engine docker.io containerd runc 2>/dev/null
+
+<span class="cmt"># Docker GPG-Schlüssel hinzufügen</span>
+<span class="kw">sudo</span> install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | \
+    <span class="kw">sudo</span> gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+<span class="kw">sudo</span> chmod a+r /etc/apt/keyrings/docker.gpg
+
+<span class="cmt"># Docker-Repository hinzufügen</span>
+<span class="kw">echo</span> \
+  <span class="str">"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/debian \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable"</span> | \
+  <span class="kw">sudo</span> tee /etc/apt/sources.list.d/docker.list > /dev/null</code></pre>
+
+            <h3>2.2 Docker Engine installieren</h3>
+            <pre><code><span class="cmt"># Paketindex aktualisieren</span>
+<span class="kw">sudo</span> apt update
+
+<span class="cmt"># Docker Engine, CLI und Plugins installieren</span>
+<span class="kw">sudo</span> apt install -y \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
+
+<span class="cmt"># Docker-Dienst aktivieren und starten</span>
+<span class="kw">sudo</span> systemctl enable docker
+<span class="kw">sudo</span> systemctl start docker
+
+<span class="cmt"># Benutzer zur Docker-Gruppe hinzufügen (optional)</span>
+<span class="kw">sudo</span> usermod -aG docker $USER</code></pre>
+
+            <h3>2.3 Installation verifizieren</h3>
+            <pre><code><span class="cmt"># Docker-Version prüfen</span>
+docker --version
+<span class="cmt"># Ausgabe: Docker version 27.x.x, build xxxxxxx</span>
+
+<span class="cmt"># Test-Container ausführen</span>
+<span class="kw">sudo</span> docker run hello-world</code></pre>
+
+            <div class="warning-box">
+                <strong>Achtung:</strong> Nach dem Hinzufügen zur Docker-Gruppe muss die Shell-Session
+                neu gestartet werden (Ausloggen/Einloggen oder <code>newgrp docker</code>).
+            </div>
+
+            <!-- HA Container -->
+            <h2>Schritt 3: Home Assistant Container einrichten</h2>
+            <p>
+                Das IceHomeAssist-System verwendet das offizielle HA OS Image für qemux86-64.
+                Dieses Image enthält den vollständigen Home Assistant Supervisor mit Addon-Unterstützung.
+            </p>
+
+            <h3>3.1 Datenverzeichnis erstellen</h3>
+            <pre><code><span class="cmt"># Verzeichnis für HA-Daten anlegen</span>
+<span class="kw">sudo</span> mkdir -p /var/lib/homeassistant/homeassistant
+<span class="kw">sudo</span> mkdir -p /var/lib/homeassistant/addon_configs</code></pre>
+
+            <h3>3.2 Container starten</h3>
+            <pre><code><span class="cmt"># Home Assistant Container starten</span>
+<span class="kw">sudo</span> docker run -d \
+    --name <span class="val">homeassistant</span> \
+    --restart=unless-stopped \
+    --privileged \
+    --network=host \
+    -v /var/lib/homeassistant:/data \
+    -v /run/dbus:/run/dbus:ro \
+    -e TZ=<span class="str">"Europe/Berlin"</span> \
+    <span class="val">ghcr.io/home-assistant/qemux86-64-homeassistant</span></code></pre>
+
+            <div class="info-box">
+                <strong>Pfad-Zuordnung:</strong> Das Host-Verzeichnis
+                <code>/var/lib/homeassistant/homeassistant</code> entspricht innerhalb des Containers
+                dem Pfad <code>/config</code>. Alle Konfigurationsdateien werden dort gespeichert.
+            </div>
+
+            <h3>3.3 Erste Einrichtung</h3>
+            <ol>
+                <li>Warte ca. 2-5 Minuten, bis der Container vollständig gestartet ist</li>
+                <li>Öffne im Browser: <code>http://&lt;NUC-IP&gt;:8123</code></li>
+                <li>Erstelle ein Administratorkonto</li>
+                <li>Konfiguriere den Standort (für Wetter- und Sonnenstandsdaten)</li>
+                <li>Wähle die Einheiten (metrisch)</li>
+                <li>Überspringe die automatische Geräte-Erkennung zunächst</li>
+            </ol>
+
+            <h3>3.4 Container-Status prüfen</h3>
+            <pre><code><span class="cmt"># Container-Status anzeigen</span>
+<span class="kw">sudo</span> docker ps | grep homeassistant
+
+<span class="cmt"># Container-Logs anzeigen</span>
+<span class="kw">sudo</span> docker logs -f homeassistant --tail 50
+
+<span class="cmt"># In den Container verbinden</span>
+<span class="kw">sudo</span> docker exec -it homeassistant bash</code></pre>
+
+            <!-- Nächste Schritte -->
+            <h2>Nächste Schritte</h2>
+            <div class="card">
+                <p>Nach der erfolgreichen Ersteinrichtung folgen diese Schritte:</p>
+                <ol>
+                    <li><a href="03-docker-setup.html"><strong>Docker Setup</strong></a> &ndash; Detaillierte Container-Konfiguration und Management</li>
+                    <li><a href="04-konfiguration.html"><strong>Konfiguration</strong></a> &ndash; configuration.yaml, Packages und Secrets einrichten</li>
+                    <li><a href="05-integrationen.html"><strong>Integrationen</strong></a> &ndash; HACS installieren und Custom Components einrichten</li>
+                </ol>
+            </div>
+
+            <div class="warning-box">
+                <strong>Wichtig:</strong> Alle Dateien im Konfigurationsverzeichnis gehören dem Benutzer
+                <code>root</code>. Verwende immer <code>sudo</code> für Bearbeitungen auf dem Host
+                oder nutze <code>docker exec</code> für Änderungen innerhalb des Containers.
+            </div>
+
+            <div class="page-nav">
+                <a href="01-uebersicht.html">
+                    <div><div class="label">Zurück</div>Systemübersicht</div>
+                </a>
+                <a href="03-docker-setup.html">
+                    <div><div class="label">Weiter</div>Docker Setup</div>
+                </a>
+            </div>
+            <div class="footer">
+                IceHomeAssist Dokumentation &middot; Erstellt Februar 2026
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) {
+        a.classList.add('active');
+    }
+});
+
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation Inhaltsverzeichnis"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker Container Komponenten"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker Setup"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes Netzwerk"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages Secrets"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Switch WiFi Radar"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive GPS Tracker"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
+];
+
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i =>
+        i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Keine Ergebnisse</div>';
+    } else {
+        results.innerHTML = matches.map(m =>
+            `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`
+        ).join('');
+    }
+    results.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-container')) {
+        document.getElementById('searchResults').classList.remove('active');
+    }
+});
+</script>
+</body>
+</html>

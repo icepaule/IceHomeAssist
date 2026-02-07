@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konfiguration - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Konfiguration
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Konfiguration</h1>
+            <p>
+                Die Konfiguration von Home Assistant erfolgt primär über YAML-Dateien. Diese Seite
+                erklärt die Struktur der Hauptkonfiguration, das Package-System, das Secrets-Management
+                und die allgemeine YAML-Syntax.
+            </p>
+
+            <!-- Verzeichnisstruktur -->
+            <h2>Verzeichnisstruktur</h2>
+            <pre><code>/var/lib/homeassistant/homeassistant/    <span class="cmt"># = /config im Container</span>
+├── configuration.yaml                  <span class="cmt"># Hauptkonfiguration</span>
+├── secrets.yaml                        <span class="cmt"># Passwörter und API-Keys</span>
+├── automations.yaml                    <span class="cmt"># HA-eigene Automatisierungen</span>
+├── scripts.yaml                        <span class="cmt"># HA-eigene Scripts</span>
+├── scenes.yaml                         <span class="cmt"># Szenen</span>
+├── packages/                           <span class="cmt"># 11 YAML Packages</span>
+│   ├── wifi_buttons.yaml
+│   ├── energy.yaml
+│   ├── network_switches.yaml
+│   ├── notifications.yaml
+│   ├── thw_divera.yaml
+│   ├── thw_nina.yaml
+│   ├── wetter.yaml
+│   ├── internet.yaml
+│   ├── android_tv_bravia.yaml
+│   ├── bring_einkaufsliste.yaml
+│   └── unifi.yaml
+├── dashboards/                         <span class="cmt"># 11 Dashboard-Definitionen</span>
+│   ├── home.yaml
+│   ├── energie.yaml
+│   ├── wetter.yaml
+│   ├── raeume.yaml
+│   ├── medien.yaml
+│   ├── staubsauger.yaml
+│   ├── system.yaml
+│   ├── thw.yaml
+│   ├── netzwerk.yaml
+│   ├── charly.yaml
+│   └── kiosk.yaml
+├── automations/                        <span class="cmt"># Automatisierungs-Dateien</span>
+│   ├── pv_tibber_savings.yaml
+│   ├── strompreis_automationen.yaml
+│   ├── tibber_next24h.yaml
+│   └── vacuum_schedule.yaml
+├── templates/                          <span class="cmt"># Template-Sensoren</span>
+├── custom_components/                  <span class="cmt"># HACS-installierte Integrationen</span>
+├── themes/                             <span class="cmt"># Custom Themes</span>
+├── www/                                <span class="cmt"># Statische Web-Dateien</span>
+└── .storage/                           <span class="cmt"># HA-interne Daten (nicht bearbeiten!)</span></code></pre>
+
+            <!-- configuration.yaml -->
+            <h2>configuration.yaml</h2>
+            <p>
+                Die <code>configuration.yaml</code> ist die zentrale Konfigurationsdatei von Home Assistant.
+                Sie bindet alle anderen Konfigurationsdateien ein und definiert grundlegende Einstellungen.
+            </p>
+
+            <h3>Grundstruktur</h3>
+            <pre><code><span class="cmt"># configuration.yaml - Hauptkonfiguration</span>
+
+<span class="kw">homeassistant:</span>
+  <span class="kw">name:</span> <span class="str">"IceHome"</span>
+  <span class="kw">unit_system:</span> <span class="val">metric</span>
+  <span class="kw">time_zone:</span> <span class="str">"Europe/Berlin"</span>
+  <span class="kw">currency:</span> <span class="val">EUR</span>
+  <span class="kw">country:</span> <span class="val">DE</span>
+  <span class="kw">language:</span> <span class="val">de</span>
+  <span class="kw">packages:</span> <span class="val">!include_dir_named packages</span>
+
+<span class="cmt"># Standard-Komponenten</span>
+<span class="kw">default_config:</span>
+
+<span class="cmt"># Frontend-Konfiguration</span>
+<span class="kw">frontend:</span>
+  <span class="kw">themes:</span> <span class="val">!include_dir_merge_named themes</span>
+
+<span class="cmt"># HTTP-Server</span>
+<span class="kw">http:</span>
+  <span class="kw">server_port:</span> <span class="val">8123</span>
+  <span class="kw">ip_ban_enabled:</span> <span class="val">true</span>
+  <span class="kw">login_attempts_threshold:</span> <span class="val">5</span>
+
+<span class="cmt"># Logger-Konfiguration</span>
+<span class="kw">logger:</span>
+  <span class="kw">default:</span> <span class="val">warning</span>
+  <span class="kw">logs:</span>
+    <span class="kw">homeassistant.components.mqtt:</span> <span class="val">info</span>
+    <span class="kw">custom_components.alexa_media:</span> <span class="val">debug</span>
+
+<span class="cmt"># Recorder-Konfiguration (Datenbank)</span>
+<span class="kw">recorder:</span>
+  <span class="kw">purge_keep_days:</span> <span class="val">14</span>
+  <span class="kw">commit_interval:</span> <span class="val">1</span>
+
+<span class="cmt"># Automatisierungen einbinden</span>
+<span class="kw">automation:</span> <span class="val">!include automations.yaml</span>
+<span class="kw">script:</span> <span class="val">!include scripts.yaml</span>
+<span class="kw">scene:</span> <span class="val">!include scenes.yaml</span>
+
+<span class="cmt"># Lovelace Dashboards</span>
+<span class="kw">lovelace:</span>
+  <span class="kw">mode:</span> <span class="val">yaml</span>
+  <span class="kw">resources:</span> <span class="val">[]</span>
+  <span class="kw">dashboards:</span>
+    <span class="kw">home-dashboard:</span>
+      <span class="kw">mode:</span> <span class="val">yaml</span>
+      <span class="kw">filename:</span> <span class="str">dashboards/home.yaml</span>
+      <span class="kw">title:</span> <span class="str">Home</span>
+    <span class="cmt"># ... weitere Dashboards (siehe Dashboards-Seite)</span></code></pre>
+
+            <!-- Packages -->
+            <h2>Packages-System</h2>
+            <p>
+                Das Package-System ist eine der leistungsfähigsten Organisationsmethoden in Home Assistant.
+                Anstatt alle Sensoren, Automatisierungen und Scripts in einer einzigen Datei zu definieren,
+                können zusammengehörige Konfigurationen in einzelne Dateien aufgeteilt werden.
+            </p>
+
+            <div class="info-box">
+                <strong>Prinzip:</strong> Jedes Package ist eine eigenständige YAML-Datei, die alle
+                Konfigurationseinträge für einen bestimmten Anwendungsfall enthält &ndash; Sensoren,
+                Automatisierungen, Scripts, Input-Helpers und mehr.
+            </div>
+
+            <h3>Package-Einbindung</h3>
+            <pre><code><span class="cmt"># In configuration.yaml:</span>
+<span class="kw">homeassistant:</span>
+  <span class="kw">packages:</span> <span class="val">!include_dir_named packages</span>
+
+<span class="cmt"># Dies lädt automatisch alle .yaml Dateien aus dem packages/ Verzeichnis.</span>
+<span class="cmt"># Der Dateiname (ohne .yaml) wird als Package-Name verwendet.</span></code></pre>
+
+            <h3>Übersicht der 11 Packages</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Package</th>
+                        <th>Datei</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>WiFi Buttons</strong></td>
+                        <td><code>wifi_buttons.yaml</code></td>
+                        <td>ESP32-S3 Tasmota WiFi-Buttons, input_select Helpers, Button-Konfiguration</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Energie</strong></td>
+                        <td><code>energy.yaml</code></td>
+                        <td>Energiemonitoring, Tasmota-Sensoren (PV, Server, Trockner, etc.)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Netzwerk-Switches</strong></td>
+                        <td><code>network_switches.yaml</code></td>
+                        <td>Netzwerk-Geräte-Steuerung, Switch-Entitäten</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Benachrichtigungen</strong></td>
+                        <td><code>notifications.yaml</code></td>
+                        <td>Benachrichtigungs-Templates und -Automatisierungen</td>
+                    </tr>
+                    <tr>
+                        <td><strong>THW Divera</strong></td>
+                        <td><code>thw_divera.yaml</code></td>
+                        <td>Divera-Alarmierungs-Integration für THW</td>
+                    </tr>
+                    <tr>
+                        <td><strong>THW NINA</strong></td>
+                        <td><code>thw_nina.yaml</code></td>
+                        <td>NINA Warnapp Integration für Katastrophenwarnungen</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Wetter</strong></td>
+                        <td><code>wetter.yaml</code></td>
+                        <td>DWD Wetterdienst, Niederschlagsvorhersage, Wetter-Sensoren</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Internet</strong></td>
+                        <td><code>internet.yaml</code></td>
+                        <td>Internetverbindungs-Monitoring, Speed-Tests</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Android TV Bravia</strong></td>
+                        <td><code>android_tv_bravia.yaml</code></td>
+                        <td>Sony Bravia TV Steuerung und Media Player</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bring Einkaufsliste</strong></td>
+                        <td><code>bring_einkaufsliste.yaml</code></td>
+                        <td>Bring! Einkaufslisten-Integration</td>
+                    </tr>
+                    <tr>
+                        <td><strong>UniFi</strong></td>
+                        <td><code>unifi.yaml</code></td>
+                        <td>UniFi Netzwerk-Integration, Geräte-Tracking</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Beispiel: Package-Struktur</h3>
+            <pre><code><span class="cmt"># packages/energy.yaml - Beispiel für ein Package</span>
+
+<span class="cmt"># Sensoren</span>
+<span class="kw">sensor:</span>
+  - <span class="kw">platform:</span> <span class="val">mqtt</span>
+    <span class="kw">name:</span> <span class="str">"PV Leistung"</span>
+    <span class="kw">state_topic:</span> <span class="str">"tele/pv_sensor/SENSOR"</span>
+    <span class="kw">value_template:</span> <span class="str">"{{ value_json.ENERGY.Power }}"</span>
+    <span class="kw">unit_of_measurement:</span> <span class="str">"W"</span>
+    <span class="kw">device_class:</span> <span class="val">power</span>
+
+<span class="cmt"># Template-Sensoren</span>
+<span class="kw">template:</span>
+  - <span class="kw">sensor:</span>
+    - <span class="kw">name:</span> <span class="str">"Gesamtverbrauch"</span>
+      <span class="kw">state:</span> <span class="str">"{{ states('sensor.server_power')|float + states('sensor.kueche_power')|float }}"</span>
+      <span class="kw">unit_of_measurement:</span> <span class="str">"W"</span>
+
+<span class="cmt"># Input-Helpers</span>
+<span class="kw">input_number:</span>
+  <span class="kw">energy_daily_target:</span>
+    <span class="kw">name:</span> <span class="str">"Tägliches Energieziel"</span>
+    <span class="kw">min:</span> <span class="val">0</span>
+    <span class="kw">max:</span> <span class="val">50</span>
+    <span class="kw">step:</span> <span class="val">0.5</span>
+    <span class="kw">unit_of_measurement:</span> <span class="str">"kWh"</span></code></pre>
+
+            <!-- Secrets -->
+            <h2>Secrets-Management</h2>
+            <p>
+                Sensible Daten wie Passwörter, API-Schlüssel und Tokens werden in der Datei
+                <code>secrets.yaml</code> gespeichert und in der Konfiguration über
+                <code>!secret</code> referenziert.
+            </p>
+
+            <h3>secrets.yaml Aufbau</h3>
+            <pre><code><span class="cmt"># secrets.yaml - NIEMALS in Git committen!</span>
+
+<span class="cmt"># MQTT</span>
+<span class="kw">mqtt_username:</span> <span class="str">"ha_mqtt_user"</span>
+<span class="kw">mqtt_password:</span> <span class="str">"***GEHEIM***"</span>
+
+<span class="cmt"># Tibber</span>
+<span class="kw">tibber_token:</span> <span class="str">"***GEHEIM***"</span>
+
+<span class="cmt"># Fritz!Box</span>
+<span class="kw">fritzbox_password:</span> <span class="str">"***GEHEIM***"</span>
+
+<span class="cmt"># Divera</span>
+<span class="kw">divera_api_key:</span> <span class="str">"***GEHEIM***"</span>
+
+<span class="cmt"># ... weitere Secrets</span></code></pre>
+
+            <h3>Verwendung in der Konfiguration</h3>
+            <pre><code><span class="cmt"># Referenz auf ein Secret</span>
+<span class="kw">mqtt:</span>
+  <span class="kw">broker:</span> <span class="val">localhost</span>
+  <span class="kw">port:</span> <span class="val">1883</span>
+  <span class="kw">username:</span> <span class="val">!secret mqtt_username</span>
+  <span class="kw">password:</span> <span class="val">!secret mqtt_password</span></code></pre>
+
+            <div class="warning-box">
+                <strong>Sicherheitshinweis:</strong> Die Datei <code>secrets.yaml</code> sollte niemals
+                in ein Git-Repository committed werden. Stelle sicher, dass sie in der
+                <code>.gitignore</code> aufgeführt ist. Siehe <a href="14-sicherheit.html">Sicherheit</a>
+                für weitere Details.
+            </div>
+
+            <!-- YAML Syntax -->
+            <h2>YAML-Syntax Grundlagen</h2>
+            <div class="card">
+                <h3>Wichtige YAML-Regeln</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Konzept</th>
+                            <th>Syntax</th>
+                            <th>Beispiel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Schlüssel-Wert</td>
+                            <td><code>key: value</code></td>
+                            <td><code>name: "Mein Sensor"</code></td>
+                        </tr>
+                        <tr>
+                            <td>Verschachtelung</td>
+                            <td>2 Leerzeichen Einrückung</td>
+                            <td><code>&nbsp;&nbsp;child: value</code></td>
+                        </tr>
+                        <tr>
+                            <td>Listen</td>
+                            <td><code>- item</code></td>
+                            <td><code>- platform: mqtt</code></td>
+                        </tr>
+                        <tr>
+                            <td>Kommentare</td>
+                            <td><code># Kommentar</code></td>
+                            <td><code># Dies ist ein Kommentar</code></td>
+                        </tr>
+                        <tr>
+                            <td>Strings</td>
+                            <td>Anführungszeichen (optional)</td>
+                            <td><code>"Text mit Sonderzeichen"</code></td>
+                        </tr>
+                        <tr>
+                            <td>Multiline</td>
+                            <td><code>|</code> oder <code>&gt;</code></td>
+                            <td><code>description: |</code></td>
+                        </tr>
+                        <tr>
+                            <td>Include</td>
+                            <td><code>!include datei.yaml</code></td>
+                            <td><code>automation: !include automations.yaml</code></td>
+                        </tr>
+                        <tr>
+                            <td>Secret</td>
+                            <td><code>!secret key</code></td>
+                            <td><code>password: !secret mqtt_password</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Häufige YAML-Fehler</h3>
+            <div class="error-box">
+                <strong>Typische Fehlerquellen:</strong>
+                <ul>
+                    <li><strong>Tabs statt Leerzeichen:</strong> YAML erlaubt keine Tabs zur Einrückung &ndash; verwende immer Leerzeichen</li>
+                    <li><strong>Falsche Einrückung:</strong> Jede Ebene muss exakt 2 Leerzeichen eingerückt sein</li>
+                    <li><strong>Fehlende Anführungszeichen:</strong> Strings mit Sonderzeichen (<code>:</code>, <code>#</code>, <code>{</code>) müssen in Anführungszeichen stehen</li>
+                    <li><strong>Doppelte Schlüssel:</strong> Jeder Schlüssel darf auf einer Ebene nur einmal vorkommen</li>
+                </ul>
+            </div>
+
+            <h3>Konfiguration validieren</h3>
+            <pre><code><span class="cmt"># Konfiguration innerhalb des Containers prüfen</span>
+<span class="kw">sudo</span> docker exec homeassistant ha core check
+
+<span class="cmt"># Oder über die HA Web-Oberfläche:</span>
+<span class="cmt"># Einstellungen → System → "Konfiguration prüfen"</span></code></pre>
+
+            <div class="info-box">
+                <strong>Best Practice:</strong> Prüfe die Konfiguration immer vor einem Neustart von
+                Home Assistant. Fehlerhafte YAML-Dateien können verhindern, dass HA startet.
+            </div>
+
+            <div class="page-nav">
+                <a href="03-docker-setup.html">
+                    <div><div class="label">Zurück</div>Docker Setup</div>
+                </a>
+                <a href="05-integrationen.html">
+                    <div><div class="label">Weiter</div>Integrationen</div>
+                </a>
+            </div>
+            <div class="footer">
+                IceHomeAssist Dokumentation &middot; Erstellt Februar 2026
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) {
+        a.classList.add('active');
+    }
+});
+
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation Inhaltsverzeichnis"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker Container Komponenten"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker Setup"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes Netzwerk"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages Secrets"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Switch WiFi Radar"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive GPS Tracker"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
+];
+
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i =>
+        i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Keine Ergebnisse</div>';
+    } else {
+        results.innerHTML = matches.map(m =>
+            `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`
+        ).join('');
+    }
+    results.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-container')) {
+        document.getElementById('searchResults').classList.remove('active');
+    }
+});
+</script>
+</body>
+</html>

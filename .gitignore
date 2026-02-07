@@ -1,0 +1,68 @@
+# Secrets - NEVER commit
+secrets.yaml
+.env
+*.env
+
+# Storage (contains auth tokens, config entries, etc.)
+.storage/
+
+# Database
+home-assistant_v2.db
+home-assistant_v2.db-shm
+home-assistant_v2.db-wal
+zigbee.db
+
+# Log files
+home-assistant.log
+home-assistant.log.fault
+*.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Backups
+*.bak
+backups/
+backups_fix_*/
+
+# TTS cache
+tts/
+
+# Dependencies (installed by HA)
+deps/
+
+# Custom Components (installed via HACS)
+custom_components/
+
+# Run lock
+.ha_run.lock
+
+# Cloud config
+.cloud/
+
+# HA Version file
+.HA_VERSION
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# www generated files (radar SVGs, etc.)
+www/
+
+# Blueprints (default HA blueprints)
+blueprints/
+
+# Input helpers (managed via UI)
+input_booleans/
+input_numbers/
+input_selects/
+
+# Screenshot automation temp files
+screenshots_temp/

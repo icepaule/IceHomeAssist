@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiederherstellung - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html" class="active">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Betrieb
+                    <span class="separator">&rsaquo;</span>
+                    Wiederherstellung
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Disaster Recovery - Wiederherstellung</h1>
+
+            <p>
+                Diese Seite beschreibt den vollständigen Wiederherstellungsprozess der Home Assistant
+                Installation im Falle eines Totalausfalls. Das <code>restore.sh</code> Script automatisiert
+                den Großteil der Arbeit. Es kann mit einem einzigen Befehl direkt von GitHub ausgeführt
+                werden und stellt die gesamte Konfiguration auf einem frischen Debian-System wieder her.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>Schnellstart: Ein-Befehl-Wiederherstellung</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Im Notfall kann die gesamte Wiederherstellung mit einem einzigen Befehl gestartet werden.
+                Voraussetzung ist ein frisches Debian-System mit Internetzugang und <code>curl</code>.
+            </p>
+
+            <pre><code># Komplette Wiederherstellung mit einem Befehl:
+curl -sSL https://raw.githubusercontent.com/icepaule/IceHomeAssist/main/restore.sh | sudo bash</code></pre>
+
+            <p>
+                <strong>Hinweis:</strong> Das Script benötigt Root-Rechte (<code>sudo</code>), da es
+                System-Pakete installiert, Docker einrichtet und Verzeichnisse unter
+                <code>/var/lib/homeassistant/</code> erstellt.
+            </p>
+
+            <h3>Voraussetzungen</h3>
+            <ul>
+                <li>Frisches <strong>Debian 12 (Bookworm)</strong> oder neuer auf dem NUC</li>
+                <li>Internetverbindung für Downloads</li>
+                <li><code>curl</code> muss installiert sein (<code>apt install curl</code>)</li>
+                <li>Mindestens <strong>20 GB</strong> freier Speicherplatz</li>
+                <li>Der Benutzer muss <code>sudo</code>-Rechte haben</li>
+            </ul>
+
+            <!-- ============================================================ -->
+            <h2>restore.sh - Die 7 Phasen</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Das Wiederherstellungs-Script durchläuft sieben aufeinander aufbauende Phasen. Jede Phase
+                wird mit einer Statusmeldung angezeigt und kann bei Fehler einzeln wiederholt werden.
+            </p>
+
+            <h3>Phase 1: System-Pakete installieren</h3>
+            <pre><code># Phase 1: Grundlegende Pakete
+echo "=== Phase 1/7: System-Pakete installieren ==="
+apt-get update
+apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release \
+    git \
+    jq \
+    mosquitto-clients \
+    snmp \
+    snmp-mibs-downloader \
+    python3 \
+    python3-pip \
+    python3-venv</code></pre>
+            <p>
+                Diese Phase stellt sicher, dass alle benötigten Systempakete vorhanden sind. Dazu gehören
+                Git für das Klonen des Repositories, MQTT-Client-Tools für Debugging, SNMP-Tools für das
+                Switch-Monitoring und Python für die eigenen Scripts.
+            </p>
+
+            <h3>Phase 2: Docker installieren</h3>
+            <pre><code># Phase 2: Docker Engine
+echo "=== Phase 2/7: Docker installieren ==="
+curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
+  https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Docker Service starten und aktivieren
+systemctl enable docker
+systemctl start docker</code></pre>
+            <p>
+                Docker wird aus dem offiziellen Docker-Repository installiert. Die Docker Compose Plugin
+                wird ebenfalls installiert, um den Container über eine <code>docker-compose.yml</code>
+                verwalten zu können.
+            </p>
+
+            <h3>Phase 3: Verzeichnisstruktur erstellen</h3>
+            <pre><code># Phase 3: Verzeichnisse
+echo "=== Phase 3/7: Verzeichnisstruktur erstellen ==="
+mkdir -p /var/lib/homeassistant/homeassistant
+mkdir -p /var/lib/homeassistant/homeassistant/packages
+mkdir -p /var/lib/homeassistant/homeassistant/dashboards
+mkdir -p /var/lib/homeassistant/homeassistant/automations
+mkdir -p /var/lib/homeassistant/homeassistant/templates
+mkdir -p /var/lib/homeassistant/homeassistant/scripts
+mkdir -p /var/lib/homeassistant/homeassistant/www
+mkdir -p /var/lib/homeassistant/addon_configs/a0d7b954_nodered</code></pre>
+            <p>
+                Die Verzeichnisstruktur entspricht exakt dem Layout, das Home Assistant erwartet.
+                Der Pfad <code>/var/lib/homeassistant/homeassistant</code> auf dem Host wird später
+                als <code>/config</code> in den Docker-Container gemountet.
+            </p>
+
+            <h3>Phase 4: Git Repository klonen</h3>
+            <pre><code># Phase 4: Repository
+echo "=== Phase 4/7: Git Repository klonen ==="
+cd /home/mpauli
+if [ -d "IceHomeAssist" ]; then
+    echo "Repository existiert bereits, aktualisiere..."
+    cd IceHomeAssist && git pull
+else
+    git clone https://github.com/icepaule/IceHomeAssist.git
+fi</code></pre>
+            <p>
+                Das Git-Repository enthält die gesamte YAML-Konfiguration, Packages, Dashboard-Definitionen,
+                Automatisierungen und Scripts. Es enthält bewusst <em>keine</em> sensiblen Daten
+                (siehe <a href="14-sicherheit.html">Sicherheit</a>).
+            </p>
+
+            <h3>Phase 5: Konfiguration kopieren</h3>
+            <pre><code># Phase 5: Konfiguration verteilen
+echo "=== Phase 5/7: Konfiguration kopieren ==="
+HA_CONFIG="/var/lib/homeassistant/homeassistant"
+REPO="/home/mpauli/IceHomeAssist"
+
+# Hauptkonfiguration
+cp "$REPO/configuration.yaml" "$HA_CONFIG/"
+cp "$REPO/automations.yaml" "$HA_CONFIG/" 2>/dev/null || true
+cp "$REPO/scripts.yaml" "$HA_CONFIG/" 2>/dev/null || true
+cp "$REPO/scenes.yaml" "$HA_CONFIG/" 2>/dev/null || true
+cp "$REPO/utility_meters.yaml" "$HA_CONFIG/" 2>/dev/null || true
+
+# Packages
+cp -r "$REPO/packages/"* "$HA_CONFIG/packages/" 2>/dev/null || true
+
+# Dashboards
+cp -r "$REPO/dashboards/"* "$HA_CONFIG/dashboards/" 2>/dev/null || true
+
+# Templates
+cp -r "$REPO/templates/"* "$HA_CONFIG/templates/" 2>/dev/null || true
+
+# Scripts (Python)
+cp -r "$REPO/scripts/"* "$HA_CONFIG/scripts/" 2>/dev/null || true
+
+# Node-RED Flows
+cp "$REPO/nodered/flows.json" "/var/lib/homeassistant/addon_configs/a0d7b954_nodered/" 2>/dev/null || true
+
+# Leere secrets.yaml erstellen (muss manuell ausgefüllt werden)
+if [ ! -f "$HA_CONFIG/secrets.yaml" ]; then
+    cp "$REPO/secrets.yaml.example" "$HA_CONFIG/secrets.yaml" 2>/dev/null || \
+    echo "# secrets.yaml - Bitte alle Werte ausfüllen!" > "$HA_CONFIG/secrets.yaml"
+fi
+
+# Berechtigungen setzen
+chown -R root:root "$HA_CONFIG"</code></pre>
+            <p>
+                Alle Konfigurationsdateien werden vom Repository in die Home Assistant Konfiguration
+                kopiert. Die <code>secrets.yaml</code> wird als leere Vorlage erstellt und muss
+                manuell mit den korrekten Werten ausgefüllt werden.
+            </p>
+
+            <h3>Phase 6: Docker Container starten</h3>
+            <pre><code># Phase 6: Home Assistant Container
+echo "=== Phase 6/7: Docker Container starten ==="
+docker pull ghcr.io/home-assistant/qemux86-64-homeassistant:stable
+
+docker run -d \
+    --name homeassistant \
+    --privileged \
+    --restart=unless-stopped \
+    -e TZ=Europe/Berlin \
+    -v /var/lib/homeassistant/homeassistant:/config \
+    -v /run/dbus:/run/dbus:ro \
+    --network=host \
+    ghcr.io/home-assistant/qemux86-64-homeassistant:stable
+
+echo "Container gestartet. Warte auf Erstinitialisierung..."
+sleep 30
+
+# Prüfen ob Container läuft
+if docker ps | grep -q homeassistant; then
+    echo "Home Assistant Container läuft erfolgreich."
+else
+    echo "FEHLER: Container konnte nicht gestartet werden!"
+    docker logs homeassistant
+    exit 1
+fi</code></pre>
+            <p>
+                Der Docker Container wird mit dem offiziellen HA OS Image gestartet. Die wichtigsten
+                Parameter sind:
+            </p>
+            <ul>
+                <li><code>--privileged</code>: Erlaubt Zugriff auf Hardware (USB, Bluetooth, etc.)</li>
+                <li><code>--network=host</code>: Container nutzt das Host-Netzwerk direkt (für mDNS, MQTT etc.)</li>
+                <li><code>-v /var/lib/.../:/config</code>: Mountet die Konfiguration in den Container</li>
+                <li><code>-e TZ=Europe/Berlin</code>: Setzt die korrekte Zeitzone</li>
+                <li><code>--restart=unless-stopped</code>: Automatischer Neustart bei Abstürzen</li>
+            </ul>
+
+            <h3>Phase 7: Abschluss und Statusbericht</h3>
+            <pre><code># Phase 7: Zusammenfassung
+echo "=== Phase 7/7: Abschluss ==="
+echo ""
+echo "================================================"
+echo "  Wiederherstellung abgeschlossen!"
+echo "================================================"
+echo ""
+echo "Home Assistant erreichbar unter:"
+echo "  http://$(hostname -I | awk '{print $1}'):8123"
+echo ""
+echo "WICHTIG - Manuelle Nacharbeiten erforderlich:"
+echo "  1. secrets.yaml ausfüllen: $HA_CONFIG/secrets.yaml"
+echo "  2. HACS installieren und Custom Components nachinstallieren"
+echo "  3. Alle Integrationen neu einrichten"
+echo "  4. Node-RED Addon installieren"
+echo "  5. Mosquitto Addon installieren"
+echo ""
+echo "Siehe Dokumentation: docs/15-wiederherstellung.html"
+echo "================================================"</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Manuelle Nacharbeiten</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Nach Ausführung des <code>restore.sh</code> Scripts sind noch manuelle Schritte
+                erforderlich, da bestimmte Daten aus Sicherheitsgründen nicht im Repository gespeichert
+                werden.
+            </p>
+
+            <h3>1. secrets.yaml ausfüllen</h3>
+            <p>
+                Die wichtigste Nacharbeit ist das Ausfüllen der <code>secrets.yaml</code> mit den
+                korrekten Werten. Ohne diese Datei können die meisten Integrationen nicht starten.
+            </p>
+            <pre><code># Datei bearbeiten:
+sudo nano /var/lib/homeassistant/homeassistant/secrets.yaml
+
+# Folgende Werte müssen eingetragen werden:
+# - home_latitude / home_longitude / home_elevation
+# - mqtt_user / mqtt_password
+# - tibber_api_token
+# - unifi_host / unifi_username / unifi_password
+# - fritzbox_host / fritzbox_username / fritzbox_password
+# - tractive_email / tractive_password
+# - petkit_email / petkit_password
+# - snmp_community
+# - amazon_email / amazon_password
+# - Alle Zonen-Koordinaten
+
+# Nach dem Speichern HA neu starten:
+docker restart homeassistant</code></pre>
+
+            <h3>2. HACS und Custom Components nachinstallieren</h3>
+            <p>
+                HACS (Home Assistant Community Store) muss manuell installiert werden, da es als
+                Custom Component nicht über das Standard-Repository verteilt wird.
+            </p>
+            <pre><code># HACS installieren (im Container):
+docker exec -it homeassistant bash
+wget -O - https://get.hacs.xyz | bash -
+
+# Alternativ von außen:
+docker exec homeassistant bash -c \
+  "wget -O - https://get.hacs.xyz | bash -"
+
+# Container neu starten
+docker restart homeassistant</code></pre>
+
+            <p>
+                Nach dem Neustart HACS in der UI einrichten und folgende Custom Components installieren:
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nr.</th>
+                        <th>Component</th>
+                        <th>Version</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>Alexa Media Player</td>
+                        <td>v5.11.0</td>
+                        <td>Amazon Echo Steuerung</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>Tractive</td>
+                        <td>Aktuell</td>
+                        <td>GPS Haustier-Tracker</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>PetKit</td>
+                        <td>Aktuell</td>
+                        <td>Smarte Haustiergeräte</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>Dreame Vacuum</td>
+                        <td>Aktuell</td>
+                        <td>Saugroboter Willi/Robby</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>Fritz!Box Tools</td>
+                        <td>Aktuell</td>
+                        <td>Erweiterte Fritz!Box-Funktionen</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>UniFi Gateway</td>
+                        <td>Aktuell</td>
+                        <td>Erweiterte UniFi-Funktionen</td>
+                    </tr>
+                    <tr>
+                        <td>7-12</td>
+                        <td><em>Weitere</em></td>
+                        <td>Aktuell</td>
+                        <td>Lovelace-Karten, Theme-Plugins etc.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>3. Integrationen neu einrichten</h3>
+            <p>
+                Alle Integrationen, die über die UI konfiguriert wurden, müssen neu eingerichtet werden,
+                da deren Konfiguration im <code>.storage</code>-Verzeichnis lag, welches nicht im
+                Git-Repository enthalten ist.
+            </p>
+
+            <h4>Reihenfolge der Einrichtung</h4>
+            <ol>
+                <li>
+                    <strong>Mosquitto Addon installieren</strong><br>
+                    Einstellungen &rarr; Add-ons &rarr; Add-on Store &rarr; Mosquitto broker<br>
+                    MQTT-Benutzer konfigurieren
+                </li>
+                <li>
+                    <strong>MQTT Integration</strong><br>
+                    Wird automatisch erkannt, wenn Mosquitto läuft
+                </li>
+                <li>
+                    <strong>Node-RED Addon installieren</strong><br>
+                    Einstellungen &rarr; Add-ons &rarr; Add-on Store &rarr; Node-RED<br>
+                    Flows werden automatisch aus der kopierten <code>flows.json</code> geladen
+                </li>
+                <li>
+                    <strong>Tibber</strong><br>
+                    API-Token eingeben (von developer.tibber.com)
+                </li>
+                <li>
+                    <strong>Alexa Media Player</strong><br>
+                    Amazon-Login mit 2FA (kann beim ersten Versuch fehlschlagen - siehe
+                    <a href="11-medien.html">Medien</a>)
+                </li>
+                <li>
+                    <strong>Android TV (Sony Bravia)</strong><br>
+                    IP-Adresse eingeben, Pairing-Code auf dem TV bestätigen
+                </li>
+                <li>
+                    <strong>UniFi Network</strong><br>
+                    Controller-URL und Credentials eingeben
+                </li>
+                <li>
+                    <strong>Fritz!Box</strong><br>
+                    IP und Credentials eingeben
+                </li>
+                <li>
+                    <strong>Tractive und PetKit</strong><br>
+                    Jeweilige Cloud-Credentials eingeben
+                </li>
+                <li>
+                    <strong>DWD Wetterwarnungen, Dreame Vacuum etc.</strong><br>
+                    Weitere Integrationen nach Bedarf
+                </li>
+            </ol>
+
+            <h3>4. Dashboards prüfen</h3>
+            <p>
+                YAML-basierte Dashboards sollten nach der Wiederherstellung automatisch funktionieren.
+                UI-basierte Dashboards (aus <code>.storage/lovelace</code>) müssen ggf. manuell
+                neu erstellt werden.
+            </p>
+
+            <h3>5. Automatisierungen testen</h3>
+            <pre><code># YAML-Konfiguration prüfen
+docker exec homeassistant python3 -m homeassistant --script check_config -c /config
+
+# Oder über die UI:
+# Entwicklerwerkzeuge > YAML > Konfiguration überprüfen</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Wiederherstellung aus Backup</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Falls ein vollständiges Backup (inkl. <code>.storage</code> und <code>secrets.yaml</code>)
+                vorhanden ist, kann eine schnellere Wiederherstellung durchgeführt werden.
+            </p>
+
+            <pre><code># Backup entpacken
+tar -xzf /mnt/backup/homeassistant/ha_backup_20260205_030000.tar.gz \
+    -C /var/lib/homeassistant/
+
+# Berechtigungen setzen
+chown -R root:root /var/lib/homeassistant/homeassistant
+
+# Container neu starten
+docker restart homeassistant
+
+# Vorteile:
+# - secrets.yaml ist bereits ausgefüllt
+# - .storage mit allen Integrationen ist vorhanden
+# - Alle OAuth-Tokens sind noch gültig (falls nicht abgelaufen)
+# - Dashboards (UI-Modus) sind wiederhergestellt</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Checkliste nach Wiederherstellung</h2>
+            <!-- ============================================================ -->
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Schritt</th>
+                        <th>Status</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>HA erreichbar</td>
+                        <td>[ ]</td>
+                        <td>Web-UI unter Port 8123 erreichbar</td>
+                    </tr>
+                    <tr>
+                        <td>secrets.yaml</td>
+                        <td>[ ]</td>
+                        <td>Alle Werte eingetragen</td>
+                    </tr>
+                    <tr>
+                        <td>MQTT</td>
+                        <td>[ ]</td>
+                        <td>Mosquitto läuft, Tasmota-Geräte verbunden</td>
+                    </tr>
+                    <tr>
+                        <td>Node-RED</td>
+                        <td>[ ]</td>
+                        <td>Addon installiert, Flows geladen</td>
+                    </tr>
+                    <tr>
+                        <td>HACS</td>
+                        <td>[ ]</td>
+                        <td>Installiert, alle 12 Components nachinstalliert</td>
+                    </tr>
+                    <tr>
+                        <td>Energiesensoren</td>
+                        <td>[ ]</td>
+                        <td>Alle 6 Tasmota-Sensoren liefern Daten</td>
+                    </tr>
+                    <tr>
+                        <td>Tibber</td>
+                        <td>[ ]</td>
+                        <td>Strompreis wird angezeigt</td>
+                    </tr>
+                    <tr>
+                        <td>Alexa</td>
+                        <td>[ ]</td>
+                        <td>Echo Show erreichbar, TTS funktioniert</td>
+                    </tr>
+                    <tr>
+                        <td>TV</td>
+                        <td>[ ]</td>
+                        <td>Sony Bravia erreichbar</td>
+                    </tr>
+                    <tr>
+                        <td>Netzwerk</td>
+                        <td>[ ]</td>
+                        <td>UniFi, MikroTik, Fritz!Box erreichbar</td>
+                    </tr>
+                    <tr>
+                        <td>Charly</td>
+                        <td>[ ]</td>
+                        <td>Tractive und PetKit funktionieren</td>
+                    </tr>
+                    <tr>
+                        <td>Automatisierungen</td>
+                        <td>[ ]</td>
+                        <td>Testlauf aller kritischen Automationen</td>
+                    </tr>
+                    <tr>
+                        <td>Dashboards</td>
+                        <td>[ ]</td>
+                        <td>Alle Dashboards korrekt angezeigt</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="page-nav">
+                <a href="14-sicherheit.html"><div><div class="label">Zurück</div>Sicherheit</div></a>
+                <a href="16-troubleshooting.html"><div><div class="label">Weiter</div>Troubleshooting</div></a>
+            </div>
+            <div class="footer">IceHomeAssist Dokumentation &middot; Erstellt Februar 2026</div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) a.classList.add('active');
+});
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs"},
+];
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i => i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q));
+    results.innerHTML = matches.length === 0 ? '<div class="search-result-item">Keine Ergebnisse</div>' :
+        matches.map(m => `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`).join('');
+    results.classList.add('active');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.search-container')) document.getElementById('searchResults').classList.remove('active'); });
+</script>
+</body>
+</html>

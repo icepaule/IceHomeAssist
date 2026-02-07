@@ -1,0 +1,228 @@
+# PV Tibber Einsparungen
+# Konvertiert von: script.js.common.PV_Anlage.PV_Tibber_Einsparungen
+#
+# Original-Funktion:
+# - Berechnet Einsparungen durch PV-Eigenverbrauch
+# - Multipliziert PV-Produktion mit aktuellem Tibber-Preis
+# - Kumuliert Einsparungen (täglich/wöchentlich/monatlich/jährlich)
+#
+# Benötigt:
+# - Tibber Integration
+# - PV-Wechselrichter Integration (z.B. über MQTT/Sonoff)
+# - Utility Meter für kumulierte Werte
+
+# =============================================================================
+# MQTT SENSORS - REMOVED
+# =============================================================================
+# FIX: Removed duplicate MQTT sensors (sensor.pv_power, sensor.pv_energy_today,
+# sensor.pv_energy_total) that conflicted with the canonical sensors defined in
+# configuration.yaml (sensor.pv_leistung, sensor.pv_energie_heute,
+# sensor.pv_energie_gesamt). All references updated to use configuration.yaml names.
+
+# =============================================================================
+# TEMPLATE SENSORS
+# =============================================================================
+template:
+  - sensor:
+      # Aktuelle Einsparung (basierend auf PV-Produktion und Tibber-Preis)
+      - name: "PV Current Savings"
+        unique_id: pv_current_savings
+        unit_of_measurement: "€/h"
+        state_class: measurement
+        device_class: monetary
+        icon: mdi:piggy-bank
+        state: >
+          {% set pv_power = states('sensor.pv_leistung') | float(0) %}
+          {% set price = states('sensor.tibber_current_price') | float(0) %}
+          {# Leistung in kW * Preis in €/kWh = €/h #}
+          {{ ((pv_power / 1000) * price) | round(4) }}
+        availability: >
+          {{ states('sensor.pv_leistung') not in ['unknown', 'unavailable'] and
+             states('sensor.tibber_current_price') not in ['unknown', 'unavailable'] }}
+
+      # Einsparung heute (kumuliert über Template-Integral)
+      - name: "PV Savings Today Calculated"
+        unique_id: pv_savings_today_calculated
+        unit_of_measurement: "€"
+        state_class: total
+        device_class: monetary
+        icon: mdi:cash-plus
+        state: >
+          {% set energy_today = states('sensor.pv_energie_heute') | float(0) %}
+          {% set avg_price = states('sensor.tibber_avg_price_24h') | float(0.30) %}
+          {{ (energy_today * avg_price) | round(2) }}
+
+      # Preis-gewichtete Einsparung (genauer)
+      - name: "PV Savings Rate"
+        unique_id: pv_savings_rate
+        unit_of_measurement: "€/kWh"
+        state_class: measurement
+        icon: mdi:chart-line
+        state: >
+          {# Durchschnittlicher eingesparter Preis #}
+          {% set total_savings = states('sensor.pv_savings_daily') | float(0) %}
+          {% set total_energy = states('sensor.pv_energie_heute') | float(0.001) %}
+          {{ (total_savings / total_energy) | round(4) }}
+
+      # Status-Anzeige für Dashboard
+      - name: "PV Savings Status"
+        unique_id: pv_savings_status
+        state: >
+          {% set power = states('sensor.pv_leistung') | float(0) %}
+          {% set savings = states('sensor.pv_current_savings') | float(0) %}
+          {% if power > 1000 %}
+            Hohe Produktion
+          {% elif power > 100 %}
+            Aktive Produktion
+          {% elif power > 0 %}
+            Geringe Produktion
+          {% else %}
+            Keine Produktion
+          {% endif %}
+        icon: >
+          {% set power = states('sensor.pv_leistung') | float(0) %}
+          {% if power > 1000 %}mdi:solar-power
+          {% elif power > 100 %}mdi:solar-panel
+          {% elif power > 0 %}mdi:solar-panel-large
+          {% else %}mdi:weather-night{% endif %}
+
+# =============================================================================
+# UTILITY METER für kumulierte Einsparungen
+# =============================================================================
+utility_meter:
+  pv_savings_daily:
+    source: sensor.pv_current_savings
+    name: "PV Einsparungen Täglich"
+    cycle: daily
+    tariffs:
+      - peak
+      - offpeak
+
+  pv_savings_weekly:
+    source: sensor.pv_current_savings
+    name: "PV Einsparungen Wöchentlich"
+    cycle: weekly
+
+  pv_savings_monthly:
+    source: sensor.pv_current_savings
+    name: "PV Einsparungen Monatlich"
+    cycle: monthly
+
+  pv_savings_yearly:
+    source: sensor.pv_current_savings
+    name: "PV Einsparungen Jährlich"
+    cycle: yearly
+
+# =============================================================================
+# AUTOMATIONS
+# =============================================================================
+automation:
+  # Einsparungsberechnung alle 5 Minuten protokollieren
+  - id: pv_savings_log
+    alias: "PV: Einsparungen Protokollieren"
+    description: "Protokolliert Einsparungen alle 5 Minuten"
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: numeric_state
+        entity_id: sensor.pv_leistung
+        above: 10
+    action:
+      - service: logbook.log
+        data:
+          name: "PV Savings"
+          message: >
+            PV: {{ states('sensor.pv_leistung') }}W |
+            Preis: {{ states('sensor.tibber_current_price') }}€/kWh |
+            Ersparnis: {{ states('sensor.pv_current_savings') }}€/h
+          entity_id: sensor.pv_current_savings
+    mode: single
+
+  # Tägliche Einsparungs-Zusammenfassung
+  - id: pv_daily_savings_summary
+    alias: "PV: Tägliche Einsparungen"
+    description: "Sendet abends eine Zusammenfassung der PV-Einsparungen"
+    trigger:
+      - platform: time
+        at: "20:00:00"
+    condition:
+      - condition: numeric_state
+        entity_id: sensor.pv_savings_daily
+        above: 0.01
+    action:
+      - service: notify.notify
+        data:
+          title: "☀️ PV Tagesertrag"
+          message: >
+            Produktion heute: {{ states('sensor.pv_energie_heute') }} kWh
+            Einsparung heute: {{ states('sensor.pv_savings_daily') | round(2) }} €
+            Einsparung Monat: {{ states('sensor.pv_savings_monthly') | round(2) }} €
+            Einsparung Jahr: {{ states('sensor.pv_savings_yearly') | round(2) }} €
+    mode: single
+
+  # Warnung bei hoher Produktion und teurem Strom
+  - id: pv_optimal_usage_alert
+    alias: "PV: Optimale Nutzungszeit"
+    description: "Benachrichtigt wenn PV produziert und Strom teuer ist"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.pv_leistung
+        above: 500
+    condition:
+      - condition: state
+        entity_id: sensor.tibber_price_level
+        state: "expensive"
+    action:
+      - service: notify.notify
+        data:
+          title: "⚡ PV + Teurer Strom!"
+          message: >
+            Jetzt ist ein guter Zeitpunkt für hohen Eigenverbrauch!
+            PV-Produktion: {{ states('sensor.pv_leistung') }}W
+            Strompreis: {{ states('sensor.tibber_current_price') }}€/kWh
+    mode: single
+
+  # Peak/Offpeak Tarif automatisch wechseln
+  - id: pv_savings_tariff_peak
+    alias: "PV: Tarif Peak setzen"
+    trigger:
+      - platform: time
+        at: "07:00:00"
+    action:
+      - service: utility_meter.select_tariff
+        target:
+          entity_id: utility_meter.pv_savings_daily
+        data:
+          tariff: peak
+    mode: single
+
+  - id: pv_savings_tariff_offpeak
+    alias: "PV: Tarif Offpeak setzen"
+    trigger:
+      - platform: time
+        at: "22:00:00"
+    action:
+      - service: utility_meter.select_tariff
+        target:
+          entity_id: utility_meter.pv_savings_daily
+        data:
+          tariff: offpeak
+    mode: single
+
+# =============================================================================
+# SCRIPT für manuelle Neuberechnung
+# =============================================================================
+script:
+  pv_recalculate_savings:
+    alias: "PV: Einsparungen neu berechnen"
+    description: "Berechnet die Einsparungen basierend auf historischen Daten neu"
+    sequence:
+      - service: logbook.log
+        data:
+          name: "PV Savings"
+          message: "Manuelle Neuberechnung der Einsparungen gestartet"
+          entity_id: sensor.pv_current_savings
+      # Hier könnte ein InfluxDB-Query eingefügt werden
+      # oder ein REST-Command zu einem externen Service
+    mode: single

@@ -1,0 +1,300 @@
+# =============================================================================
+# WARNUNGEN & PEGELSTÄNDE PAKET
+# =============================================================================
+# Enthält:
+# - NINA Warnungen für München (ARS 091620000000)
+# - DWD Wetterwarnungen
+# - HND Bayern Pegelstände (Isar, Amper, Würm)
+# - THW-relevante Auswertung
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REST Sensoren
+# -----------------------------------------------------------------------------
+rest:
+  # NINA Warnungen für München
+  - resource: "https://warnung.bund.de/api31/dashboard/091620000000.json"
+    scan_interval: 300
+    sensor:
+      - name: "NINA München Warnungen Anzahl"
+        unique_id: nina_muenchen_warnungen_anzahl
+        value_template: >
+          {% if value_json %}
+            {{ value_json | length }}
+          {% else %}
+            0
+          {% endif %}
+        icon: mdi:alert
+
+      - name: "NINA München Warnung Aktuell"
+        unique_id: nina_muenchen_warnung_aktuell
+        value_template: >
+          {% if value_json and value_json | length > 0 %}
+            {{ value_json[0].payload.data.headline | default('Keine Warnung') }}
+          {% else %}
+            Keine aktiven Warnungen
+          {% endif %}
+        icon: mdi:alert-circle
+
+      - name: "NINA München Warnung Typ"
+        unique_id: nina_muenchen_warnung_typ
+        value_template: >
+          {% if value_json and value_json | length > 0 %}
+            {% set msg_type = value_json[0].payload.data.msgType | default('') %}
+            {% set type_map = {
+              'Alert': 'Warnung',
+              'Update': 'Aktualisierung',
+              'Cancel': 'Entwarnung'
+            } %}
+            {{ type_map.get(msg_type, msg_type) }}
+          {% else %}
+            Keine
+          {% endif %}
+        icon: mdi:information
+
+      - name: "NINA München Warnung Schwere"
+        unique_id: nina_muenchen_warnung_schwere
+        value_template: >
+          {% if value_json and value_json | length > 0 %}
+            {% set severity = value_json[0].payload.data.severity | default('') %}
+            {% set sev_map = {
+              'Minor': 'Gering',
+              'Moderate': 'Mäßig',
+              'Severe': 'Schwer',
+              'Extreme': 'Extrem'
+            } %}
+            {{ sev_map.get(severity, severity) }}
+          {% else %}
+            Keine
+          {% endif %}
+        icon: mdi:gauge
+
+  # DWD Wetterwarnungen München (Warncell: Stadt München = 809162000)
+  - resource: "https://s3.eu-central-1.amazonaws.com/app-prod-static.warnwetter.de/v16/current_warning_de.json"
+    scan_interval: 600
+    sensor:
+      - name: "DWD München Warnungen"
+        unique_id: dwd_muenchen_warnungen
+        value_template: >
+          {% set warnings = value_json.warnings | default({}) %}
+          {% set ns = namespace(count=0) %}
+          {% for cell_id, warns in warnings.items() %}
+            {% if warns is iterable and warns is not string %}
+              {% for w in warns %}
+                {% if 'München' in (w.regionName | default('')) or cell_id == '809162000' %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.count }}
+        icon: mdi:weather-lightning-rainy
+
+  # Pegelstände Isar
+  # URLs: HND Bayern Hauptseiten (alte graphik_pegel.php API ist offline)
+  # Regex: Wert steht in <b>XX</b> cm Format
+  - resource: "https://www.hnd.bayern.de/pegel/isar/muenchen-16005701"
+    scan_interval: 900
+    headers:
+      Accept: "text/html,application/xhtml+xml"
+      User-Agent: "HomeAssistant"
+    sensor:
+      - name: "Pegel Isar München"
+        unique_id: pegel_isar_muenchen
+        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
+        unit_of_measurement: "cm"
+        icon: mdi:waves
+
+  - resource: "https://www.hnd.bayern.de/pegel/isar/freising-16006500"
+    scan_interval: 900
+    headers:
+      Accept: "text/html,application/xhtml+xml"
+      User-Agent: "HomeAssistant"
+    sensor:
+      - name: "Pegel Isar Freising"
+        unique_id: pegel_isar_freising
+        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
+        unit_of_measurement: "cm"
+        icon: mdi:waves
+
+  - resource: "https://www.hnd.bayern.de/pegel/isar/bad-toelz-bruecke-16003502"
+    scan_interval: 900
+    headers:
+      Accept: "text/html,application/xhtml+xml"
+      User-Agent: "HomeAssistant"
+    sensor:
+      - name: "Pegel Isar Bad Tölz"
+        unique_id: pegel_isar_bad_toelz
+        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
+        unit_of_measurement: "cm"
+        icon: mdi:waves
+
+  - resource: "https://www.hnd.bayern.de/pegel/isar/puppling-16004403"
+    scan_interval: 900
+    headers:
+      Accept: "text/html,application/xhtml+xml"
+      User-Agent: "HomeAssistant"
+    sensor:
+      - name: "Pegel Isar Puppling"
+        unique_id: pegel_isar_puppling
+        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
+        unit_of_measurement: "cm"
+        icon: mdi:waves
+
+  # Pegelstände Amper (korrigierte Station-IDs)
+  - resource: "https://www.hnd.bayern.de/pegel/isar/fuerstenfeldbruck-16605006"
+    scan_interval: 900
+    headers:
+      Accept: "text/html,application/xhtml+xml"
+      User-Agent: "HomeAssistant"
+    sensor:
+      - name: "Pegel Amper Fürstenfeldbruck"
+        unique_id: pegel_amper_fuerstenfeldbruck
+        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
+        unit_of_measurement: "cm"
+        icon: mdi:waves
+
+  - resource: "https://www.hnd.bayern.de/pegel/donau_bis_passau/inkofen-16607001"
+    scan_interval: 900
+    headers:
+      Accept: "text/html,application/xhtml+xml"
+      User-Agent: "HomeAssistant"
+    sensor:
+      - name: "Pegel Amper Inkofen"
+        unique_id: pegel_amper_inkofen
+        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
+        unit_of_measurement: "cm"
+        icon: mdi:waves
+
+# -----------------------------------------------------------------------------
+# Template Sensoren für THW-relevante Aufbereitung
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      # THW Einsatz-Relevanz Indikator
+      - name: "THW Einsatz Wahrscheinlich"
+        unique_id: thw_einsatz_wahrscheinlich
+        state: >
+          {% set anzahl = states('sensor.nina_munchen_warnungen_anzahl') | int(0) %}
+          {% set schwere = states('sensor.nina_munchen_warnung_schwere') %}
+          {% if anzahl == 0 %}
+            Keine Lage
+          {% elif schwere in ['Extrem', 'Severe', 'Schwer'] %}
+            Hohe Wahrscheinlichkeit
+          {% elif schwere in ['Moderate', 'Mäßig'] %}
+            Möglich
+          {% else %}
+            Unwahrscheinlich
+          {% endif %}
+        icon: mdi:shield-alert
+
+      # Zusammenfassung aller Warnungen
+      - name: "Warnungen Zusammenfassung"
+        unique_id: warnungen_zusammenfassung
+        state: >
+          {% set nina = states('sensor.nina_munchen_warnungen_anzahl') | int(0) %}
+          {% set dwd = states('sensor.dwd_munchen_warnungen') | int(0) %}
+          {% set total = nina + dwd %}
+          {% if total == 0 %}
+            Alles ruhig
+          {% elif total == 1 %}
+            1 Warnung aktiv
+          {% else %}
+            {{ total }} Warnungen aktiv
+          {% endif %}
+        icon: mdi:bell-alert
+
+  - binary_sensor:
+      # THW Alarmbereitschaft Indikator
+      - name: "THW Alarmbereitschaft"
+        unique_id: thw_alarmbereitschaft
+        state: >
+          {% set schwere = states('sensor.nina_munchen_warnung_schwere') %}
+          {{ schwere in ['Extrem', 'Severe', 'Schwer', 'Moderate', 'Mäßig'] }}
+        device_class: safety
+        icon: mdi:shield-alert
+
+# -----------------------------------------------------------------------------
+# Input Helpers für THW
+# -----------------------------------------------------------------------------
+input_boolean:
+  thw_dienst_aktiv:
+    name: THW Dienst aktiv
+    icon: mdi:shield-account
+
+  thw_benachrichtigungen:
+    name: THW Benachrichtigungen aktiv
+    icon: mdi:bell-ring
+
+input_text:
+  thw_ortsverband:
+    name: THW Ortsverband
+    initial: "THW München Ost"
+    icon: mdi:map-marker
+
+# -----------------------------------------------------------------------------
+# Automationen
+# -----------------------------------------------------------------------------
+automation:
+  # NINA Warnung Benachrichtigung
+  - id: nina_warnung_neu
+    alias: "NINA Neue Warnung"
+    description: "Benachrichtigt bei neuen NINA Warnungen für München"
+    trigger:
+      - platform: state
+        entity_id: sensor.nina_munchen_warnungen_anzahl
+    condition:
+      - condition: template
+        value_template: "{{ trigger.to_state.state | int > trigger.from_state.state | int }}"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "NINA Warnung München"
+          message: >
+            {{ states('sensor.nina_munchen_warnung_aktuell') }}
+            Schwere: {{ states('sensor.nina_munchen_warnung_schwere') }}
+          notification_id: nina_warnung
+    mode: single
+
+  # THW Alarmbereitschaft Benachrichtigung
+  - id: thw_alarm_notification
+    alias: "THW Alarmbereitschaft Warnung"
+    description: "Benachrichtigt wenn THW-Einsatz wahrscheinlich ist"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.thw_alarmbereitschaft
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.thw_benachrichtigungen
+        state: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "THW Alarmbereitschaft"
+          message: >
+            Aufgrund aktueller Warnungen könnte ein THW-Einsatz bevorstehen!
+
+            Warnung: {{ states('sensor.nina_munchen_warnung_aktuell') }}
+            Schwere: {{ states('sensor.nina_munchen_warnung_schwere') }}
+          notification_id: thw_alarm
+    mode: single
+
+  # Entwarnung
+  - id: nina_entwarnung
+    alias: "NINA Entwarnung"
+    description: "Benachrichtigt bei Entwarnung"
+    trigger:
+      - platform: state
+        entity_id: sensor.nina_munchen_warnungen_anzahl
+        to: "0"
+    condition:
+      - condition: template
+        value_template: "{{ trigger.from_state.state | int > 0 }}"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Entwarnung"
+          message: "Alle NINA Warnungen für München wurden aufgehoben."
+          notification_id: nina_entwarnung
+    mode: single

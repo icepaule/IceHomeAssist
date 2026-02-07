@@ -1,0 +1,95 @@
+# =============================================================================
+# Utility Meters - Verbrauchszähler
+# =============================================================================
+# Für Energie-Tracking und Kostenberechnung
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# TIBBER Stromkosten
+# FIX: source was sensor.tibber_accumulated_cost which doesn't exist.
+# Changed to sensor.tibber_pulse_paule_accumulated_cost (the actual Tibber entity).
+# -----------------------------------------------------------------------------
+tibber_daily_cost:
+  source: sensor.tibber_pulse_paule_accumulated_cost
+  name: "Tibber Tageskosten"
+  cycle: daily
+
+tibber_weekly_cost:
+  source: sensor.tibber_pulse_paule_accumulated_cost
+  name: "Tibber Wochenkosten"
+  cycle: weekly
+
+tibber_monthly_cost:
+  source: sensor.tibber_pulse_paule_accumulated_cost
+  name: "Tibber Monatskosten"
+  cycle: monthly
+
+tibber_yearly_cost:
+  source: sensor.tibber_pulse_paule_accumulated_cost
+  name: "Tibber Jahreskosten"
+  cycle: yearly
+
+# -----------------------------------------------------------------------------
+# PV Erzeugung
+# -----------------------------------------------------------------------------
+pv_daily_energy:
+  source: sensor.pv_energy_total
+  name: "PV Tagesertrag"
+  cycle: daily
+
+pv_weekly_energy:
+  source: sensor.pv_energy_total
+  name: "PV Wochenertrag"
+  cycle: weekly
+
+pv_monthly_energy:
+  source: sensor.pv_energy_total
+  name: "PV Monatsertrag"
+  cycle: monthly
+
+pv_yearly_energy:
+  source: sensor.pv_energy_total
+  name: "PV Jahresertrag"
+  cycle: yearly
+
+# -----------------------------------------------------------------------------
+# PV Einsparungen
+# -----------------------------------------------------------------------------
+pv_savings_daily:
+  source: sensor.pv_current_savings
+  name: "PV Einsparungen Täglich"
+  cycle: daily
+  tariffs:
+    - peak
+    - offpeak
+
+pv_savings_monthly:
+  source: sensor.pv_current_savings
+  name: "PV Einsparungen Monatlich"
+  cycle: monthly
+
+pv_savings_yearly:
+  source: sensor.pv_current_savings
+  name: "PV Einsparungen Jährlich"
+  cycle: yearly
+
+# -----------------------------------------------------------------------------
+# Gesamtstromverbrauch (falls Sensor vorhanden)
+# -----------------------------------------------------------------------------
+# total_energy_daily:
+#   source: sensor.total_energy_consumption
+#   name: "Stromverbrauch Täglich"
+#   cycle: daily
+#   tariffs:
+#     - normal
+#     - niedrig  # Nachtstrom falls vorhanden
+
+# total_energy_monthly:
+#   source: sensor.total_energy_consumption
+#   name: "Stromverbrauch Monatlich"
+#   cycle: monthly
+
+# total_energy_yearly:
+#   source: sensor.total_energy_consumption
+#   name: "Stromverbrauch Jährlich"
+#   cycle: yearly

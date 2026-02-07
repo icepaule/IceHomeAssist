@@ -1,0 +1,276 @@
+# =============================================================================
+# THW / DIVERA 24/7 DASHBOARD
+# =============================================================================
+# Zeigt Alarme, Verfügbarkeit, Fahrzeuge und Kalender aus Divera 24/7
+# Entity-IDs werden dynamisch per Template gefunden (UCR-ID erst nach Config bekannt)
+
+title: THW
+views:
+  # =========================================================================
+  # VIEW 1: Übersicht
+  # =========================================================================
+  - title: Übersicht
+    path: uebersicht
+    icon: mdi:fire-truck
+    cards:
+      # -------------------------------------------------------------------
+      # ALARM-BANNER (nur bei offenen Alarmen)
+      # -------------------------------------------------------------------
+      - type: conditional
+        conditions:
+          - condition: numeric_state
+            entity: sensor.divera_open_alarms_helper
+            above: 0
+        card:
+          type: custom:mushroom-template-card
+          primary: >
+            {% set alarms = states.sensor
+              | selectattr('entity_id', 'search', '_alarm_')
+              | selectattr('attributes.closed', 'eq', false)
+              | list %}
+            {% if alarms | length > 0 %}
+              {{ alarms[0].state }}
+            {% else %}
+              Alarm aktiv
+            {% endif %}
+          secondary: >
+            {% set alarms = states.sensor
+              | selectattr('entity_id', 'search', '_alarm_')
+              | selectattr('attributes.closed', 'eq', false)
+              | list %}
+            {% if alarms | length > 0 %}
+              {{ alarms[0].attributes.get('text', '') [:100] }}
+              — {{ alarms[0].attributes.get('address', '') }}
+            {% endif %}
+          icon: mdi:alarm-light
+          icon_color: red
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 0, 0, 0.15) !important;
+                border: 2px solid red !important;
+                animation: pulse 2s infinite;
+              }
+              @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+              }
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace-thw/alarm-details
+
+      # Fallback: Kein Alarm - alles ruhig
+      - type: conditional
+        conditions:
+          - condition: numeric_state
+            entity: sensor.divera_open_alarms_helper
+            below: 1
+        card:
+          type: custom:mushroom-template-card
+          primary: Keine aktiven Alarme
+          secondary: >
+            Letzte Aktualisierung: {{ now().strftime('%H:%M') }}
+          icon: mdi:check-circle
+          icon_color: green
+
+      # -------------------------------------------------------------------
+      # OFFENE ALARME ÜBERSICHT
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Aktuelle Alarme
+        content: >
+          {% set alarms = states.sensor
+            | selectattr('entity_id', 'search', '_alarm_')
+            | rejectattr('state', 'eq', 'unavailable')
+            | rejectattr('state', 'eq', 'unknown')
+            | list %}
+          {% if alarms | length == 0 %}
+            *Keine Alarme vorhanden*
+          {% else %}
+            {% for alarm in alarms %}
+          **{{ alarm.state }}**
+          {{ alarm.attributes.get('text', 'Kein Text') }}
+          Adresse: {{ alarm.attributes.get('address', 'Unbekannt') }}
+          Priorität: {{ '🔴 Hoch' if alarm.attributes.get('priority', false) else '🟡 Normal' }}
+          Status: {{ '✅ Geschlossen' if alarm.attributes.get('closed', false) else '🔴 Offen' }}
+          {% if alarm.attributes.get('lat') and alarm.attributes.get('lng') %}
+          [📍 Navigation](https://www.google.com/maps/dir/?api=1&destination={{ alarm.attributes.lat }},{{ alarm.attributes.lng }})
+          {% endif %}
+          ---
+            {% endfor %}
+          {% endif %}
+
+      # -------------------------------------------------------------------
+      # KALENDER - Nächste Termine
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Kalender
+        content: >
+          {% set calendars = states.calendar
+            | selectattr('entity_id', 'search', '450712')
+            | list %}
+          {% if calendars | length > 0 %}
+            {% set cal = calendars[0] %}
+            Nächster Termin: **{{ cal.attributes.get('message', 'Kein Termin') }}**
+            {{ cal.attributes.get('start_time', '') }} — {{ cal.attributes.get('description', '') }}
+            {% if cal.attributes.get('location') %}
+            Ort: {{ cal.attributes.get('location') }}
+            {% endif %}
+          {% else %}
+            *Kalender noch nicht verfügbar. Integration konfigurieren.*
+          {% endif %}
+
+      # -------------------------------------------------------------------
+      # PERSONALSTÄRKE / VERFÜGBARKEIT
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Verfügbarkeit
+        content: >
+          {% set statuses = states.sensor
+            | selectattr('entity_id', 'search', '_status_')
+            | selectattr('entity_id', 'search', '450712')
+            | rejectattr('state', 'eq', 'unavailable')
+            | list %}
+          {% if statuses | length == 0 %}
+            *Keine Status-Daten. Integration konfigurieren.*
+          {% else %}
+            | Status | Personen |
+            |--------|----------|
+            {% for s in statuses %}
+            | {{ s.attributes.get('friendly_name', s.name) }} | {{ s.state }} |
+            {% endfor %}
+          {% endif %}
+
+      # -------------------------------------------------------------------
+      # FAHRZEUGE
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Fahrzeuge
+        content: >
+          {% set vehicles = states.sensor
+            | selectattr('entity_id', 'search', '_vehicle_')
+            | selectattr('entity_id', 'search', '450712')
+            | rejectattr('state', 'eq', 'unavailable')
+            | list %}
+          {% if vehicles | length == 0 %}
+            *Keine Fahrzeug-Daten. Integration konfigurieren.*
+          {% else %}
+            | Fahrzeug | FMS-Status |
+            |----------|-----------|
+            {% for v in vehicles %}
+            | {{ v.attributes.get('friendly_name', v.name) }} | {{ v.state }} |
+            {% endfor %}
+          {% endif %}
+
+      # -------------------------------------------------------------------
+      # EINHEITS-DATEN
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Einheit
+        content: >
+          {% set units = states.sensor
+            | selectattr('entity_id', 'search', '_cluster_address')
+            | list %}
+          {% if units | length > 0 %}
+            {% set u = units[0] %}
+            **{{ u.attributes.get('friendly_name', 'Einheit') }}**
+            UCR: {{ u.state }}
+            {% if u.attributes.get('street') %}
+            Adresse: {{ u.attributes.get('street', '') }}, {{ u.attributes.get('zip', '') }} {{ u.attributes.get('city', '') }}
+            {% endif %}
+          {% else %}
+            *Einheitsdaten noch nicht verfügbar.*
+          {% endif %}
+
+  # =========================================================================
+  # VIEW 2: Alarm-Details (Subview)
+  # =========================================================================
+  - title: Alarm-Details
+    path: alarm-details
+    icon: mdi:alarm-light
+    subview: true
+    cards:
+      # -------------------------------------------------------------------
+      # ALARM-VOLLANSICHT
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Alarm-Details
+        content: >
+          {% set alarms = states.sensor
+            | selectattr('entity_id', 'search', '_alarm_')
+            | rejectattr('state', 'eq', 'unavailable')
+            | rejectattr('state', 'eq', 'unknown')
+            | list %}
+          {% if alarms | length == 0 %}
+            *Kein aktiver Alarm.*
+          {% else %}
+            {% set a = alarms[0] %}
+          ## {{ a.state }}
+
+          **Meldungstext:** {{ a.attributes.get('text', 'Kein Text') }}
+
+          **Adresse:** {{ a.attributes.get('address', 'Unbekannt') }}
+
+          **Priorität:** {{ '🔴 Hoch' if a.attributes.get('priority', false) else '🟡 Normal' }}
+
+          **Status:** {{ '✅ Geschlossen' if a.attributes.get('closed', false) else '🔴 Offen' }}
+
+          **Datum:** {{ a.attributes.get('date', 'Unbekannt') }}
+
+          {% if a.attributes.get('group') %}
+          **Gruppen:** {{ a.attributes.get('group', '') }}
+          {% endif %}
+
+          {% if a.attributes.get('self_addressed') is not none %}
+          **Selbst adressiert:** {{ 'Ja' if a.attributes.get('self_addressed', false) else 'Nein' }}
+          {% endif %}
+
+          {% if a.attributes.get('answered') is not none %}
+          **Rückmeldung:** {{ a.attributes.get('answered', 'Keine') }}
+          {% endif %}
+
+          {% if a.attributes.get('lat') and a.attributes.get('lng') %}
+          ---
+          ### Navigation
+          [📍 Google Maps öffnen](https://www.google.com/maps/dir/?api=1&destination={{ a.attributes.lat }},{{ a.attributes.lng }})
+
+          [🗺️ Auf Karte anzeigen](https://www.google.com/maps?q={{ a.attributes.lat }},{{ a.attributes.lng }})
+          {% endif %}
+          {% endif %}
+
+      # -------------------------------------------------------------------
+      # KARTE MIT EINSATZORT
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Einsatzort
+        content: >
+          {% set alarms = states.sensor
+            | selectattr('entity_id', 'search', '_alarm_')
+            | rejectattr('state', 'eq', 'unavailable')
+            | list %}
+          {% if alarms | length > 0 and alarms[0].attributes.get('lat') and alarms[0].attributes.get('lng') %}
+            ![Karte](https://maps.googleapis.com/maps/api/staticmap?center={{ alarms[0].attributes.lat }},{{ alarms[0].attributes.lng }}&zoom=14&size=600x300&markers=color:red|{{ alarms[0].attributes.lat }},{{ alarms[0].attributes.lng }})
+          {% else %}
+            *Keine Koordinaten verfügbar.*
+          {% endif %}
+
+      # -------------------------------------------------------------------
+      # ALLE ALARME (wenn mehrere offen)
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Alle Alarme
+        content: >
+          {% set alarms = states.sensor
+            | selectattr('entity_id', 'search', '_alarm_')
+            | rejectattr('state', 'eq', 'unavailable')
+            | rejectattr('state', 'eq', 'unknown')
+            | list %}
+          {% if alarms | length <= 1 %}
+            *Keine weiteren Alarme.*
+          {% else %}
+            {% for alarm in alarms[1:] %}
+          **{{ alarm.state }}** — {{ alarm.attributes.get('address', '') }}
+          Status: {{ '✅ Geschlossen' if alarm.attributes.get('closed', false) else '🔴 Offen' }}
+          ---
+            {% endfor %}
+          {% endif %}

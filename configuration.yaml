@@ -1,0 +1,432 @@
+# =============================================================================
+# Home Assistant Configuration
+# =============================================================================
+# Migriert von ioBroker
+# Sensible Daten in secrets.yaml ausgelagert
+# =============================================================================
+
+homeassistant:
+  name: !secret home_name
+  latitude: !secret home_latitude
+  longitude: !secret home_longitude
+  elevation: !secret home_elevation
+  unit_system: metric
+  currency: EUR
+  country: DE
+  time_zone: !secret home_timezone
+  internal_url: !secret internal_url
+  external_url: !secret external_url
+  packages: !include_dir_named packages/
+
+# Default Config (empfohlen)
+default_config:
+
+# Frontend Themes
+frontend:
+  themes: !include_dir_merge_named themes
+
+# Logger
+logger:
+  default: info
+  logs:
+    homeassistant.components.mqtt: info
+    homeassistant.components.tibber: info
+    custom_components.diveracontrol.divera_data: critical
+    bsblan.bsblan: warning
+
+# History & Recorder
+recorder:
+  purge_keep_days: 30
+  commit_interval: 5
+  include:
+    domains:
+      - sensor
+      - binary_sensor
+      - switch
+      - light
+      - climate
+    entity_globs:
+      - sensor.pv_*
+      - sensor.tibber_*
+      - sensor.server_*
+      - sensor.kueche_*
+      - sensor.waschmaschine_*
+      - sensor.450712_*
+      - calendar.450712_*
+      - device_tracker.charly_tracker
+      - sensor.charly_*
+      - binary_sensor.charly_*
+      - switch.charly_*
+      - sensor.trockner_*
+
+# =============================================================================
+# MQTT Sensoren (Broker über UI/Addon konfiguriert)
+# =============================================================================
+mqtt:
+  # ---------------------------------------------------------------------------
+  # Tasmota Energie-Sensoren
+  # ---------------------------------------------------------------------------
+  sensor:
+    # === Strom-PV (Photovoltaik) ===
+    - name: "PV Leistung"
+      unique_id: strom_pv_power
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:solar-power
+
+    - name: "PV Energie Heute"
+      unique_id: strom_pv_today
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      icon: mdi:solar-power
+
+    - name: "PV Energie Gestern"
+      unique_id: strom_pv_yesterday
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Yesterday }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      icon: mdi:solar-power
+
+    - name: "PV Energie Gesamt"
+      unique_id: strom_pv_total
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      icon: mdi:solar-power
+
+    - name: "PV Spannung"
+      unique_id: strom_pv_voltage
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Voltage }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "PV Strom"
+      unique_id: strom_pv_current
+      state_topic: "tele/Strom-PV/SENSOR"
+      value_template: "{{ value_json.ENERGY.Current }}"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+
+    # === Strom-Server ===
+    - name: "Server Leistung"
+      unique_id: strom_server_power
+      state_topic: "tele/Strom-Server/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:server
+
+    - name: "Server Energie Heute"
+      unique_id: strom_server_today
+      state_topic: "tele/Strom-Server/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Server Energie Gesamt"
+      unique_id: strom_server_total
+      state_topic: "tele/Strom-Server/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    # === Strom-Trockner ===
+    - name: "Trockner Leistung"
+      unique_id: strom_trockner_power
+      state_topic: "tele/Strom-Trockner/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:tumble-dryer
+
+    - name: "Trockner Energie Heute"
+      unique_id: strom_trockner_today
+      state_topic: "tele/Strom-Trockner/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Trockner Energie Gesamt"
+      unique_id: strom_trockner_total
+      state_topic: "tele/Strom-Trockner/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    # === Strom-Wasch (Waschmaschine) ===
+    - name: "Waschmaschine Leistung"
+      unique_id: strom_wasch_power
+      state_topic: "tele/Strom-Wasch/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:washing-machine
+
+    - name: "Waschmaschine Energie Heute"
+      unique_id: strom_wasch_today
+      state_topic: "tele/Strom-Wasch/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Waschmaschine Energie Gesamt"
+      unique_id: strom_wasch_total
+      state_topic: "tele/Strom-Wasch/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    # === Strom-KE (Küche) ===
+    - name: "Kueche Leistung"
+      unique_id: strom_kueche_power
+      state_topic: "tele/Strom-KE_B51903/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:countertop
+
+    - name: "Kueche Energie Heute"
+      unique_id: strom_kueche_today
+      state_topic: "tele/Strom-KE_B51903/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Kueche Energie Gesamt"
+      unique_id: strom_kueche_total
+      state_topic: "tele/Strom-KE_B51903/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    # === Strom-AZ (Arbeitszimmer/Office) ===
+    - name: "Arbeitszimmer Leistung"
+      unique_id: strom_az_power
+      state_topic: "tele/AZ_C8B675/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:desk
+
+    - name: "Arbeitszimmer Energie Heute"
+      unique_id: strom_az_today
+      state_topic: "tele/AZ_C8B675/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Arbeitszimmer Energie Gesamt"
+      unique_id: strom_az_total
+      state_topic: "tele/AZ_C8B675/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+  # ---------------------------------------------------------------------------
+  # Tasmota Schalter
+  # ---------------------------------------------------------------------------
+  switch:
+    - name: "Strom PV"
+      unique_id: switch_strom_pv
+      command_topic: "cmnd/Strom-PV/POWER"
+      state_topic: "stat/Strom-PV/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      icon: mdi:solar-power
+
+    - name: "Strom Server"
+      unique_id: switch_strom_server
+      command_topic: "cmnd/Strom-Server/POWER"
+      state_topic: "stat/Strom-Server/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      icon: mdi:server
+
+    - name: "Strom Trockner"
+      unique_id: switch_strom_trockner
+      command_topic: "cmnd/Strom-Trockner/POWER"
+      state_topic: "stat/Strom-Trockner/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      icon: mdi:tumble-dryer
+
+    - name: "Strom Waschmaschine"
+      unique_id: switch_strom_wasch
+      command_topic: "cmnd/Strom-Wasch/POWER"
+      state_topic: "stat/Strom-Wasch/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      icon: mdi:washing-machine
+
+    - name: "Strom Kueche"
+      unique_id: switch_strom_kueche
+      command_topic: "cmnd/Strom-KE_B51903/POWER"
+      state_topic: "stat/Strom-KE_B51903/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      icon: mdi:countertop
+
+    - name: "Strom Arbeitszimmer"
+      unique_id: switch_strom_az
+      command_topic: "cmnd/AZ_C8B675/POWER"
+      state_topic: "stat/AZ_C8B675/POWER"
+      payload_on: "ON"
+      payload_off: "OFF"
+      icon: mdi:desk
+
+# =============================================================================
+# Input Helpers → in packages/energy.yaml definiert
+# =============================================================================
+
+# =============================================================================
+# Template Sensors
+# =============================================================================
+template: !include_dir_merge_list templates/
+
+# =============================================================================
+# Lovelace Dashboards (YAML Modus)
+# =============================================================================
+lovelace:
+  mode: storage
+  dashboards:
+    # === HAUPTMENÜ ===
+    lovelace-home:
+      mode: yaml
+      title: Home
+      icon: mdi:home
+      show_in_sidebar: true
+      filename: dashboards/home.yaml
+
+    # === ENERGIE ===
+    lovelace-energie:
+      mode: yaml
+      title: Energie
+      icon: mdi:flash
+      show_in_sidebar: true
+      filename: dashboards/energie_v2.yaml
+    # === WETTER & WARNUNGEN ===
+    lovelace-wetter:
+      mode: yaml
+      title: Wetter & THW
+      icon: mdi:weather-cloudy
+      show_in_sidebar: true
+      filename: dashboards/wetter.yaml
+
+    # === RÄUME ===
+    lovelace-raeume:
+      mode: yaml
+      title: Räume
+      icon: mdi:floor-plan
+      show_in_sidebar: true
+      filename: dashboards/rooms_eg.yaml
+
+    # === MEDIEN ===
+    lovelace-medien:
+      mode: yaml
+      title: Medien
+      icon: mdi:play-circle
+      show_in_sidebar: true
+      filename: dashboards/media.yaml
+
+    # === STAUBSAUGER ===
+    lovelace-vacuum:
+      mode: yaml
+      title: Staubsauger
+      icon: mdi:robot-vacuum
+      show_in_sidebar: true
+      filename: dashboards/vacuum.yaml
+
+    # === SYSTEM ===
+    lovelace-system:
+      mode: yaml
+      title: System
+      icon: mdi:cog
+      show_in_sidebar: true
+      filename: dashboards/system.yaml
+
+    # === THW / DIVERA ===
+    lovelace-thw:
+      mode: yaml
+      title: THW
+      icon: mdi:fire-truck
+      show_in_sidebar: true
+      filename: dashboards/thw_divera.yaml
+
+    # === NETZWERK (IceWiFi) ===
+    lovelace-network:
+      mode: yaml
+      title: Netzwerk
+      icon: mdi:lan
+      show_in_sidebar: true
+      filename: dashboards/network.yaml
+
+    # === HAUSTIER / TRACTIVE ===
+    lovelace-katze:
+      mode: yaml
+      title: Charly
+      icon: mdi:cat
+      show_in_sidebar: true
+      filename: dashboards/charly_tracker.yaml
+
+    # === KIOSK TABLET ===
+    lovelace-kiosk:
+      mode: yaml
+      title: Kiosk
+      icon: mdi:tablet
+      show_in_sidebar: true
+      filename: dashboards/kiosk_tablet.yaml
+
+# =============================================================================
+# REST COMMANDS (für Tasmota Displays)
+# =============================================================================
+rest_command:
+  tasmota_display1_text:
+    url: "http://{{ host }}/cm?cmnd=DisplayText{{ text }}"
+    method: GET
+
+  tasmota_display2_text:
+    url: "http://{{ host }}/cm?cmnd=DisplayText{{ text }}"
+    method: GET
+
+  tasmota_matrix_text:
+    url: "http://{{ host }}/cm?cmnd=DisplayText{{ text }}"
+    method: GET
+
+  tasmota_matrix_power:
+    url: "http://{{ host }}/cm?cmnd=Power{{ state }}"
+    method: GET
+
+# =============================================================================
+# INCLUDES
+# =============================================================================
+automation: !include_dir_merge_list automations/
+script: !include scripts.yaml
+scene: !include scenes.yaml
+group: !include groups.yaml

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Startseite - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Willkommen bei IceHomeAssist</h1>
+            <p>
+                Dies ist die vollständige Dokumentation des <strong>IceHomeAssist</strong>-Projekts &ndash; einer umfassenden
+                Home-Assistant-Installation auf einem Intel NUC, betrieben als Docker-Container unter Debian Linux.
+                Das System steuert Energieüberwachung, Mediengeräte, Netzwerk-Infrastruktur, Haustier-Tracking und
+                vieles mehr.
+            </p>
+
+            <div class="info-box">
+                <strong>Hinweis:</strong> Diese Dokumentation beschreibt den aktuellen Stand des Systems (Februar 2026).
+                Alle Konfigurationsbeispiele sind bereinigt &ndash; echte Passwörter und API-Schlüssel werden über
+                <code>secrets.yaml</code> verwaltet und sind hier nicht enthalten.
+            </div>
+
+            <!-- System-Übersichtstabelle -->
+            <h2>Systemübersicht</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Kategorie</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Hardware</strong></td>
+                        <td>Intel NUC (x86-64)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Betriebssystem</strong></td>
+                        <td>Debian 13 (Linux 6.12.63+deb13-amd64)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Container</strong></td>
+                        <td><code>ghcr.io/home-assistant/qemux86-64-homeassistant</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Dashboards</strong></td>
+                        <td>11 (Home, Energie, Wetter, Räume, Medien, Staubsauger, System, THW, Netzwerk, Charly, Kiosk)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Packages</strong></td>
+                        <td>11 YAML-Packages</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Automatisierungen</strong></td>
+                        <td>4 Automationen + Node-RED Flows</td>
+                    </tr>
+                    <tr>
+                        <td><strong>HACS Komponenten</strong></td>
+                        <td>12 Custom Components</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Addons</strong></td>
+                        <td>Node-RED, Mosquitto MQTT, Matter Server</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Protokolle</strong></td>
+                        <td>MQTT, WiFi, Zigbee, HTTP/REST, SNMP</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Quick Links -->
+            <h2>Quick-Links</h2>
+            <div class="card">
+                <h3>Wichtige Ressourcen</h3>
+                <ul>
+                    <li><strong>GitHub Repository:</strong> <a href="https://github.com/mpauli/IceHomeAssist">IceHomeAssist auf GitHub</a></li>
+                    <li><strong>Restore Script:</strong> <code>/home/mpauli/IceHomeAssist/restore.sh</code> &ndash; Stellt die gesamte Konfiguration wieder her</li>
+                    <li><strong>Home Assistant:</strong> <a href="http://homeassistant.local:8123">Web-Interface (Port 8123)</a></li>
+                    <li><strong>Node-RED:</strong> <a href="http://homeassistant.local:1880">Flow-Editor (Port 1880)</a></li>
+                </ul>
+            </div>
+
+            <!-- Inhaltsverzeichnis -->
+            <h2>Inhaltsverzeichnis</h2>
+
+            <h3>Start</h3>
+            <div class="card">
+                <ol>
+                    <li><a href="index.html"><strong>Startseite</strong></a> &ndash; Diese Seite: Übersicht, Quick-Links und Inhaltsverzeichnis</li>
+                    <li><a href="01-uebersicht.html"><strong>Systemübersicht</strong></a> &ndash; Architektur, Hardware, Software-Stack und Netzwerk-Topologie</li>
+                </ol>
+            </div>
+
+            <h3>Installation</h3>
+            <div class="card">
+                <ol start="3">
+                    <li><a href="02-installation.html"><strong>Installation</strong></a> &ndash; Voraussetzungen, Debian-Setup und erste Schritte</li>
+                    <li><a href="03-docker-setup.html"><strong>Docker Setup</strong></a> &ndash; Container-Image, Volumes, Netzwerk und Management</li>
+                    <li><a href="04-konfiguration.html"><strong>Konfiguration</strong></a> &ndash; configuration.yaml, Packages, Secrets und Verzeichnisstruktur</li>
+                </ol>
+            </div>
+
+            <h3>Komponenten</h3>
+            <div class="card">
+                <ol start="6">
+                    <li><a href="05-integrationen.html"><strong>Integrationen</strong></a> &ndash; HACS Custom Components, offizielle Integrationen, MQTT</li>
+                    <li><a href="06-dashboards.html"><strong>Dashboards</strong></a> &ndash; 11 YAML-Dashboards: Aufbau, Konfiguration und Kartentypen</li>
+                    <li><a href="07-automatisierungen.html"><strong>Automatisierungen</strong></a> &ndash; PV-Steuerung, Strompreis, Staubsauger-Zeitplan</li>
+                    <li><a href="08-nodered.html"><strong>Node-RED</strong></a> &ndash; Addon-Setup, WiFi-Buttons (ESP32-S3 Tasmota), Flows</li>
+                    <li><a href="09-mqtt.html"><strong>MQTT</strong></a> &ndash; Mosquitto Broker, Tasmota-Sensoren, Topics und Payloads</li>
+                </ol>
+            </div>
+
+            <h3>Anwendungen</h3>
+            <div class="card">
+                <ol start="11">
+                    <li><a href="10-energie.html"><strong>Energie</strong></a> &ndash; Photovoltaik, Tibber-Integration, Strompreis-Optimierung</li>
+                    <li><a href="11-medien.html"><strong>Medien</strong></a> &ndash; Alexa Media Player, Android TV, Sony Bravia</li>
+                    <li><a href="12-netzwerk.html"><strong>Netzwerk</strong></a> &ndash; UniFi, MikroTik, SNMP-Monitoring, WiFi Radar</li>
+                    <li><a href="13-haustier.html"><strong>Haustier</strong></a> &ndash; PetKit-Integration, Charly-Dashboard</li>
+                </ol>
+            </div>
+
+            <h3>Betrieb</h3>
+            <div class="card">
+                <ol start="15">
+                    <li><a href="14-sicherheit.html"><strong>Sicherheit</strong></a> &ndash; Secrets-Management, Backups, Verschlüsselung</li>
+                    <li><a href="15-wiederherstellung.html"><strong>Wiederherstellung</strong></a> &ndash; Disaster Recovery, restore.sh, Backup-Strategie</li>
+                    <li><a href="16-troubleshooting.html"><strong>Troubleshooting</strong></a> &ndash; Häufige Probleme, Logs, Debug-Tipps</li>
+                </ol>
+            </div>
+
+            <!-- Technologie-Stack -->
+            <h2>Technologie-Stack</h2>
+            <div class="card">
+                <h3>Kerntechnologien</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Technologie</th>
+                            <th>Einsatzzweck</th>
+                            <th>Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Home Assistant</td>
+                            <td>Smart-Home-Zentrale</td>
+                            <td>HA OS (Docker)</td>
+                        </tr>
+                        <tr>
+                            <td>Node-RED</td>
+                            <td>Flow-basierte Automatisierung</td>
+                            <td>Addon</td>
+                        </tr>
+                        <tr>
+                            <td>Mosquitto</td>
+                            <td>MQTT Broker</td>
+                            <td>Addon</td>
+                        </tr>
+                        <tr>
+                            <td>Tasmota</td>
+                            <td>ESP32-Firmware (Sensoren &amp; Buttons)</td>
+                            <td>Aktuell</td>
+                        </tr>
+                        <tr>
+                            <td>HACS</td>
+                            <td>Custom Components Store</td>
+                            <td>v2.0.5</td>
+                        </tr>
+                        <tr>
+                            <td>Tibber</td>
+                            <td>Dynamischer Stromtarif</td>
+                            <td>Offizielle Integration</td>
+                        </tr>
+                        <tr>
+                            <td>Docker</td>
+                            <td>Container Runtime</td>
+                            <td>Aktuell</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>Projektstruktur</h2>
+            <pre><code><span class="cmt"># IceHomeAssist Repository-Struktur</span>
+IceHomeAssist/
+├── packages/           <span class="cmt"># 11 YAML Packages</span>
+│   ├── wifi_buttons.yaml
+│   ├── energy.yaml
+│   ├── network_switches.yaml
+│   ├── notifications.yaml
+│   ├── thw_divera.yaml
+│   ├── thw_nina.yaml
+│   ├── wetter.yaml
+│   ├── internet.yaml
+│   ├── android_tv_bravia.yaml
+│   ├── bring_einkaufsliste.yaml
+│   └── unifi.yaml
+├── dashboards/         <span class="cmt"># 11 Dashboard YAML-Dateien</span>
+├── automations/        <span class="cmt"># 4 Automatisierungen</span>
+├── templates/          <span class="cmt"># Template-Sensoren</span>
+├── scripts/            <span class="cmt"># Shell-Skripte (restore.sh etc.)</span>
+├── themes/             <span class="cmt"># Custom Themes</span>
+└── docs/               <span class="cmt"># Diese Dokumentation</span>
+    ├── css/
+    │   └── style.css
+    ├── images/
+    └── *.html</code></pre>
+
+            <div class="warning-box">
+                <strong>Wichtig:</strong> Vor jeder Änderung an Konfigurationsdateien sollte ein Backup erstellt werden.
+                Verwende <code>cp datei datei.bak</code> oder das automatische Backup-System.
+                Siehe <a href="15-wiederherstellung.html">Wiederherstellung</a> für Details.
+            </div>
+
+            <div class="page-nav">
+                <a href="#">
+                    <div><div class="label">&nbsp;</div>&nbsp;</div>
+                </a>
+                <a href="01-uebersicht.html">
+                    <div><div class="label">Weiter</div>Systemübersicht</div>
+                </a>
+            </div>
+            <div class="footer">
+                IceHomeAssist Dokumentation &middot; Erstellt Februar 2026
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) {
+        a.classList.add('active');
+    }
+});
+
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation Inhaltsverzeichnis"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker Container Komponenten"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker Setup"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes Netzwerk"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages Secrets"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Switch WiFi Radar"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive GPS Tracker"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
+];
+
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i =>
+        i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Keine Ergebnisse</div>';
+    } else {
+        results.innerHTML = matches.map(m =>
+            `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`
+        ).join('');
+    }
+    results.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-container')) {
+        document.getElementById('searchResults').classList.remove('active');
+    }
+});
+</script>
+</body>
+</html>

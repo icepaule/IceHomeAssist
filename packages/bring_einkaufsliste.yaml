@@ -1,0 +1,123 @@
+# =============================================================================
+# BRING! EINKAUFSLISTE PAKET
+# =============================================================================
+# Die Bring! Integration muss über HACS installiert werden:
+# 1. HACS → Integrationen → "Bring" suchen
+# 2. Installation und Neustart
+# 3. Einstellungen → Geräte & Dienste → Bring! hinzufügen
+# 4. Mit Bring! Konto anmelden
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Template Sensoren für Bring! Aufbereitung
+# -----------------------------------------------------------------------------
+# HINWEIS: Entity-IDs müssen nach der Bring!-Installation angepasst werden
+# Die Bring! Integration erstellt automatisch todo.LISTENNAME Entities
+
+template:
+  - sensor:
+      # Anzahl Artikel auf der Einkaufsliste
+      # todo.shopping_list state = Anzahl offener Items
+      - name: "Einkaufsliste Anzahl"
+        unique_id: bring_einkaufsliste_anzahl
+        state: >
+          {{ states('todo.shopping_list') | int(0) }}
+        unit_of_measurement: "Artikel"
+        icon: mdi:cart
+
+      # Status der Einkaufsliste
+      - name: "Einkaufsliste Status"
+        unique_id: bring_einkaufsliste_status
+        state: >
+          {% set count = states('todo.shopping_list') | int(0) %}
+          {% if count == 0 %}
+            Leer
+          {% elif count <= 5 %}
+            Wenige Artikel ({{ count }})
+          {% elif count <= 15 %}
+            Mittlere Liste ({{ count }})
+          {% else %}
+            Großeinkauf ({{ count }})
+          {% endif %}
+        icon: mdi:clipboard-list
+
+  - binary_sensor:
+      # Einkauf nötig?
+      - name: "Einkauf Nötig"
+        unique_id: bring_einkauf_noetig
+        state: >
+          {{ states('todo.shopping_list') | int(0) > 0 }}
+        device_class: problem
+        icon: mdi:cart-arrow-down
+
+# -----------------------------------------------------------------------------
+# Scripts für Bring! Integration
+# -----------------------------------------------------------------------------
+script:
+  # Artikel zur Einkaufsliste hinzufügen (Sprachassistent-kompatibel)
+  bring_artikel_hinzufuegen:
+    alias: "Bring Artikel hinzufügen"
+    description: "Fügt einen Artikel zur Bring! Einkaufsliste hinzu"
+    icon: mdi:cart-plus
+    fields:
+      artikel:
+        description: "Der hinzuzufügende Artikel"
+        example: "Milch"
+    sequence:
+      - service: todo.add_item
+        target:
+          entity_id: todo.shopping_list
+        data:
+          item: "{{ artikel }}"
+
+  # Artikel von der Einkaufsliste entfernen
+  bring_artikel_entfernen:
+    alias: "Bring Artikel entfernen"
+    description: "Entfernt einen Artikel von der Bring! Einkaufsliste"
+    icon: mdi:cart-minus
+    fields:
+      artikel:
+        description: "Der zu entfernende Artikel"
+        example: "Milch"
+    sequence:
+      - service: todo.remove_item
+        target:
+          entity_id: todo.shopping_list
+        data:
+          item: "{{ artikel }}"
+
+# -----------------------------------------------------------------------------
+# Automationen für Bring!
+# -----------------------------------------------------------------------------
+automation:
+  # Erinnerung beim Verlassen des Hauses
+  - id: bring_einkauf_erinnerung
+    alias: "Bring Einkaufserinnerung"
+    description: "Erinnert beim Verlassen des Hauses an offene Einkäufe"
+    trigger:
+      - platform: state
+        entity_id: person.marcus  # Anpassen!
+        from: "home"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.einkauf_noetig
+        state: "on"
+      - condition: time
+        after: "08:00:00"
+        before: "20:00:00"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Einkaufsliste"
+          message: >
+            Du hast noch {{ states('sensor.einkaufsliste_anzahl') }} Artikel auf deiner Einkaufsliste!
+          notification_id: bring_reminder
+    mode: single
+
+# -----------------------------------------------------------------------------
+# Input Helpers
+# -----------------------------------------------------------------------------
+input_boolean:
+  bring_erinnerung_aktiv:
+    name: Einkaufserinnerungen aktiv
+    icon: mdi:bell-ring

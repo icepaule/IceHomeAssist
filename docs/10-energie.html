@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energiemanagement - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html" class="active">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Anwendungen
+                    <span class="separator">&rsaquo;</span>
+                    Energie
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Energiemanagement</h1>
+
+            <p>
+                Das Energiemanagement ist eine der Kernfunktionen unseres Smart Homes. Über sechs Tasmota-basierte
+                Energiesensoren wird der Stromverbrauch einzelner Geräte und Bereiche überwacht. In Kombination
+                mit der Tibber-Integration für dynamische Strompreise und der PV-Anlage ergibt sich ein umfassendes
+                Energiemonitoring mit automatisierter Verbrauchsoptimierung.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>PV-Anlage Monitoring</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Die Photovoltaik-Anlage wird über den Tasmota-Sensor <strong>Strom-PV</strong> überwacht. Der
+                Sensor misst die aktuelle Einspeiseleistung, den Tagesertrag und den Gesamtertrag seit Installation.
+            </p>
+
+            <h3>Sensoren für die PV-Anlage</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Entity</th>
+                        <th>Beschreibung</th>
+                        <th>Einheit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>sensor.pv_leistung</code></td>
+                        <td>Aktuelle Leistung der PV-Anlage</td>
+                        <td>W</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.pv_energie_heute</code></td>
+                        <td>Heutiger Ertrag</td>
+                        <td>kWh</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.pv_energie_gesamt</code></td>
+                        <td>Gesamtertrag seit Inbetriebnahme</td>
+                        <td>kWh</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.pv_spannung</code></td>
+                        <td>Netzspannung am PV-Einspeisepunkt</td>
+                        <td>V</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.pv_strom</code></td>
+                        <td>Aktueller Strom</td>
+                        <td>A</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>PV-Ertragsprognose</h3>
+            <p>
+                Für die Ertragsprognose wird der aktuelle Leistungswert mit den Wetterdaten (DWD-Integration)
+                kombiniert. Bewölkungsgrad und Sonnenscheindauer erlauben eine grobe Abschätzung des zu
+                erwartenden Tagesertrags.
+            </p>
+            <pre><code># Template-Sensor für PV-Status
+template:
+  - sensor:
+      - name: "PV Status"
+        state: >
+          {% set power = states('sensor.pv_leistung') | float(0) %}
+          {% if power > 500 %}
+            Hohe Produktion
+          {% elif power > 100 %}
+            Mittlere Produktion
+          {% elif power > 10 %}
+            Geringe Produktion
+          {% else %}
+            Keine Produktion
+          {% endif %}
+        icon: >
+          {% set power = states('sensor.pv_leistung') | float(0) %}
+          {% if power > 100 %}
+            mdi:solar-power
+          {% else %}
+            mdi:solar-power-variant-outline
+          {% endif %}</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Tibber Integration</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                <strong>Tibber</strong> ist unser Stromanbieter mit dynamischen, stündlich wechselnden Strompreisen.
+                Die Integration liefert den aktuellen Strompreis, Preisprognosen für die nächsten Stunden und
+                den täglichen Verbrauch. Diese Daten sind die Grundlage für die preisbasierte Steuerung von
+                Geräten.
+            </p>
+
+            <h3>Tibber Sensoren</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Entity</th>
+                        <th>Beschreibung</th>
+                        <th>Aktualisierung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>sensor.electricity_price</code></td>
+                        <td>Aktueller Strompreis inkl. aller Abgaben</td>
+                        <td>Stündlich</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.tibber_price_level</code></td>
+                        <td>Preisniveau (VERY_CHEAP, CHEAP, NORMAL, EXPENSIVE, VERY_EXPENSIVE)</td>
+                        <td>Stündlich</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.tibber_daily_cost</code></td>
+                        <td>Tageskosten</td>
+                        <td>Täglich</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.tibber_monthly_cost</code></td>
+                        <td>Monatskosten</td>
+                        <td>Monatlich</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Tibber-Konfiguration</h3>
+            <p>
+                Die Tibber-Integration wird über die Home Assistant UI eingerichtet:
+            </p>
+            <ol>
+                <li><strong>Einstellungen</strong> &rarr; <strong>Geräte &amp; Dienste</strong> &rarr; <strong>Integration hinzufügen</strong></li>
+                <li>Nach <em>Tibber</em> suchen und auswählen</li>
+                <li>Den persönlichen <strong>API-Token</strong> eingeben (erhältlich unter <code>developer.tibber.com</code>)</li>
+                <li>Die Integration erstellt automatisch die Preis-Sensoren</li>
+            </ol>
+
+            <h3>Tibber Preislevel-Template</h3>
+            <pre><code># Template-Sensor: Strompreis-Ampel
+template:
+  - sensor:
+      - name: "Strompreis Ampel"
+        state: >
+          {% set level = states('sensor.tibber_price_level') %}
+          {% if level in ['VERY_CHEAP', 'CHEAP'] %}
+            grün
+          {% elif level == 'NORMAL' %}
+            gelb
+          {% else %}
+            rot
+          {% endif %}
+        icon: >
+          {% set level = states('sensor.tibber_price_level') %}
+          {% if level in ['VERY_CHEAP', 'CHEAP'] %}
+            mdi:circle-slice-8
+          {% elif level == 'NORMAL' %}
+            mdi:circle-slice-4
+          {% else %}
+            mdi:alert-circle
+          {% endif %}</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Strompreis-basierte Automatisierungen</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Durch die Kombination von Tibber-Strompreisen und schaltbaren Tasmota-Steckdosen können
+                energieintensive Geräte automatisch in Niedrigpreiszeiten betrieben werden.
+            </p>
+
+            <h3>Waschmaschine bei günstigem Strompreis starten</h3>
+            <pre><code># automations.yaml
+- alias: "Waschmaschine - Günstig starten"
+  description: "Schaltet die Waschmaschine frei, wenn der Strompreis günstig ist"
+  trigger:
+    - platform: state
+      entity_id: sensor.tibber_price_level
+      to:
+        - "VERY_CHEAP"
+        - "CHEAP"
+  condition:
+    - condition: state
+      entity_id: input_boolean.waschmaschine_auto
+      state: "on"
+    - condition: time
+      after: "06:00:00"
+      before: "22:00:00"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.waschmaschine_steckdose
+    - service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+      data:
+        message: "Der Strompreis ist jetzt günstig. Die Waschmaschine wurde freigegeben."
+        data:
+          type: tts</code></pre>
+
+            <h3>Trockner bei teurem Strom sperren</h3>
+            <pre><code>- alias: "Trockner - Teuren Strom vermeiden"
+  description: "Warnt, wenn der Trockner bei hohem Strompreis läuft"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.trockner_leistung
+      above: 100
+  condition:
+    - condition: state
+      entity_id: sensor.tibber_price_level
+      state:
+        - "EXPENSIVE"
+        - "VERY_EXPENSIVE"
+  action:
+    - service: notify.alexa_media_uberall
+      data:
+        message: >
+          Achtung! Der Trockner läuft gerade und der Strompreis ist sehr hoch.
+          Aktueller Preis: {{ states('sensor.electricity_price') }} Cent pro Kilowattstunde.
+        data:
+          type: tts</code></pre>
+
+            <h3>PV-Überschuss nutzen</h3>
+            <pre><code>- alias: "PV-Überschuss - Geräte einschalten"
+  description: "Schaltet Verbraucher ein, wenn PV-Überschuss vorhanden ist"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.pv_leistung
+      above: 500
+      for:
+        minutes: 5
+  condition:
+    - condition: state
+      entity_id: input_boolean.pv_optimierung
+      state: "on"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.waschmaschine_steckdose
+    - service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+      data:
+        message: "PV-Überschuss erkannt. Verbraucher wurden eingeschaltet."
+        data:
+          type: tts</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Energie Dashboard</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Das Home Assistant Energie Dashboard bietet eine zentrale Übersicht über Stromproduktion,
+                Verbrauch und Kosten. Es nutzt die <code>state_class: total_increasing</code>-Sensoren
+                der Tasmota-Geräte.
+            </p>
+
+            <h3>Dashboard-Konfiguration</h3>
+            <p>
+                Das Energie Dashboard wird unter <strong>Einstellungen</strong> &rarr; <strong>Dashboards</strong>
+                &rarr; <strong>Energie</strong> konfiguriert:
+            </p>
+
+            <h4>Stromproduktion (Solar)</h4>
+            <ul>
+                <li><strong>Quelle:</strong> <code>sensor.pv_energie_gesamt</code></li>
+                <li><strong>Typ:</strong> Solar-Produktion</li>
+            </ul>
+
+            <h4>Stromverbrauch (Individuelle Geräte)</h4>
+            <ul>
+                <li><code>sensor.server_energie_gesamt</code> - Server</li>
+                <li><code>sensor.trockner_energie_gesamt</code> - Trockner</li>
+                <li><code>sensor.waschmaschine_energie_gesamt</code> - Waschmaschine</li>
+                <li><code>sensor.kueche_energie_gesamt</code> - Küche</li>
+                <li><code>sensor.arbeitszimmer_energie_gesamt</code> - Arbeitszimmer</li>
+            </ul>
+
+            <h4>Strompreis</h4>
+            <ul>
+                <li><strong>Quelle:</strong> Tibber Integration</li>
+                <li><strong>Entity:</strong> <code>sensor.electricity_price</code></li>
+                <li>Automatische Berechnung der Kosten pro Gerät</li>
+            </ul>
+
+            <!-- ============================================================ -->
+            <h2>Utility Meters</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Utility Meters in Home Assistant ermöglichen die Erfassung des Energieverbrauchs in definierten
+                Zeiträumen (täglich, wöchentlich, monatlich, jährlich). Sie basieren auf den kumulierten
+                Energiewerten der Tasmota-Sensoren.
+            </p>
+
+            <h3>utility_meters.yaml</h3>
+            <pre><code># utility_meters.yaml
+# ========================================
+# Tägliche Zähler
+# ========================================
+utility_meter:
+  pv_energy_daily:
+    source: sensor.pv_energie_gesamt
+    name: "PV Energie Täglich"
+    cycle: daily
+
+  server_energy_daily:
+    source: sensor.server_energie_gesamt
+    name: "Server Energie Täglich"
+    cycle: daily
+
+  trockner_energy_daily:
+    source: sensor.trockner_energie_gesamt
+    name: "Trockner Energie Täglich"
+    cycle: daily
+
+  waschmaschine_energy_daily:
+    source: sensor.waschmaschine_energie_gesamt
+    name: "Waschmaschine Energie Täglich"
+    cycle: daily
+
+  kueche_energy_daily:
+    source: sensor.kueche_energie_gesamt
+    name: "Küche Energie Täglich"
+    cycle: daily
+
+  arbeitszimmer_energy_daily:
+    source: sensor.arbeitszimmer_energie_gesamt
+    name: "Arbeitszimmer Energie Täglich"
+    cycle: daily
+
+  # ========================================
+  # Monatliche Zähler
+  # ========================================
+  pv_energy_monthly:
+    source: sensor.pv_energie_gesamt
+    name: "PV Energie Monatlich"
+    cycle: monthly
+
+  server_energy_monthly:
+    source: sensor.server_energie_gesamt
+    name: "Server Energie Monatlich"
+    cycle: monthly
+
+  trockner_energy_monthly:
+    source: sensor.trockner_energie_gesamt
+    name: "Trockner Energie Monatlich"
+    cycle: monthly
+
+  waschmaschine_energy_monthly:
+    source: sensor.waschmaschine_energie_gesamt
+    name: "Waschmaschine Energie Monatlich"
+    cycle: monthly
+
+  kueche_energy_monthly:
+    source: sensor.kueche_energie_gesamt
+    name: "Küche Energie Monatlich"
+    cycle: monthly
+
+  arbeitszimmer_energy_monthly:
+    source: sensor.arbeitszimmer_energie_gesamt
+    name: "Arbeitszimmer Energie Monatlich"
+    cycle: monthly
+
+  # ========================================
+  # Jährliche Zähler
+  # ========================================
+  pv_energy_yearly:
+    source: sensor.pv_energie_gesamt
+    name: "PV Energie Jährlich"
+    cycle: yearly
+
+  gesamtverbrauch_yearly:
+    source: sensor.gesamtverbrauch
+    name: "Gesamtverbrauch Jährlich"
+    cycle: yearly</code></pre>
+
+            <h3>Einbindung in configuration.yaml</h3>
+            <pre><code># configuration.yaml
+utility_meter: !include utility_meters.yaml</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Energy Package</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Das Energy Package fasst alle energiebezogenen Konfigurationen in einer Datei zusammen.
+                Es enthält Template-Sensoren für berechnete Werte, Input-Booleans für die Automatisierungssteuerung
+                und Hilfsentitäten.
+            </p>
+
+            <h3>packages/energy.yaml</h3>
+            <pre><code># packages/energy.yaml
+# ========================================
+# Energie-Paket: Template-Sensoren und Helfer
+# ========================================
+
+# Input Booleans für Automatisierungssteuerung
+input_boolean:
+  waschmaschine_auto:
+    name: "Waschmaschine Automatik"
+    icon: mdi:washing-machine
+  trockner_auto:
+    name: "Trockner Automatik"
+    icon: mdi:tumble-dryer
+  pv_optimierung:
+    name: "PV-Optimierung aktiv"
+    icon: mdi:solar-power
+
+# Template-Sensoren für berechnete Werte
+template:
+  - sensor:
+      # Gesamtverbrauch aller überwachten Geräte
+      - name: "Gesamtverbrauch Aktuell"
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ [
+            states('sensor.server_leistung') | float(0),
+            states('sensor.trockner_leistung') | float(0),
+            states('sensor.waschmaschine_leistung') | float(0),
+            states('sensor.kueche_leistung') | float(0),
+            states('sensor.arbeitszimmer_leistung') | float(0)
+          ] | sum | round(1) }}
+
+      # Eigenverbrauchsquote
+      - name: "PV Eigenverbrauch"
+        unit_of_measurement: "%"
+        state: >
+          {% set pv = states('sensor.pv_leistung') | float(0) %}
+          {% set verbrauch = states('sensor.gesamtverbrauch_aktuell') | float(0) %}
+          {% if pv > 0 %}
+            {{ ([verbrauch / pv * 100, 100] | min) | round(1) }}
+          {% else %}
+            0
+          {% endif %}
+
+      # Nettobezug / Einspeisung
+      - name: "Nettostrom"
+        unit_of_measurement: "W"
+        state: >
+          {% set pv = states('sensor.pv_leistung') | float(0) %}
+          {% set verbrauch = states('sensor.gesamtverbrauch_aktuell') | float(0) %}
+          {{ (verbrauch - pv) | round(1) }}
+        icon: >
+          {% set netto = this.state | float(0) %}
+          {% if netto > 0 %}
+            mdi:transmission-tower-import
+          {% else %}
+            mdi:transmission-tower-export
+          {% endif %}
+
+      # Stromkosten aktuell (pro Stunde hochgerechnet)
+      - name: "Aktuelle Stromkosten"
+        unit_of_measurement: "ct/h"
+        state: >
+          {% set verbrauch_kw = states('sensor.gesamtverbrauch_aktuell') | float(0) / 1000 %}
+          {% set preis = states('sensor.electricity_price') | float(0) %}
+          {{ (verbrauch_kw * preis) | round(2) }}
+
+      # Gerätestatus basierend auf Leistung
+      - name: "Trockner Status"
+        state: >
+          {% set power = states('sensor.trockner_leistung') | float(0) %}
+          {% if power > 1000 %}
+            Heizt
+          {% elif power > 100 %}
+            Trocknet
+          {% elif power > 5 %}
+            Standby
+          {% else %}
+            Aus
+          {% endif %}
+        icon: mdi:tumble-dryer
+
+      - name: "Waschmaschine Status"
+        state: >
+          {% set power = states('sensor.waschmaschine_leistung') | float(0) %}
+          {% if power > 1500 %}
+            Heizt
+          {% elif power > 100 %}
+            Wäscht
+          {% elif power > 5 %}
+            Standby
+          {% else %}
+            Aus
+          {% endif %}
+        icon: mdi:washing-machine
+
+  # Binäre Sensoren
+  - binary_sensor:
+      - name: "Trockner läuft"
+        state: >
+          {{ states('sensor.trockner_leistung') | float(0) > 10 }}
+        device_class: running
+
+      - name: "Waschmaschine läuft"
+        state: >
+          {{ states('sensor.waschmaschine_leistung') | float(0) > 10 }}
+        device_class: running
+
+      - name: "PV produziert"
+        state: >
+          {{ states('sensor.pv_leistung') | float(0) > 10 }}
+        device_class: power
+
+      - name: "Strompreis günstig"
+        state: >
+          {{ states('sensor.tibber_price_level') in ['VERY_CHEAP', 'CHEAP'] }}</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Benachrichtigungen</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Energiebezogene Benachrichtigungen werden über Alexa (Text-to-Speech) und die Home Assistant
+                Companion App gesendet.
+            </p>
+
+            <h3>Waschmaschine/Trockner fertig</h3>
+            <pre><code>- alias: "Waschmaschine fertig"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.waschmaschine_lauft
+      from: "on"
+      to: "off"
+      for:
+        minutes: 2
+  action:
+    - service: notify.alexa_media_uberall
+      data:
+        message: "Die Waschmaschine ist fertig. Bitte die Wäsche entnehmen."
+        data:
+          type: tts
+
+- alias: "Trockner fertig"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.trockner_lauft
+      from: "on"
+      to: "off"
+      for:
+        minutes: 2
+  action:
+    - service: notify.alexa_media_uberall
+      data:
+        message: "Der Trockner ist fertig."
+        data:
+          type: tts</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Tipps zur Energieoptimierung</h2>
+            <!-- ============================================================ -->
+
+            <ul>
+                <li><strong>Große Verbraucher in Billigstunden:</strong> Waschmaschine und Trockner möglichst dann laufen lassen, wenn der Tibber-Preis auf VERY_CHEAP steht.</li>
+                <li><strong>PV-Überschuss nutzen:</strong> Bei hoher PV-Produktion automatisch Geräte einschalten.</li>
+                <li><strong>Server-Verbrauch im Blick:</strong> Der Server läuft 24/7 - ein dauerhaft hoher Verbrauch deutet auf unnötige Last hin.</li>
+                <li><strong>Standby vermeiden:</strong> Über die schaltbaren Steckdosen können Geräte komplett vom Netz getrennt werden.</li>
+                <li><strong>Historische Analyse:</strong> Über das Energie Dashboard lassen sich Verbrauchsmuster erkennen und optimieren.</li>
+            </ul>
+
+            <div class="page-nav">
+                <a href="09-mqtt.html"><div><div class="label">Zurück</div>MQTT</div></a>
+                <a href="11-medien.html"><div><div class="label">Weiter</div>Medien</div></a>
+            </div>
+            <div class="footer">IceHomeAssist Dokumentation &middot; Erstellt Februar 2026</div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) a.classList.add('active');
+});
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs"},
+];
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i => i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q));
+    results.innerHTML = matches.length === 0 ? '<div class="search-result-item">Keine Ergebnisse</div>' :
+        matches.map(m => `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`).join('');
+    results.classList.add('active');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.search-container')) document.getElementById('searchResults').classList.remove('active'); });
+</script>
+</body>
+</html>

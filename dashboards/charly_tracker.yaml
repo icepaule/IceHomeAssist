@@ -1,0 +1,152 @@
+# =============================================================================
+# Charly Tracker Dashboard (Tractive GPS TG5)
+# =============================================================================
+
+title: Charly
+views:
+  - title: Kater Charly
+    path: charly
+    icon: mdi:cat
+    cards:
+      # --- Live Tracking Schalter + Status ---
+      - type: horizontal-stack
+        cards:
+          - type: button
+            entity: switch.charly_live_tracking
+            name: Live Tracking
+            icon: mdi:crosshairs-gps
+            show_state: true
+            tap_action:
+              action: toggle
+          - type: entity
+            entity: sensor.charly_tracker_battery
+            name: Akku
+            icon: mdi:battery
+          - type: entity
+            entity: sensor.charly_tracker_state
+            name: Tracker
+            icon: mdi:access-point
+
+      # --- LIVE Karte (letzte 2h, nah dran) ---
+      - type: map
+        title: "Charly Live"
+        entities:
+          - entity: device_tracker.charly_tracker
+        hours_to_show: 2
+        default_zoom: 18
+        aspect_ratio: "16:9"
+
+      # --- Karte 24h Verlauf ---
+      - type: map
+        title: "Letzte 24 Stunden"
+        entities:
+          - entity: device_tracker.charly_tracker
+        hours_to_show: 24
+        default_zoom: 16
+        aspect_ratio: "16:9"
+
+      # --- Wellness / Aktivitaet ---
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.charly_activity
+            name: Aktivitaet
+            icon: mdi:cat
+          - type: entity
+            entity: sensor.charly_activity_time
+            name: Aktive Zeit
+            icon: mdi:run
+          - type: entity
+            entity: sensor.charly_rest_time
+            name: Ruhezeit
+            icon: mdi:sleep
+          - type: entity
+            entity: sensor.charly_calories_burned
+            name: Kalorien
+            icon: mdi:fire
+
+      # --- Schlaf + Tagesziel ---
+      - type: entities
+        title: Schlaf & Ziel
+        show_header_toggle: false
+        entities:
+          - entity: sensor.charly_daily_goal
+            name: Tagesziel
+            icon: mdi:bullseye-arrow
+          - entity: sensor.charly_sleep
+            name: Schlaf gesamt
+            icon: mdi:sleep
+          - entity: sensor.charly_day_sleep
+            name: Tagschlaf
+            icon: mdi:weather-sunny
+          - entity: sensor.charly_night_sleep
+            name: Nachtschlaf
+            icon: mdi:weather-night
+
+      # --- Tracker Steuerung ---
+      - type: entities
+        title: Tracker
+        show_header_toggle: false
+        entities:
+          - entity: switch.charly_tracker_buzzer
+            name: Piepser
+            icon: mdi:volume-high
+          - entity: switch.charly_tracker_led
+            name: LED Licht
+            icon: mdi:led-on
+          - entity: binary_sensor.charly_tracker_battery_charging
+            name: Laedt
+            icon: mdi:battery-charging
+          - entity: binary_sensor.charly_tracker_power_saving
+            name: Energiesparmodus
+            icon: mdi:leaf
+
+      # --- Aktivitaets-Verlauf ---
+      - type: history-graph
+        title: "Aktivitaet (24h)"
+        hours_to_show: 24
+        entities:
+          - entity: sensor.charly_activity
+            name: Aktivitaet
+
+      # --- Akku-Verlauf ---
+      - type: history-graph
+        title: "Akku (7 Tage)"
+        hours_to_show: 168
+        entities:
+          - entity: sensor.charly_tracker_battery
+            name: Akku
+
+  - title: Verlauf
+    path: verlauf
+    icon: mdi:map-marker-path
+    cards:
+      # --- Letzte 3 Tage ---
+      - type: map
+        title: "Letzte 3 Tage"
+        entities:
+          - entity: device_tracker.charly_tracker
+        hours_to_show: 72
+        default_zoom: 15
+        aspect_ratio: "16:9"
+
+      # --- Letzte 7 Tage ---
+      - type: map
+        title: "Letzte 7 Tage"
+        entities:
+          - entity: device_tracker.charly_tracker
+        hours_to_show: 168
+        default_zoom: 14
+        aspect_ratio: "16:9"
+
+      # --- Schlaf-Verlauf Woche ---
+      - type: history-graph
+        title: "Schlaf (7 Tage)"
+        hours_to_show: 168
+        entities:
+          - entity: sensor.charly_sleep
+            name: Schlaf gesamt
+          - entity: sensor.charly_day_sleep
+            name: Tag
+          - entity: sensor.charly_night_sleep
+            name: Nacht

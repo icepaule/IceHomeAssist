@@ -1,0 +1,516 @@
+title: IceWiFi Netzwerk
+views:
+  # =========================================================================
+  # Uebersicht
+  # =========================================================================
+  - title: Uebersicht
+    path: overview
+    icon: mdi:network
+    type: sections
+    max_columns: 3
+    sections:
+      # --- Netzwerk Status ---
+      - type: grid
+        cards:
+          - type: entities
+            title: "Netzwerk Status"
+            icon: mdi:lan
+            entities:
+              - entity: sensor.netzwerk_status
+                name: Gesamtstatus
+              - entity: binary_sensor.unifi_controller_online
+                name: UniFi Controller
+              - entity: sensor.unifi_gateway_status
+                name: USG Gateway
+              - entity: sensor.unifi_aps_online
+                name: APs Online
+              - entity: sensor.unifi_clients_total
+                name: WLAN Clients
+
+          - type: markdown
+            title: "Netzwerk-Topologie"
+            content: |
+              ### Verbindungen
+              ```
+              Internet ─── Fritz!Box (192.168.178.1)
+                             │ VLAN 666
+                             │
+                 Cisco C3560C (WiFi-AZ)
+                 ┌───────────┴───────────────┐
+                 │ Gi0/2        Gi0/10 Trunk  │
+                 │ VLAN 666     native VLAN 11│
+                 │                    ↓       │
+                 │              CSS326-AZ (.8)│
+                 │                    ↓       │
+                 │              NUC-HA (.173) │
+                 │                            │
+                 │ Gi0/1: CK+ (192.168.1.7)  │
+                 │         VLAN 1 (access)    │
+                 │                            │
+                 │ Gi0/3: USG 3P (Trunk)     │
+                 │         VLANs 1,10-13     │
+                 │                            │
+                 │ Gi0/4: U6+ AZ (Trunk)     │
+                 │ Gi0/5: U6+ Keller (Trunk) │
+                 │         VLANs 1,10-13     │
+                 └────────────────────────────┘
+
+              NUC-HA Interfaces:
+                eno1:    192.168.178.173 (Fritz!Box)
+                eno1.11: 10.10.0.100 (Management)
+                eno1.12: 10.10.12.100 (IoT/MQTT)
+                eno1.13: 10.10.13.1 (Tor Gateway)
+              ```
+
+      # --- Switches (SNMP) ---
+      - type: grid
+        title: Switches
+        cards:
+          # --- Kompakte Status-Zeilen ---
+          - type: markdown
+            title: "Switch Status"
+            content: |
+              {% set k_st = states('sensor.css326_keller_status') %}
+              {% set k_up = states('sensor.css326_keller_uptime') %}
+              {% set k_tmp = states('sensor.css326_keller_temperatur') %}
+              {% set k_ports = states('sensor.css326_keller_port_details') %}
+              {% set a_st = states('sensor.css326_az_status') %}
+              {% set a_up = states('sensor.css326_az_uptime') %}
+              {% set a_tmp = states('sensor.css326_az_temperatur') %}
+              {% set a_ports = states('sensor.css326_az_port_details') %}
+              {% set n_on = is_state('binary_sensor.crs305_backbone_online', 'on') %}
+              | Switch | Status | Ports | Temp | Uptime |
+              |--------|--------|------:|-----:|--------|
+              | **Keller** (.165) | {{ k_st }} | {{ k_ports }} | {{ k_tmp }}°C | {{ k_up }} |
+              | **Arbeitszimmer** (.8) | {{ a_st }} | {{ a_ports }} | {{ a_tmp }}°C | {{ a_up }} |
+              | **NUC** (.191) | {{ 'Online' if n_on else 'Offline' }} | - | - | - |
+
+          # --- Keller Ports ---
+          - type: markdown
+            title: "Keller Ports"
+            content: |
+              {% set details = state_attr('sensor.css326_keller_port_details', 'ports') %}
+              {% if details %}
+              | Port | Name | Speed | Load |
+              |-----:|------|------:|------|
+              {% for p in details -%}
+              | {{ p.port }} | {{ p.name }} | {{ p.speed }}M | {{ p.bar }} {{ p.util }}% |
+              {% endfor %}
+              {% else %}
+              Lade Port-Daten...
+              {% endif %}
+
+          # --- Arbeitszimmer Ports ---
+          - type: markdown
+            title: "Arbeitszimmer Ports"
+            content: |
+              {% set details = state_attr('sensor.css326_az_port_details', 'ports') %}
+              {% if details %}
+              | Port | Name | Speed | Load |
+              |-----:|------|------:|------|
+              {% for p in details -%}
+              | {{ p.port }} | {{ p.name }} | {{ p.speed }}M | {{ p.bar }} {{ p.util }}% |
+              {% endfor %}
+              {% else %}
+              Lade Port-Daten...
+              {% endif %}
+
+      # --- VLANs ---
+      - type: grid
+        cards:
+          - type: markdown
+            title: "VLANs"
+            content: |
+              | VLAN | Subnet | Zweck |
+              |------|--------|-------|
+              | 1 | 192.168.1.0/24 | UniFi Management (CK+) |
+              | 11 | 10.10.0.0/24 | Management (Sophos, NUC) |
+              | 12 | 10.10.12.0/24 | IoT (Bad:IoT + MQTT) |
+              | 13 | 10.10.13.0/24 | Tor (Bad:Bad) |
+              | 666 | 192.168.178.0/24 | Internet (Fritz!Box, USG WAN) |
+
+          - type: markdown
+            title: "SSIDs"
+            content: |
+              | SSID | VLAN | Zweck |
+              |------|------|-------|
+              | Bad:IoT | 12 | IoT Geraete (MQTT → 10.10.12.100) |
+              | Bad:Bad | 13 | Tor Anonymous |
+
+              *Bad:INet = USG WAN Internet-Anbindung (kein WLAN-SSID)*
+
+      # --- Services ---
+      - type: grid
+        cards:
+          - type: markdown
+            title: "Systemd Services"
+            content: |
+              | Service | Funktion | Status |
+              |---------|----------|--------|
+              | `socat-unifi` | CK+ Proxy 8443→443 | CK+ auf VLAN 1 - nicht erreichbar |
+              | `dnsmasq-tor` | DHCP VLAN 13 (10.10.13.10-99) | Aktiv |
+              | `iptables-tor` | Tor NAT Regeln | Aktiv |
+              | `tor@default` | Tor Transparent Proxy | Aktiv |
+
+  # =========================================================================
+  # Geraete
+  # =========================================================================
+  - title: Geraete
+    path: devices
+    icon: mdi:devices
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: markdown
+            title: "Netzwerk-Geraete"
+            content: |
+              ### UniFi
+              | Geraet | IP | VLAN | Modell |
+              |--------|----|------|--------|
+              | Cloud Key Plus | 192.168.1.7 | 1 (access) | UCK G2+ |
+              | USG 3P | VLAN 666 (WAN) | Trunk 1,10-13 | UGW3 |
+              | U6+ Arbeitszimmer | DHCP (VLAN 1) | Trunk 1,10-13 | UAPL6 |
+              | U6+ Keller | DHCP (VLAN 1) | Trunk 1,10-13 | UAPL6 |
+
+              ### Switches
+              | Geraet | IP | Modell |
+              |--------|----|--------|
+              | Cisco WiFi-AZ | - | C3560C-12PC-S |
+              | SW Keller | 192.168.178.165 | CSS326-24G-2S+ |
+              | SW Arbeitszimmer | 192.168.178.8 | CSS326-24G-2S+ |
+              | SW NUC | 192.168.178.191 | CRS305-1G-4S+ |
+
+              ### Andere
+              | Geraet | IP | Funktion |
+              |--------|----|----------|
+              | Fritz!Box | 192.168.178.1 | Internet Gateway |
+              | Sophos | 10.10.0.2 | Firewall |
+              | NUC-HA | 192.168.178.173 (eno1) | Home Assistant |
+              | ESXi7 | 192.168.178.174 | Hypervisor |
+
+  # =========================================================================
+  # Schnellzugriff
+  # =========================================================================
+  - title: Schnellzugriff
+    path: quickaccess
+    icon: mdi:link-variant
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: markdown
+            title: "Web-Interfaces"
+            content: |
+              - **UniFi Controller:** [https://192.168.1.7](https://192.168.1.7) *(nur von VLAN 1 erreichbar)*
+              - **Fritz!Box:** [http://192.168.178.1](http://192.168.178.1)
+              - **Sophos XG:** [https://10.10.0.2:4444](https://10.10.0.2:4444)
+              - **Cockpit NUC:** [https://192.168.178.173:9090](https://192.168.178.173:9090)
+              - **SW Keller:** [http://192.168.178.165](http://192.168.178.165)
+              - **SW Arbeitszimmer:** [http://192.168.178.8](http://192.168.178.8)
+              - **SW NUC:** [http://192.168.178.191](http://192.168.178.191)
+              - **ESXi7:** [https://192.168.178.174](https://192.168.178.174)
+
+          - type: markdown
+            title: "SSH Befehle"
+            content: |
+              ```bash
+              # CK+ (nur von VLAN 1 erreichbar)
+              ssh root@192.168.1.7
+
+              # NUC (lokal)
+              ssh root@192.168.178.173
+
+              # ESXi7
+              ssh YOUR_USER@192.168.178.174
+              ```
+
+          - type: markdown
+            title: "MongoDB (CK+)"
+            content: |
+              ```bash
+              # Auf CK+ einloggen, dann:
+              mongo --port 27117 ace --quiet
+
+              # Devices auflisten
+              db.device.find({}).forEach(function(d){
+                printjson({name:d.name, ip:d.ip,
+                  model:d.model, state:d.state})
+              })
+
+              # WLAN Konfig
+              db.wlanconf.find({},{name:1,
+                enabled:1,security:1}).toArray()
+
+              # Firewall Regeln
+              db.firewallrule.find({}).forEach(
+                function(r){printjson(r)})
+              ```
+
+  # =========================================================================
+  # Dokumentation
+  # =========================================================================
+  - title: Dokumentation
+    path: docs
+    icon: mdi:file-document
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: iframe
+            url: /local/network-docs/index.html
+            aspect_ratio: "100:85"
+
+  # =========================================================================
+  # UniFi Monitor
+  # =========================================================================
+  - title: UniFi Monitor
+    path: unifi
+    icon: mdi:wifi-cog
+    type: sections
+    max_columns: 3
+    sections:
+      # --- Gesamtstatus ---
+      - type: grid
+        cards:
+          - type: entities
+            title: "UniFi Gesamtstatus"
+            icon: mdi:check-network
+            entities:
+              - entity: sensor.netzwerk_status
+                name: Gesamtstatus
+              - entity: binary_sensor.unifi_controller_online
+                name: Controller (CK+ @ 192.168.1.7)
+              - entity: sensor.unifi_gateway_status
+                name: Gateway (USG 3P)
+              - entity: sensor.unifi_aps_online
+                name: Access Points Online
+              - entity: sensor.unifi_clients_total
+                name: Clients Gesamt
+              - entity: sensor.unifi_radar_nearby_total
+                name: Nearby Geraete
+                icon: mdi:radar
+
+          - type: glance
+            title: "Clients pro SSID"
+            show_state: true
+            entities:
+              - entity: sensor.bad_iot
+                name: "Bad:IoT"
+                icon: mdi:devices
+              - entity: sensor.bad_bad
+                name: "Bad:Bad"
+                icon: mdi:incognito
+              - entity: sensor.bad_inet
+                name: "Bad:INet (Netz)"
+                icon: mdi:web
+
+          - type: glance
+            title: "SSID Schalter"
+            show_state: true
+            entities:
+              - entity: switch.bad_iot
+                name: "Bad:IoT"
+              - entity: switch.bad_bad
+                name: "Bad:Bad"
+              - entity: switch.bad_inet
+                name: "Bad:INet"
+
+      # --- Access Point Details ---
+      - type: grid
+        title: Access Points
+        cards:
+          - type: entities
+            title: "U6+ 1.OG (Arbeitszimmer)"
+            icon: mdi:access-point
+            entities:
+              - entity: sensor.u6_1_og_state
+                name: Status
+              - entity: sensor.ap_1og_clients
+                name: Clients
+              - entity: sensor.u6_1_og_cpu_utilization
+                name: CPU
+              - entity: sensor.u6_1_og_memory_utilization
+                name: RAM
+              - entity: sensor.u6_1_og_uptime
+                name: Uptime
+              - entity: update.u6_1_og
+                name: Firmware
+              - entity: button.u6_1_og_restart
+                name: Neustart
+              - entity: light.u6_1_og_led
+                name: LED
+
+          - type: entities
+            title: "U6+ Keller"
+            icon: mdi:access-point
+            entities:
+              - entity: sensor.u6_keller_state
+                name: Status
+              - entity: sensor.ap_keller_clients
+                name: Clients
+              - entity: sensor.u6_keller_cpu_utilization
+                name: CPU
+              - entity: sensor.u6_keller_memory_utilization
+                name: RAM
+              - entity: sensor.u6_keller_uptime
+                name: Uptime
+              - entity: update.u6_keller
+                name: Firmware
+              - entity: button.u6_keller_restart
+                name: Neustart
+              - entity: light.u6_keller_led
+                name: LED
+
+          - type: entities
+            title: "Gateway (USG 3P)"
+            icon: mdi:router-network
+            entities:
+              - entity: sensor.usg_3p_state
+                name: Status
+              - entity: sensor.gateway_clients
+                name: Clients
+              - entity: sensor.usg_3p_cpu_utilization
+                name: CPU
+              - entity: sensor.usg_3p_memory_utilization
+                name: RAM
+              - entity: sensor.usg_3p_uptime
+                name: Uptime
+              - entity: sensor.usg_wan_download
+                name: WAN Download
+              - entity: sensor.usg_wan_upload
+                name: WAN Upload
+              - entity: update.usg_3p
+                name: Firmware
+              - entity: button.usg_3p_restart
+                name: Neustart
+
+      # --- WiFi Radar (Interaktiv) ---
+      - type: grid
+        title: "WiFi Radar (Live)"
+        cards:
+          - type: iframe
+            url: /local/radar3.html?ap=0
+            aspect_ratio: "1:1"
+
+          - type: iframe
+            url: /local/radar3.html?ap=1
+            aspect_ratio: "1:1"
+
+      - type: markdown
+        content: |
+          ### Radar Vollbild
+          <a href="/local/radar3.html?ap=0" target="_blank" style="display:inline-block;background:#2a2a4a;color:#00d4ff;padding:8px 16px;border-radius:6px;text-decoration:none;margin:4px;">1.OG</a>
+          <a href="/local/radar3.html?ap=1" target="_blank" style="display:inline-block;background:#2a2a4a;color:#00d4ff;padding:8px 16px;border-radius:6px;text-decoration:none;margin:4px;">Keller</a>
+          <a href="/local/radar3.html" target="_blank" style="display:inline-block;background:#2a2a4a;color:#00d4ff;padding:8px 16px;border-radius:6px;text-decoration:none;margin:4px;">Beide</a>
+
+      # --- Verbundene Clients ---
+      - type: grid
+        title: "Verbundene Clients"
+        cards:
+          - type: markdown
+            title: "WiFi Clients (Live)"
+            content: |
+              {% set radar = state_attr('sensor.unifi_radar', 'aps') %}
+              {% if radar %}
+              {% for ap in radar %}
+              **{{ ap.name }}** ({{ ap.clients | length }} Clients)
+              {% for c in ap.clients %}
+              - {% if c.signal > -50 %}&#x1F7E2;{% elif c.signal > -70 %}&#x1F7E1;{% else %}&#x1F534;{% endif %} **{{ c.name }}** &mdash; {{ c.essid }} &mdash; {{ c.signal }} dBm {% if c.satisfaction %}({{ c.satisfaction }}%){% endif %}
+              {% endfor %}
+              {% if ap.clients | length == 0 %}
+              - *Keine Clients verbunden*
+              {% endif %}
+
+              {% endfor %}
+              {% else %}
+              *Keine Daten verfuegbar - CK+ (192.168.1.7) nicht erreichbar*
+              {% endif %}
+
+      # --- Nearby / Rogue Devices ---
+      - type: grid
+        title: "Nearby WiFi Devices"
+        cards:
+          - type: markdown
+            title: "U6+ 1.OG"
+            content: >
+              {% set radar = state_attr('sensor.unifi_radar', 'aps') %}
+              {% if radar and radar | length > 0 %}
+              {% set nearby = radar[0].nearby %}
+              **{{ nearby | length }} Geraete erkannt**
+
+              {% for n in nearby[:15] %}
+              {{ '🟢' if n.signal > -50 else ('🟡' if n.signal > -70 else ('🟠' if n.signal > -85 else '⚫')) }} **{{ n.essid if n.essid else n.bssid[:17] }}** {{ n.signal }} dBm {{ '(' ~ n.oui[:20] ~ ')' if n.oui else '' }}
+
+              {% endfor %}
+              {% if nearby | length > 15 %}*... +{{ nearby | length - 15 }} weitere*{% endif %}
+              {% else %}
+              *Keine Daten*
+              {% endif %}
+
+          - type: markdown
+            title: "U6+ Keller"
+            content: >
+              {% set radar = state_attr('sensor.unifi_radar', 'aps') %}
+              {% if radar and radar | length > 1 %}
+              {% set nearby = radar[1].nearby %}
+              **{{ nearby | length }} Geraete erkannt**
+
+              {% for n in nearby[:15] %}
+              {{ '🟢' if n.signal > -50 else ('🟡' if n.signal > -70 else ('🟠' if n.signal > -85 else '⚫')) }} **{{ n.essid if n.essid else n.bssid[:17] }}** {{ n.signal }} dBm {{ '(' ~ n.oui[:20] ~ ')' if n.oui else '' }}
+
+              {% endfor %}
+              {% if nearby | length > 15 %}*... +{{ nearby | length - 15 }} weitere*{% endif %}
+              {% else %}
+              *Keine Daten*
+              {% endif %}
+
+      # --- Netzwerk-Pfade ---
+      - type: grid
+        title: "Netzwerk-Pfade"
+        cards:
+          - type: markdown
+            content: |
+              **Bad:IoT (VLAN 12):**
+              ```
+              IoT Client → AP (Trunk)
+                → VLAN 12 → USG → Fritz!Box → Internet
+              MQTT: Client → 10.10.12.100:1883 (NUC)
+              ```
+              **Bad:Bad (VLAN 13 / Tor):**
+              ```
+              Client → AP (Trunk) → VLAN 13
+                → NUC 10.10.13.1 → iptables
+                → Tor → Internet (anonym)
+              DHCP: dnsmasq 10.10.13.10-99
+              DNS:  Tor DNSPort 10.10.13.1:5399
+              ```
+              **USG WAN (VLAN 666):**
+              ```
+              USG Gi0/2 → VLAN 666 → Fritz!Box
+                → Internet
+              ```
+
+      # --- Hinweise ---
+      - type: grid
+        title: "Hinweise"
+        cards:
+          - type: markdown
+            content: |
+              **CK+ Erreichbarkeit:**
+              Die CK+ (192.168.1.7) ist auf VLAN 1, das NICHT
+              ueber den Uplink Gi0/10 transportiert wird.
+              Der NUC kann die CK+ daher aktuell nicht erreichen.
+
+              Betroffene Dienste:
+              - `socat-unifi` (Proxy 127.0.0.1:8443 → CK+)
+              - UniFi HA-Integration (via socat)
+              - Radar-Script (`unifi_radar_data.py`)
+              - Backup-Script (`backup-unifi.sh`)
+
+              **Loesung:** CK+ eine zusaetzliche IP auf
+              VLAN 11 (10.10.0.x) geben, oder VLAN 1 auf den
+              Uplink erlauben.

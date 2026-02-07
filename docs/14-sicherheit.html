@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sicherheit - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html" class="active">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Betrieb
+                    <span class="separator">&rsaquo;</span>
+                    Sicherheit
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Sicherheit</h1>
+
+            <p>
+                Die Sicherheit der Home Assistant Konfiguration umfasst den Schutz sensibler Daten wie
+                Passwörter, API-Tokens und OAuth-Credentials. Durch eine durchdachte Kombination aus
+                <code>secrets.yaml</code>, <code>.gitignore</code>, Pre-Commit Hooks und einer
+                soliden Backup-Strategie werden versehentliche Offenlegungen verhindert und die
+                Wiederherstellbarkeit gewährleistet.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>secrets.yaml - Konzept und Verwendung</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Die Datei <code>secrets.yaml</code> ist das zentrale Schlüsselmanagement für Home Assistant.
+                Sie enthält alle sensiblen Werte (Passwörter, Tokens, API-Keys), die in der
+                <code>configuration.yaml</code> und den Package-Dateien über die Referenz
+                <code>!secret</code> eingebunden werden.
+            </p>
+
+            <h3>Funktionsprinzip</h3>
+            <pre><code># secrets.yaml (NIEMALS committen!)
+# ========================================
+# Diese Datei enthält alle sensiblen Daten.
+# Sie wird von .gitignore ausgeschlossen.
+# ========================================
+
+# Grundlegende Einstellungen
+home_latitude: "51.xxxxxx"
+home_longitude: "7.xxxxxx"
+home_elevation: "85"
+
+# MQTT
+mqtt_user: "mqtt_user"
+mqtt_password: "sicheres_mqtt_passwort_hier"
+
+# Tibber
+tibber_api_token: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# UniFi
+unifi_host: "192.168.1.1"
+unifi_username: "admin"
+unifi_password: "sicheres_unifi_passwort"
+
+# Fritz!Box
+fritzbox_host: "192.168.178.1"
+fritzbox_username: "admin"
+fritzbox_password: "sicheres_fritzbox_passwort"
+
+# Tractive (Haustier-Tracker)
+tractive_email: "email@example.com"
+tractive_password: "tractive_passwort"
+
+# PetKit
+petkit_email: "email@example.com"
+petkit_password: "petkit_passwort"
+
+# SNMP
+snmp_community: "public"
+
+# Alexa Media Player
+amazon_email: "email@example.com"
+amazon_password: "amazon_passwort"
+
+# Zonen (GPS-Koordinaten)
+garden_latitude: "51.xxxxxx"
+garden_longitude: "7.xxxxxx"
+neighbor_left_latitude: "51.xxxxxx"
+neighbor_left_longitude: "7.xxxxxx"
+neighbor_right_latitude: "51.xxxxxx"
+neighbor_right_longitude: "7.xxxxxx"</code></pre>
+
+            <h3>Verwendung in Konfigurationsdateien</h3>
+            <pre><code># configuration.yaml - Beispiel für !secret Referenzen
+homeassistant:
+  latitude: !secret home_latitude
+  longitude: !secret home_longitude
+  elevation: !secret home_elevation
+
+# packages/network_switches.yaml
+sensor:
+  - platform: snmp
+    host: 192.168.1.10
+    community: !secret snmp_community</code></pre>
+
+            <h3>Wichtige Regeln</h3>
+            <ul>
+                <li><code>secrets.yaml</code> darf <strong>niemals</strong> in ein Git-Repository committet werden</li>
+                <li>Alle Schlüssel müssen nach einer Neuinstallation manuell ausgefüllt werden</li>
+                <li>Eine <code>secrets.yaml.example</code> mit Platzhaltern kann committet werden, um die Struktur zu dokumentieren</li>
+                <li>Verschachtelte <code>!secret</code>-Referenzen in Package-Dateien funktionieren nur, wenn die <code>secrets.yaml</code> im selben oder übergeordneten Verzeichnis liegt</li>
+            </ul>
+
+            <!-- ============================================================ -->
+            <h2>.gitignore - Schutz sensibler Daten</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Die <code>.gitignore</code> Datei stellt sicher, dass sensible Dateien nicht versehentlich
+                in das Git-Repository aufgenommen werden. Sie ist die erste Verteidigungslinie gegen
+                Datenlecks.
+            </p>
+
+            <h3>Empfohlene .gitignore</h3>
+            <pre><code># .gitignore für IceHomeAssist
+# ========================================
+# Sensible Daten
+# ========================================
+secrets.yaml
+secrets.yml
+.storage/
+*.pem
+*.key
+*.crt
+
+# ========================================
+# Datenbanken und Cache
+# ========================================
+home-assistant_v2.db
+home-assistant_v2.db-shm
+home-assistant_v2.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# ========================================
+# Temporäre Dateien
+# ========================================
+__pycache__/
+*.pyc
+*.pyo
+.cache/
+tts/
+
+# ========================================
+# IDE und System
+# ========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ========================================
+# Home Assistant Intern
+# ========================================
+.cloud/
+.google.token
+deps/
+*.log
+.HA_VERSION
+
+# ========================================
+# Backups (zu groß für Git)
+# ========================================
+backups/
+*.tar
+*.tar.gz
+
+# ========================================
+# Node-RED
+# ========================================
+# flows_cred.json enthält verschlüsselte Credentials
+flows_cred.json</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Pre-Commit Hook für Secrets-Scanning</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Als zusätzliche Sicherheitsschicht wird ein Git Pre-Commit Hook verwendet, der vor jedem
+                Commit prüft, ob versehentlich Dateien mit sensiblen Inhalten committed werden sollen.
+            </p>
+
+            <h3>Hook Installation</h3>
+            <pre><code># Pre-Commit Hook erstellen
+# Datei: .git/hooks/pre-commit
+
+#!/bin/bash
+# ========================================
+# Pre-Commit Hook: Secrets Scanner
+# Verhindert das Committen sensibler Daten
+# ========================================
+
+echo "Prüfe auf sensible Daten..."
+
+# Liste der verbotenen Dateien
+FORBIDDEN_FILES=(
+    "secrets.yaml"
+    "secrets.yml"
+    ".storage/"
+    "flows_cred.json"
+    "*.pem"
+    "*.key"
+)
+
+# Liste der verbotenen Muster in Dateien
+FORBIDDEN_PATTERNS=(
+    "password:"
+    "api_key:"
+    "api_token:"
+    "client_secret:"
+    "PRIVATE KEY"
+    "BEGIN RSA"
+    "BEGIN EC PRIVATE"
+)
+
+# Gestagte Dateien prüfen
+STAGED_FILES=$(git diff --cached --name-only)
+EXIT_CODE=0
+
+# Dateinamen prüfen
+for file in $STAGED_FILES; do
+    for forbidden in "${FORBIDDEN_FILES[@]}"; do
+        if [[ "$file" == *"$forbidden"* ]]; then
+            echo "BLOCKIERT: $file enthält sensible Daten!"
+            EXIT_CODE=1
+        fi
+    done
+done
+
+# Dateiinhalte prüfen
+for file in $STAGED_FILES; do
+    if [ -f "$file" ]; then
+        for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
+            if grep -q "$pattern" "$file" 2>/dev/null; then
+                echo "WARNUNG: $file enthält möglicherweise sensible Daten ($pattern)"
+                # Ausnahme für Beispieldateien
+                if [[ "$file" != *".example"* ]] && [[ "$file" != *"docs/"* ]]; then
+                    EXIT_CODE=1
+                fi
+            fi
+        done
+    fi
+done
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "Commit abgebrochen! Bitte sensible Daten entfernen."
+    echo "Nutze 'git reset HEAD <datei>' um Dateien aus dem Staging zu entfernen."
+    exit 1
+fi
+
+echo "Secrets-Scan bestanden."
+exit 0</code></pre>
+
+            <h3>Hook aktivieren</h3>
+            <pre><code># Hook ausführbar machen
+chmod +x .git/hooks/pre-commit
+
+# Test durchführen
+git add secrets.yaml
+git commit -m "test"
+# Ergebnis: "BLOCKIERT: secrets.yaml enthält sensible Daten!"</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>.storage Verzeichnis</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Das <code>.storage</code> Verzeichnis innerhalb der Home Assistant Konfiguration enthält
+                intern verwaltete Daten wie OAuth-Tokens, Integrationseinstellungen, Geräteregister und
+                Benutzerkonten. Diese Daten werden automatisch von Home Assistant verwaltet und sollten
+                <strong>nicht</strong> manuell bearbeitet oder committet werden.
+            </p>
+
+            <h3>Wichtige Dateien in .storage</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Datei</th>
+                        <th>Inhalt</th>
+                        <th>Sensibel?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>auth</code></td>
+                        <td>Benutzerkonten, Tokens, Refresh-Tokens</td>
+                        <td>Ja - sehr sensibel</td>
+                    </tr>
+                    <tr>
+                        <td><code>auth_provider.homeassistant</code></td>
+                        <td>Passwort-Hashes der HA-Benutzer</td>
+                        <td>Ja</td>
+                    </tr>
+                    <tr>
+                        <td><code>core.config_entries</code></td>
+                        <td>Alle Integrations-Konfigurationen</td>
+                        <td>Ja (enthält oft Tokens)</td>
+                    </tr>
+                    <tr>
+                        <td><code>core.device_registry</code></td>
+                        <td>Registrierte Geräte</td>
+                        <td>Nein</td>
+                    </tr>
+                    <tr>
+                        <td><code>core.entity_registry</code></td>
+                        <td>Registrierte Entities</td>
+                        <td>Nein</td>
+                    </tr>
+                    <tr>
+                        <td><code>core.area_registry</code></td>
+                        <td>Definierte Bereiche/Räume</td>
+                        <td>Nein</td>
+                    </tr>
+                    <tr>
+                        <td><code>lovelace</code></td>
+                        <td>Dashboard-Konfigurationen (UI-Modus)</td>
+                        <td>Nein</td>
+                    </tr>
+                    <tr>
+                        <td><code>hacs.*</code></td>
+                        <td>HACS Repositorys und Installationen</td>
+                        <td>Nein</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                <strong>Wichtig:</strong> Bei einer Wiederherstellung aus dem Git-Repository müssen die
+                Daten aus <code>.storage</code> separat gesichert und wiederhergestellt werden, oder die
+                Integrationen müssen neu eingerichtet werden. Siehe auch
+                <a href="15-wiederherstellung.html">Wiederherstellung</a>.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>Backup-Strategie</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Eine mehrstufige Backup-Strategie stellt sicher, dass die Konfiguration im Fehlerfall
+                wiederhergestellt werden kann.
+            </p>
+
+            <h3>Backup-Ebenen</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ebene</th>
+                        <th>Methode</th>
+                        <th>Häufigkeit</th>
+                        <th>Inhalt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1. Git Repository</strong></td>
+                        <td>GitHub (IceHomeAssist)</td>
+                        <td>Bei jeder Änderung</td>
+                        <td>YAML-Konfiguration, Scripts, Dokumentation</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2. HA Snapshots</strong></td>
+                        <td>Home Assistant Backup</td>
+                        <td>Wöchentlich (automatisch)</td>
+                        <td>Komplette Konfiguration inkl. .storage</td>
+                    </tr>
+                    <tr>
+                        <td><strong>3. Host-Backup</strong></td>
+                        <td>rsync / tar auf externem Speicher</td>
+                        <td>Täglich</td>
+                        <td>/var/lib/homeassistant/ komplett</td>
+                    </tr>
+                    <tr>
+                        <td><strong>4. Offline-Kopie</strong></td>
+                        <td>USB-Stick / NAS</td>
+                        <td>Monatlich</td>
+                        <td>Komplett-Archiv mit secrets.yaml</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Automatisches Backup-Script</h3>
+            <pre><code>#!/bin/bash
+# backup_ha.sh - Automatisches Home Assistant Backup
+# Wird per Cron täglich um 03:00 Uhr ausgeführt
+
+BACKUP_DIR="/mnt/backup/homeassistant"
+HA_CONFIG="/var/lib/homeassistant/homeassistant"
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="${BACKUP_DIR}/ha_backup_${DATE}.tar.gz"
+
+# Verzeichnis erstellen falls nötig
+mkdir -p "$BACKUP_DIR"
+
+# Backup erstellen (inkl. secrets.yaml und .storage)
+tar -czf "$BACKUP_FILE" \
+    -C /var/lib/homeassistant \
+    homeassistant/ \
+    --exclude='homeassistant/home-assistant_v2.db*' \
+    --exclude='homeassistant/deps/' \
+    --exclude='homeassistant/__pycache__/' \
+    --exclude='homeassistant/tts/'
+
+# Alte Backups entfernen (älter als 30 Tage)
+find "$BACKUP_DIR" -name "ha_backup_*.tar.gz" -mtime +30 -delete
+
+echo "Backup erstellt: $BACKUP_FILE"
+echo "Größe: $(du -h "$BACKUP_FILE" | cut -f1)"</code></pre>
+
+            <h3>Cron-Eintrag</h3>
+            <pre><code># crontab -e
+0 3 * * * /home/mpauli/scripts/backup_ha.sh >> /var/log/ha_backup.log 2>&1</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Best Practices</h2>
+            <!-- ============================================================ -->
+
+            <h3>Passwort-Sicherheit</h3>
+            <ul>
+                <li>Verwende für jeden Dienst ein <strong>einzigartiges, starkes Passwort</strong></li>
+                <li>Nutze einen Passwort-Manager (z.B. KeePassXC, Bitwarden) zur Verwaltung</li>
+                <li>MQTT-Passwort: Mindestens 16 Zeichen, alphanumerisch</li>
+                <li>Ändere Standard-Passwörter bei allen Geräten (MikroTik, UniFi, etc.)</li>
+            </ul>
+
+            <h3>Netzwerk-Sicherheit</h3>
+            <ul>
+                <li><strong>Home Assistant nicht direkt ins Internet exponieren</strong> - bei Bedarf VPN verwenden</li>
+                <li>MQTT-Broker nur im lokalen Netzwerk erreichbar machen</li>
+                <li>SNMP Community String ändern (nicht "public" verwenden)</li>
+                <li>Separate VLANs für IoT-Geräte und Smart Home einrichten</li>
+                <li>Firewall-Regeln: Nur notwendige Ports öffnen</li>
+            </ul>
+
+            <h3>Git-Sicherheit</h3>
+            <ul>
+                <li><code>.gitignore</code> vor dem ersten Commit erstellen und prüfen</li>
+                <li>Pre-Commit Hook aktivieren und testen</li>
+                <li>Bei versehentlichem Commit von Secrets: <strong>alle</strong> betroffenen Passwörter sofort ändern</li>
+                <li>Git-History rewriten reicht nicht aus - der Secret muss als kompromittiert betrachtet werden</li>
+                <li>Repository auf <strong>privat</strong> setzen (GitHub)</li>
+            </ul>
+
+            <h3>Container-Sicherheit</h3>
+            <ul>
+                <li>Docker Container regelmäßig aktualisieren</li>
+                <li>Container-Images nur von vertrauenswürdigen Quellen beziehen</li>
+                <li>Keine unnötigen Ports nach außen freigeben</li>
+                <li>Docker-Volumes mit korrekten Berechtigungen konfigurieren</li>
+                <li>Patches innerhalb des Containers (<code>/usr/local/lib/python3.13/...</code>) gehen bei Container-Updates verloren - dies beachten</li>
+            </ul>
+
+            <h3>Checkliste: Sicherheitsaudit</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Prüfpunkt</th>
+                        <th>Häufigkeit</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Secrets in Git prüfen</td>
+                        <td>Bei jedem Commit</td>
+                        <td>Pre-Commit Hook soll warnen</td>
+                    </tr>
+                    <tr>
+                        <td>Backup-Integrität prüfen</td>
+                        <td>Monatlich</td>
+                        <td>Backup testweise entpacken und prüfen</td>
+                    </tr>
+                    <tr>
+                        <td>Passwörter rotieren</td>
+                        <td>Halbjährlich</td>
+                        <td>Alle Passwörter in secrets.yaml erneuern</td>
+                    </tr>
+                    <tr>
+                        <td>HACS Components prüfen</td>
+                        <td>Bei jedem Update</td>
+                        <td>Changelogs auf Sicherheitsfixes prüfen</td>
+                    </tr>
+                    <tr>
+                        <td>Netzwerk-Scan</td>
+                        <td>Vierteljährlich</td>
+                        <td>Offene Ports und unbekannte Geräte prüfen</td>
+                    </tr>
+                    <tr>
+                        <td>HA-Benutzer prüfen</td>
+                        <td>Vierteljährlich</td>
+                        <td>Nicht mehr benötigte Accounts deaktivieren</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="page-nav">
+                <a href="13-haustier.html"><div><div class="label">Zurück</div>Haustier</div></a>
+                <a href="15-wiederherstellung.html"><div><div class="label">Weiter</div>Wiederherstellung</div></a>
+            </div>
+            <div class="footer">IceHomeAssist Dokumentation &middot; Erstellt Februar 2026</div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) a.classList.add('active');
+});
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs"},
+];
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i => i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q));
+    results.innerHTML = matches.length === 0 ? '<div class="search-result-item">Keine Ergebnisse</div>' :
+        matches.map(m => `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`).join('');
+    results.classList.add('active');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.search-container')) document.getElementById('searchResults').classList.remove('active'); });
+</script>
+</body>
+</html>

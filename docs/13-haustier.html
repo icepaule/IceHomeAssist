@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haustier - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html" class="active">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Anwendungen
+                    <span class="separator">&rsaquo;</span>
+                    Haustier
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Haustier-Tracking: Charly</h1>
+
+            <p>
+                Charly ist unsere Katze und wird über zwei Integrationen in Home Assistant getrackt:
+                <strong>Tractive</strong> für GPS-basiertes Outdoor-Tracking und <strong>PetKit</strong>
+                für die Überwachung von Fütterung und Aktivität im Haus. Zusammen ergeben diese
+                Integrationen ein umfassendes Bild über Charlys Aufenthaltsort, Aktivitätsmuster
+                und Wohlbefinden.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>Tractive GPS Tracker</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Der <strong>Tractive GPS Tracker</strong> ist ein kleines, am Halsband befestigtes Gerät,
+                das Charlys Position in Echtzeit über Mobilfunk an die Tractive-Cloud übermittelt. Die
+                HACS-Integration bringt diese Daten direkt in Home Assistant.
+            </p>
+
+            <h3>Integration einrichten</h3>
+            <ol>
+                <li>Tractive GPS Tracker am Halsband befestigen und in der Tractive App aktivieren</li>
+                <li>In HACS nach <em>Tractive</em> suchen und installieren (oder native Integration nutzen)</li>
+                <li>Home Assistant neu starten</li>
+                <li><strong>Einstellungen</strong> &rarr; <strong>Geräte &amp; Dienste</strong> &rarr; <strong>Integration hinzufügen</strong></li>
+                <li>Nach <em>Tractive</em> suchen</li>
+                <li><strong>E-Mail</strong> und <strong>Passwort</strong> des Tractive-Kontos eingeben</li>
+                <li>Die Integration erkennt automatisch alle registrierten Tracker</li>
+            </ol>
+
+            <h3>Verfügbare Entities</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Entity</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>device_tracker.charly</code></td>
+                        <td>Device Tracker</td>
+                        <td>GPS-Position mit Latitude/Longitude</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.charly_battery_level</code></td>
+                        <td>Sensor</td>
+                        <td>Akkustand des Trackers in Prozent</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.charly_activity</code></td>
+                        <td>Sensor</td>
+                        <td>Aktuelle Aktivität (Ruhen, Aktiv, etc.)</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.charly_speed</code></td>
+                        <td>Sensor</td>
+                        <td>Aktuelle Geschwindigkeit</td>
+                    </tr>
+                    <tr>
+                        <td><code>binary_sensor.charly_tracker_online</code></td>
+                        <td>Binär-Sensor</td>
+                        <td>Tracker-Verbindungsstatus</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Device Tracker Attribute</h3>
+            <p>
+                Die <code>device_tracker.charly</code> Entity enthält folgende Attribute:
+            </p>
+            <pre><code># device_tracker.charly - Attribute
+source_type: gps
+latitude: 51.xxxxx
+longitude: 7.xxxxx
+gps_accuracy: 15          # Genauigkeit in Metern
+altitude: 85              # Höhe über NN
+battery_level: 78         # Akkustand in %
+speed: 0.0                # Geschwindigkeit in km/h
+course: 180               # Bewegungsrichtung in Grad
+friendly_name: "Charly"
+entity_picture: "/local/charly.jpg"</code></pre>
+
+            <h3>Zonen für Charly</h3>
+            <p>
+                Um zu erkennen, ob sich Charly in bestimmten Bereichen aufhält, werden Home Assistant
+                Zonen definiert. Der <code>device_tracker</code> ändert seinen Status automatisch
+                basierend auf diesen Zonen.
+            </p>
+            <pre><code># configuration.yaml - Zonen
+zone:
+  - name: "Zuhause"
+    latitude: !secret home_latitude
+    longitude: !secret home_longitude
+    radius: 50
+    icon: mdi:home
+
+  - name: "Garten"
+    latitude: !secret garden_latitude
+    longitude: !secret garden_longitude
+    radius: 30
+    icon: mdi:flower
+
+  - name: "Nachbar Links"
+    latitude: !secret neighbor_left_latitude
+    longitude: !secret neighbor_left_longitude
+    radius: 25
+    icon: mdi:home-group
+
+  - name: "Nachbar Rechts"
+    latitude: !secret neighbor_right_latitude
+    longitude: !secret neighbor_right_longitude
+    radius: 25
+    icon: mdi:home-group</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>PetKit Integration</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Die <strong>PetKit</strong> Integration bindet smarte Haustiergeräte ein, wie beispielsweise
+                automatische Futterautomaten und Trinkbrunnen. Sie liefert Daten über Fütterungszeiten,
+                Futtermengen und den Gerätestatus.
+            </p>
+
+            <h3>Integration einrichten</h3>
+            <ol>
+                <li>PetKit-Geräte über die PetKit App einrichten und mit dem Konto verbinden</li>
+                <li>In HACS nach <em>PetKit</em> suchen und installieren</li>
+                <li>Home Assistant neu starten</li>
+                <li><strong>Einstellungen</strong> &rarr; <strong>Geräte &amp; Dienste</strong> &rarr; <strong>Integration hinzufügen</strong></li>
+                <li>PetKit Zugangsdaten eingeben</li>
+            </ol>
+
+            <h3>Verfügbare Entities</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Entity</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>sensor.petkit_feeder_food_level</code></td>
+                        <td>Sensor</td>
+                        <td>Füllstand des Futterautomaten</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.petkit_feeder_last_feeding</code></td>
+                        <td>Sensor</td>
+                        <td>Zeitpunkt der letzten Fütterung</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.petkit_feeder_daily_amount</code></td>
+                        <td>Sensor</td>
+                        <td>Heutige Futtermenge in Gramm</td>
+                    </tr>
+                    <tr>
+                        <td><code>button.petkit_feeder_dispense</code></td>
+                        <td>Button</td>
+                        <td>Manuelle Fütterung auslösen</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.petkit_fountain_water_level</code></td>
+                        <td>Sensor</td>
+                        <td>Wasserstand des Trinkbrunnens</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.petkit_fountain_filter_life</code></td>
+                        <td>Sensor</td>
+                        <td>Restlebensdauer des Filters in Prozent</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================ -->
+            <h2>Charly Dashboard</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Das Charly Dashboard bietet eine zentrale Übersicht über alle Haustier-relevanten Daten:
+                Standort auf einer Karte, Aktivitäts-Verlauf, Tracker-Akkustand, Fütterungsdaten und
+                den Status der PetKit-Geräte.
+            </p>
+
+            <h3>Dashboard-Konfiguration</h3>
+            <pre><code># dashboards/haustier.yaml
+views:
+  - title: Charly
+    icon: mdi:cat
+    cards:
+      # Karte mit Charlys Position
+      - type: map
+        title: "Charly - Standort"
+        entities:
+          - entity: device_tracker.charly
+        default_zoom: 17
+        hours_to_show: 24
+        dark_mode: true
+        aspect_ratio: 16:9
+
+      # Status-Übersicht
+      - type: entities
+        title: "Charly - Status"
+        entities:
+          - entity: device_tracker.charly
+            name: Aufenthaltsort
+          - entity: sensor.charly_activity
+            name: Aktivität
+          - entity: sensor.charly_battery_level
+            name: Tracker Akku
+          - entity: sensor.charly_speed
+            name: Geschwindigkeit
+          - entity: binary_sensor.charly_tracker_online
+            name: Tracker Online
+
+      # Tracker-Akku Gauge
+      - type: gauge
+        entity: sensor.charly_battery_level
+        name: "Tracker Akku"
+        min: 0
+        max: 100
+        severity:
+          green: 50
+          yellow: 20
+          red: 0
+
+      # Fütterung
+      - type: entities
+        title: "Fütterung"
+        entities:
+          - entity: sensor.petkit_feeder_food_level
+            name: Futterfüllstand
+          - entity: sensor.petkit_feeder_last_feeding
+            name: Letzte Fütterung
+          - entity: sensor.petkit_feeder_daily_amount
+            name: Tägliche Menge
+          - entity: button.petkit_feeder_dispense
+            name: Jetzt füttern
+
+      # Trinkbrunnen
+      - type: entities
+        title: "Trinkbrunnen"
+        entities:
+          - entity: sensor.petkit_fountain_water_level
+            name: Wasserstand
+          - entity: sensor.petkit_fountain_filter_life
+            name: Filter Restlebensdauer
+
+      # Aktivitätsverlauf (Grafik)
+      - type: history-graph
+        title: "Aktivitätsverlauf (24h)"
+        hours_to_show: 24
+        entities:
+          - entity: sensor.charly_activity
+          - entity: device_tracker.charly</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Automatisierungen für Charly</h2>
+            <!-- ============================================================ -->
+
+            <h3>Charly verlässt den Garten</h3>
+            <pre><code>- alias: "Charly verlässt den Garten"
+  description: "Benachrichtigung wenn Charly die Gartenzone verlässt"
+  trigger:
+    - platform: zone
+      entity_id: device_tracker.charly
+      zone: zone.garten
+      event: leave
+  condition:
+    - condition: state
+      entity_id: input_boolean.charly_tracking_aktiv
+      state: "on"
+  action:
+    - service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+      data:
+        message: "Charly hat den Garten verlassen."
+        data:
+          type: tts
+    - service: notify.mobile_app_marcus_handy
+      data:
+        title: "Charly unterwegs"
+        message: >
+          Charly hat den Garten verlassen und befindet sich jetzt bei
+          {{ state_attr('device_tracker.charly', 'latitude') }},
+          {{ state_attr('device_tracker.charly', 'longitude') }}.
+        data:
+          actions:
+            - action: "OPEN_MAP"
+              title: "Auf Karte anzeigen"</code></pre>
+
+            <h3>Charly kommt nach Hause</h3>
+            <pre><code>- alias: "Charly kommt nach Hause"
+  trigger:
+    - platform: zone
+      entity_id: device_tracker.charly
+      zone: zone.zuhause
+      event: enter
+  action:
+    - service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+      data:
+        message: "Charly ist wieder zu Hause."
+        data:
+          type: tts</code></pre>
+
+            <h3>Tracker Akku niedrig</h3>
+            <pre><code>- alias: "Charly Tracker Akku niedrig"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.charly_battery_level
+      below: 20
+  action:
+    - service: notify.mobile_app_marcus_handy
+      data:
+        title: "Tracker Akku niedrig"
+        message: >
+          Der Tractive Tracker von Charly hat nur noch
+          {{ states('sensor.charly_battery_level') }}% Akku.
+          Bitte aufladen!
+    - service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+      data:
+        message: >
+          Achtung, Charlys GPS-Tracker hat nur noch
+          {{ states('sensor.charly_battery_level') }} Prozent Akku.
+        data:
+          type: tts</code></pre>
+
+            <h3>Futterstand niedrig</h3>
+            <pre><code>- alias: "PetKit Futterstand niedrig"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.petkit_feeder_food_level
+      below: 15
+  action:
+    - service: notify.mobile_app_marcus_handy
+      data:
+        title: "Futter nachfüllen"
+        message: "Der PetKit Futterautomat ist fast leer. Bitte Futter nachfüllen."
+    - service: notify.alexa_media_uberall
+      data:
+        message: "Der Futterautomat für Charly ist fast leer."
+        data:
+          type: tts</code></pre>
+
+            <h3>Trinkbrunnen-Filter wechseln</h3>
+            <pre><code>- alias: "PetKit Filter wechseln"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.petkit_fountain_filter_life
+      below: 10
+  action:
+    - service: persistent_notification.create
+      data:
+        title: "PetKit Filter"
+        message: >
+          Der Filter des Trinkbrunnens hat nur noch
+          {{ states('sensor.petkit_fountain_filter_life') }}%
+          Restlebensdauer. Bitte bald wechseln.</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Standort-Verlauf</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Home Assistant speichert den Standort-Verlauf von Charlys Tracker automatisch in der
+                Recorder-Datenbank. Über das Map-Dashboard kann der Verlauf der letzten Stunden
+                nachverfolgt werden.
+            </p>
+
+            <h3>Recorder-Konfiguration</h3>
+            <pre><code># configuration.yaml - Recorder für Standort-Verlauf
+recorder:
+  include:
+    entities:
+      - device_tracker.charly
+      - sensor.charly_activity
+      - sensor.charly_battery_level
+      - sensor.petkit_feeder_food_level
+      - sensor.petkit_feeder_daily_amount
+  commit_interval: 30    # Alle 30 Sekunden speichern</code></pre>
+
+            <h3>Verlaufsanalyse</h3>
+            <p>
+                Der Standort-Verlauf zeigt typische Bewegungsmuster:
+            </p>
+            <ul>
+                <li><strong>Morgens (6-8 Uhr):</strong> Charly erkundet den Garten und die nähere Umgebung</li>
+                <li><strong>Vormittags (8-12 Uhr):</strong> Meist im Haus oder auf der Terrasse</li>
+                <li><strong>Nachmittags (14-17 Uhr):</strong> Längere Ausflüge in die Nachbarschaft</li>
+                <li><strong>Abends (17-22 Uhr):</strong> Rückkehr nach Hause, Fütterungszeiten</li>
+                <li><strong>Nachts (22-6 Uhr):</strong> Im Haus</li>
+            </ul>
+
+            <h3>Input Boolean für Tracking</h3>
+            <pre><code># Tracking aktivieren/deaktivieren
+input_boolean:
+  charly_tracking_aktiv:
+    name: "Charly Tracking Benachrichtigungen"
+    icon: mdi:map-marker-alert
+    initial: true</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Tipps</h2>
+            <!-- ============================================================ -->
+
+            <ul>
+                <li><strong>Tracker-Akku:</strong> Der Tractive Tracker hält je nach Tracking-Modus 2-5 Tage. Im LIVE-Modus entlädt er sich schneller.</li>
+                <li><strong>GPS-Genauigkeit:</strong> In Innenräumen ist die GPS-Genauigkeit eingeschränkt. Der Standort kann um mehrere Meter abweichen.</li>
+                <li><strong>Zonen klein halten:</strong> Zonen für Katzen sollten eher klein definiert werden (25-50m Radius), da Katzen sich in engen Bereichen bewegen.</li>
+                <li><strong>Benachrichtigungen dosieren:</strong> Zu viele Benachrichtigungen können nervig sein. Den Input Boolean nutzen, um Tracking bei Bedarf zu deaktivieren.</li>
+                <li><strong>PetKit Cloud:</strong> Die PetKit Integration benötigt eine Cloud-Verbindung. Bei Internetausfällen funktionieren die Automaten weiterhin, aber die Daten kommen nicht in HA an.</li>
+            </ul>
+
+            <div class="page-nav">
+                <a href="12-netzwerk.html"><div><div class="label">Zurück</div>Netzwerk</div></a>
+                <a href="14-sicherheit.html"><div><div class="label">Weiter</div>Sicherheit</div></a>
+            </div>
+            <div class="footer">IceHomeAssist Dokumentation &middot; Erstellt Februar 2026</div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) a.classList.add('active');
+});
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs"},
+];
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i => i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q));
+    results.innerHTML = matches.length === 0 ? '<div class="search-result-item">Keine Ergebnisse</div>' :
+        matches.map(m => `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`).join('');
+    results.classList.add('active');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.search-container')) document.getElementById('searchResults').classList.remove('active'); });
+</script>
+</body>
+</html>

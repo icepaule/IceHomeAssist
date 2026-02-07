@@ -1,0 +1,165 @@
+title: Smart Home
+views:
+  # ===========================================================================
+  # STARTSEITE
+  # ===========================================================================
+  - title: Home
+    path: home
+    icon: mdi:home
+    cards:
+      - type: markdown
+        content: "## Willkommen"
+
+      # Schnellübersicht
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: weather.forecast_home
+            name: Wetter
+          - type: entity
+            entity: sensor.paule_electricity_price
+            name: Strompreis
+          - type: entity
+            entity: sensor.pv_leistung
+            name: PV
+
+      # Warnungen
+      - type: conditional
+        conditions:
+          - entity: sensor.nina_munchen_warnungen_anzahl
+            state_not: "0"
+        card:
+          type: markdown
+          content: |
+            ### Aktive Warnungen
+            {{ states('sensor.warnungen_zusammenfassung') }}
+
+      # Personen
+      - type: entities
+        title: Anwesenheit
+        entities:
+          - entity: person.marcus
+            name: Marcus
+
+      # Schnellzugriff
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Energie
+            icon: mdi:flash
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-energie
+          - type: button
+            name: Wetter
+            icon: mdi:weather-cloudy
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-wetter
+          - type: button
+            name: System
+            icon: mdi:cog
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-system
+
+      # Aktive Geräte
+      - type: entities
+        title: Aktive Verbraucher
+        entities:
+          - entity: sensor.pv_leistung
+            name: PV Erzeugung
+          - entity: sensor.server_leistung
+            name: Server
+          - entity: sensor.arbeitszimmer_leistung
+            name: Arbeitszimmer
+
+  # ===========================================================================
+  # RÄUME - EG
+  # ===========================================================================
+  - title: Erdgeschoss
+    path: eg
+    icon: mdi:home-floor-0
+    cards:
+      - type: markdown
+        content: "## Erdgeschoss"
+
+      # Wohnzimmer
+      - type: vertical-stack
+        title: Wohnzimmer
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: media_player.kd_55xe8505
+                name: Sony TV
+              - type: entity
+                entity: light.wled2
+                name: WLED
+
+      # Küche
+      - type: vertical-stack
+        title: Küche
+        cards:
+          - type: entity
+            entity: sensor.kueche_leistung
+            name: Verbrauch
+
+      # Büro/Arbeitszimmer
+      - type: vertical-stack
+        title: Arbeitszimmer
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: sensor.arbeitszimmer_leistung
+                name: Verbrauch
+              - type: entity
+                entity: switch.strom_arbeitszimmer
+                name: Schalter
+
+  # ===========================================================================
+  # RÄUME - OG
+  # ===========================================================================
+  - title: Obergeschoss
+    path: og
+    icon: mdi:home-floor-1
+    cards:
+      - type: markdown
+        content: "## Obergeschoss"
+
+      - type: markdown
+        content: |
+          *Heizungs- und Klimasteuerung noch nicht konfiguriert.*
+
+          Verfügbare Integrationen:
+          - Homematic CCU
+          - Fritz!DECT Thermostate
+          - Tado
+
+  # ===========================================================================
+  # GARTEN
+  # ===========================================================================
+  - title: Garten
+    path: garten
+    icon: mdi:flower
+    cards:
+      - type: markdown
+        content: "## Garten & Außenbereich"
+
+      # Schuppen Wetter
+      - type: entities
+        title: Schuppen Wetterstation (Luft1)
+        entities:
+          - entity: sensor.luft1_wetterstation_schuppen_temperatur
+            name: Temperatur
+          - entity: sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit
+            name: Luftfeuchtigkeit
+          - entity: sensor.luft1_wetterstation_schuppen_luftdruck
+            name: Luftdruck
+
+      # Bewässerung (Platzhalter)
+      - type: markdown
+        content: |
+          ### Bewässerung
+          *Bewässerungssteuerung noch nicht konfiguriert.*

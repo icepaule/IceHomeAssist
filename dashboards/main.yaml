@@ -1,0 +1,319 @@
+# =============================================================================
+# Main Dashboard - Hauptübersicht
+# =============================================================================
+# Basiert auf VIS View "Main" / "Schwalbe"
+#
+# Enthält:
+# - Uhrzeit & Datum
+# - Wetter (aktuell + Vorhersage)
+# - Tibber Strompreis
+# - Energie Übersicht (PV)
+# - Heizung Status
+# - Termine / Kalender
+# - Müllabfuhr
+# - Schnellzugriffe
+#
+# Benötigte HACS-Karten:
+# - mushroom
+# - mini-graph-card
+# - atomic-calendar-revive oder calendar-card
+# - weather-card (optional)
+# =============================================================================
+
+title: Home
+views:
+  # ===========================================================================
+  # HAUPTSEITE
+  # ===========================================================================
+  - title: Home
+    path: home
+    icon: mdi:home
+    type: sections
+    max_columns: 4
+    sections:
+      # ----- WETTER & ZEIT -----
+      - type: grid
+        cards:
+          # Datum & Uhrzeit
+          - type: custom:mushroom-title-card
+            title: "{{ now().strftime('%A') }}"
+            subtitle: "{{ now().strftime('%d. %B %Y - %H:%M') }} Uhr"
+
+          # Wetter Karte
+          - type: weather-forecast
+            entity: weather.home
+            show_forecast: true
+            forecast_type: daily
+            name: Wetter
+
+          # Sonnenauf-/untergang
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: template
+                icon: mdi:weather-sunset-up
+                content: "{{ as_timestamp(state_attr('sun.sun', 'next_rising')) | timestamp_custom('%H:%M') }}"
+                tap_action:
+                  action: more-info
+                  entity: sun.sun
+              - type: template
+                icon: mdi:weather-sunset-down
+                content: "{{ as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%H:%M') }}"
+
+      # ----- ENERGIE -----
+      - type: grid
+        title: Energie
+        cards:
+          # PV Leistung
+          - type: custom:mushroom-template-card
+            primary: PV Anlage
+            secondary: "{{ states('sensor.pv_leistung') }} W"
+            icon: mdi:solar-power
+            icon_color: >
+              {% set power = states('sensor.pv_leistung') | float(0) %}
+              {% if power > 200 %}amber{% elif power > 50 %}yellow{% else %}grey{% endif %}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-energie/pv-anlage
+
+          # PV heute
+          - type: custom:mushroom-template-card
+            primary: Heute erzeugt
+            secondary: "{{ states('sensor.pv_energie_heute') }} kWh"
+            icon: mdi:calendar-today
+            icon_color: green
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-energie/energie-uebersicht
+
+          # Server Verbrauch
+          - type: custom:mushroom-template-card
+            primary: Server
+            secondary: "{{ states('sensor.server_leistung') }} W"
+            icon: mdi:server
+            icon_color: >
+              {% set power = states('sensor.server_leistung') | float(0) %}
+              {% if power > 500 %}red{% elif power > 300 %}amber{% else %}blue{% endif %}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-energie/verbraucher
+
+          # Mini Graph PV
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.pv_leistung
+                name: PV
+            hours_to_show: 12
+            points_per_hour: 6
+            line_color: "#FFC107"
+            line_width: 2
+            height: 80
+            show:
+              name: false
+              icon: false
+              state: false
+              legend: false
+              fill: true
+
+      # ----- HEIZUNG -----
+      - type: grid
+        title: Klima
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Wohnzimmer
+            secondary: "{{ states('sensor.temperature_wohnzimmer') | default('--') }}°C"
+            icon: mdi:sofa
+            icon_color: >
+              {% set temp = states('sensor.temperature_wohnzimmer') | float(20) %}
+              {% if temp > 23 %}red{% elif temp > 20 %}amber{% else %}blue{% endif %}
+            tap_action:
+              action: more-info
+              entity: climate.wohnzimmer
+
+          - type: custom:mushroom-template-card
+            primary: Schlafzimmer
+            secondary: "{{ states('sensor.temperature_schlafzimmer') | default('--') }}°C"
+            icon: mdi:bed
+            tap_action:
+              action: more-info
+              entity: climate.schlafzimmer
+
+          - type: custom:mushroom-template-card
+            primary: Außen
+            secondary: "{{ states('sensor.temperature_outside') | default('--') }}°C"
+            icon: mdi:thermometer
+            icon_color: >
+              {% set temp = states('sensor.temperature_outside') | float(10) %}
+              {% if temp > 25 %}red{% elif temp > 15 %}green{% elif temp > 5 %}blue{% else %}deep-purple{% endif %}
+
+      # ----- TERMINE -----
+      - type: grid
+        title: Termine
+        cards:
+          - type: markdown
+            content: |
+              ### Kalender Integration
+
+              Kalender über Integrationen hinzufügen:
+              - Google Calendar
+              - CalDAV
+              - Local Calendar
+
+              Dann diese Karte durch `calendar` oder
+              `atomic-calendar-revive` ersetzen.
+
+          # Müllabfuhr (Platzhalter)
+          - type: custom:mushroom-template-card
+            primary: Müllabfuhr
+            secondary: "Bitte Müllkalender einrichten"
+            icon: mdi:trash-can
+            icon_color: grey
+
+      # ----- SCHNELLZUGRIFF -----
+      - type: grid
+        title: Schnellzugriff
+        cards:
+          - type: custom:mushroom-chips-card
+            chips:
+              # Anwesenheit
+              - type: template
+                icon: mdi:home-account
+                content: Zu Hause
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace/anwesenheit
+
+              # Lichter
+              - type: template
+                icon: mdi:lightbulb-group
+                content: Lichter
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace/lichter
+
+              # Energie
+              - type: template
+                icon: mdi:flash
+                content: Energie
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-energie/energie-uebersicht
+
+          # Szenen Buttons
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Alles aus
+                icon: mdi:power-off
+                icon_color: red
+                layout: vertical
+                tap_action:
+                  action: call-service
+                  service: homeassistant.turn_off
+                  target:
+                    entity_id: group.all_lights
+
+              - type: custom:mushroom-template-card
+                primary: Film
+                icon: mdi:movie
+                icon_color: purple
+                layout: vertical
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  target:
+                    entity_id: scene.film
+
+              - type: custom:mushroom-template-card
+                primary: Nacht
+                icon: mdi:weather-night
+                icon_color: indigo
+                layout: vertical
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  target:
+                    entity_id: scene.gute_nacht
+
+  # ===========================================================================
+  # WEITERE VIEWS
+  # ===========================================================================
+  - title: Erdgeschoss
+    path: eg
+    icon: mdi:home-floor-0
+    cards:
+      - type: markdown
+        content: |
+          ## Erdgeschoss
+
+          Räume:
+          - Wohnzimmer
+          - Küche
+          - Bad
+          - Flur
+
+          Hier Raumkarten einfügen.
+
+  - title: Obergeschoss
+    path: og
+    icon: mdi:home-floor-1
+    cards:
+      - type: markdown
+        content: |
+          ## Obergeschoss
+
+          Räume:
+          - Schlafzimmer
+          - Büro
+          - Ankleide
+          - Bad
+
+          Hier Raumkarten einfügen.
+
+  - title: System
+    path: system
+    icon: mdi:cog
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        title: Home Assistant
+        cards:
+          - type: entities
+            entities:
+              - entity: sensor.processor_use
+                name: CPU
+              - entity: sensor.memory_use_percent
+                name: RAM
+              - entity: sensor.disk_use_percent
+                name: Festplatte
+
+          - type: custom:mini-graph-card
+            name: CPU Auslastung
+            entities:
+              - sensor.processor_use
+            hours_to_show: 24
+            line_color: blue
+
+      - type: grid
+        title: Netzwerk
+        cards:
+          - type: entities
+            entities:
+              - entity: binary_sensor.ping_fritzbox
+                name: Fritz!Box
+              - entity: binary_sensor.ping_iobroker
+                name: ioBroker
+              - entity: binary_sensor.internet
+                name: Internet
+
+          - type: markdown
+            content: |
+              ### Tasmota Geräte
+
+              | Gerät | IP |
+              |-------|-----|
+              | Strom-PV | 192.168.178.115 |
+              | Server | 192.168.178.136 |
+              | Trockner | 192.168.178.131 |
+              | Waschm. | 192.168.178.140 |
+              | Küche | 192.168.178.120 |

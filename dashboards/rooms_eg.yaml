@@ -1,0 +1,316 @@
+# Erdgeschoss Dashboard
+# Basiert auf VIS Views 200-299
+#
+# Räume: Wohnzimmer, Küche, Büro, Flur, Garten
+
+title: Erdgeschoss
+views:
+  - title: Erdgeschoss
+    path: eg
+    icon: mdi:home-floor-0
+    type: sections
+    max_columns: 3
+    sections:
+      # ===== WOHNZIMMER =====
+      - type: grid
+        title: "🛋️ Wohnzimmer"
+        cards:
+          # Temperatur & Klima
+          - type: custom:mushroom-climate-card
+            entity: climate.wohnzimmer_heizung
+            show_temperature_control: true
+            collapsible_controls: true
+
+          - type: sensor
+            entity: sensor.wohnzimmer_temperatur
+            name: Temperatur
+            graph: line
+
+          - type: sensor
+            entity: sensor.wohnzimmer_luftfeuchtigkeit
+            name: Luftfeuchtigkeit
+
+          # Fenster
+          - type: custom:mushroom-template-card
+            primary: Fenster
+            secondary: >
+              {% set open = expand('group.wohnzimmer_fenster') | selectattr('state', 'eq', 'on') | list | count %}
+              {% if open == 0 %}Alle geschlossen{% else %}{{ open }} offen{% endif %}
+            icon: >
+              {% set open = expand('group.wohnzimmer_fenster') | selectattr('state', 'eq', 'on') | list | count %}
+              {{ 'mdi:window-open' if open > 0 else 'mdi:window-closed' }}
+            icon_color: "{{ 'orange' if expand('group.wohnzimmer_fenster') | selectattr('state', 'eq', 'on') | list | count > 0 else 'green' }}"
+
+          # Lichter
+          - type: custom:mushroom-light-card
+            entity: light.wohnzimmer_deckenlampe
+            name: Deckenlampe
+            show_brightness_control: true
+            collapsible_controls: true
+
+          - type: custom:mushroom-light-card
+            entity: light.wohnzimmer_stehlampe
+            name: Stehlampe
+            show_brightness_control: true
+
+          # Steckdosen
+          - type: entities
+            title: Steckdosen
+            entities:
+              - entity: switch.wohnzimmer_tv_steckdose
+                name: TV
+                icon: mdi:television
+              - entity: switch.wohnzimmer_soundbar
+                name: Soundbar
+                icon: mdi:speaker
+              - entity: sensor.wohnzimmer_steckdose_power
+                name: Verbrauch
+                icon: mdi:flash
+
+          # Rollos
+          - type: custom:mushroom-cover-card
+            entity: cover.wohnzimmer_rollo_gross
+            name: Rollo Groß
+            show_position_control: true
+
+          - type: custom:mushroom-cover-card
+            entity: cover.wohnzimmer_rollo_klein
+            name: Rollo Klein
+            show_position_control: true
+
+      # ===== KÜCHE =====
+      - type: grid
+        title: "🍳 Küche"
+        cards:
+          - type: custom:mushroom-climate-card
+            entity: climate.kueche_heizung
+            show_temperature_control: true
+
+          - type: sensor
+            entity: sensor.kueche_temperatur
+            name: Temperatur
+            graph: line
+
+          # Fenster
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.kueche_fenster
+            name: Fenster
+            icon: mdi:window-closed
+
+          # Lichter
+          - type: custom:mushroom-light-card
+            entity: light.kueche_deckenlampe
+            name: Deckenlampe
+            show_brightness_control: true
+
+          - type: custom:mushroom-light-card
+            entity: light.kueche_unterschrank
+            name: Unterschrankbeleuchtung
+
+          # Echo/Alexa
+          - type: custom:mushroom-media-player-card
+            entity: media_player.echo_kueche
+            name: Echo Küche
+            use_media_info: true
+            show_volume_level: true
+            collapsible_controls: true
+
+      # ===== BÜRO =====
+      - type: grid
+        title: "💻 Büro"
+        cards:
+          - type: sensor
+            entity: sensor.buero_temperatur
+            name: Temperatur
+
+          # Steckdosen / Geräte
+          - type: entities
+            title: Geräte
+            entities:
+              - entity: switch.buero_pc
+                name: PC
+                icon: mdi:desktop-tower
+              - entity: switch.buero_monitor
+                name: Monitor
+                icon: mdi:monitor
+              - entity: sensor.buero_steckdose_power
+                name: Verbrauch
+
+          - type: custom:mushroom-light-card
+            entity: light.buero_schreibtischlampe
+            name: Schreibtischlampe
+
+      # ===== FLUR =====
+      - type: grid
+        title: "🚪 Flur"
+        cards:
+          # Haustür
+          - type: custom:mushroom-template-card
+            primary: Haustür
+            secondary: "{{ states('binary_sensor.haustuer') }}"
+            icon: mdi:door
+            icon_color: "{{ 'red' if is_state('binary_sensor.haustuer', 'on') else 'green' }}"
+
+          # Bewegungsmelder
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.flur_bewegung
+            name: Bewegung
+            icon: mdi:motion-sensor
+
+          # Licht
+          - type: custom:mushroom-light-card
+            entity: light.flur_deckenlampe
+            name: Flurbeleuchtung
+
+          # Türklingel
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.tuerklingel
+            name: Türklingel
+            icon: mdi:doorbell
+
+      # ===== GARTEN =====
+      - type: grid
+        title: "🌳 Garten"
+        cards:
+          # Außentemperatur
+          - type: sensor
+            entity: sensor.garten_temperatur
+            name: Außentemperatur
+            graph: line
+
+          # Bewässerung
+          - type: custom:mushroom-template-card
+            primary: Bewässerung
+            secondary: >
+              {% if is_state('switch.bewaesserung_aktiv', 'on') %}
+                Läuft - Zone {{ states('sensor.bewaesserung_aktive_zone') }}
+              {% else %}
+                Aus
+              {% endif %}
+            icon: mdi:sprinkler
+            icon_color: "{{ 'blue' if is_state('switch.bewaesserung_aktiv', 'on') else 'grey' }}"
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace/bewaesserung
+
+          # Bewässerungszonen
+          - type: entities
+            title: Bewässerungszonen
+            entities:
+              - entity: switch.bewaesserung_zone_1
+                name: Zone 1 - Rasen vorne
+                icon: mdi:sprinkler-variant
+              - entity: switch.bewaesserung_zone_2
+                name: Zone 2 - Rasen hinten
+                icon: mdi:sprinkler-variant
+              - entity: switch.bewaesserung_zone_3
+                name: Zone 3 - Beete
+                icon: mdi:sprinkler-variant
+              - entity: switch.bewaesserung_zone_4
+                name: Zone 4 - Hecke
+                icon: mdi:sprinkler-variant
+
+          # Außensteckdosen
+          - type: entities
+            title: Außensteckdosen
+            entities:
+              - entity: switch.garten_steckdose_terrasse
+                name: Terrasse
+                icon: mdi:power-socket-de
+              - entity: switch.garten_steckdose_pavillon
+                name: Pavillon
+                icon: mdi:power-socket-de
+              - entity: switch.garten_lichterkette
+                name: Lichterkette
+                icon: mdi:string-lights
+
+          # Wetter-Zusammenfassung für Garten
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: entity
+                entity: sensor.niederschlag_heute
+                icon: mdi:weather-rainy
+              - type: entity
+                entity: sensor.wind_speed
+                icon: mdi:weather-windy
+              - type: entity
+                entity: sensor.uv_index
+                icon: mdi:weather-sunny-alert
+
+  # ===== BEWÄSSERUNG SUBVIEW =====
+  - title: Bewässerung
+    path: bewaesserung
+    icon: mdi:sprinkler
+    subview: true
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-title-card
+            title: Gartenbewässerung
+            subtitle: Steuerung und Zeitpläne
+
+          # Hauptschalter
+          - type: custom:mushroom-entity-card
+            entity: switch.bewaesserung_hauptventil
+            name: Hauptventil
+            icon: mdi:valve
+
+          # Zonen-Karten
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Zone 1
+                secondary: Rasen vorne
+                icon: mdi:sprinkler-variant
+                icon_color: "{{ 'blue' if is_state('switch.bewaesserung_zone_1', 'on') else 'grey' }}"
+                tap_action:
+                  action: toggle
+                  entity: switch.bewaesserung_zone_1
+
+              - type: custom:mushroom-template-card
+                primary: Zone 2
+                secondary: Rasen hinten
+                icon: mdi:sprinkler-variant
+                icon_color: "{{ 'blue' if is_state('switch.bewaesserung_zone_2', 'on') else 'grey' }}"
+                tap_action:
+                  action: toggle
+                  entity: switch.bewaesserung_zone_2
+
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Zone 3
+                secondary: Beete
+                icon: mdi:sprinkler-variant
+                icon_color: "{{ 'blue' if is_state('switch.bewaesserung_zone_3', 'on') else 'grey' }}"
+                tap_action:
+                  action: toggle
+                  entity: switch.bewaesserung_zone_3
+
+              - type: custom:mushroom-template-card
+                primary: Zone 4
+                secondary: Hecke
+                icon: mdi:sprinkler-variant
+                icon_color: "{{ 'blue' if is_state('switch.bewaesserung_zone_4', 'on') else 'grey' }}"
+                tap_action:
+                  action: toggle
+                  entity: switch.bewaesserung_zone_4
+
+          # Laufzeiten
+          - type: entities
+            title: Laufzeiten pro Zone
+            entities:
+              - entity: input_number.bewaesserung_zone_1_dauer
+                name: Zone 1 Dauer
+              - entity: input_number.bewaesserung_zone_2_dauer
+                name: Zone 2 Dauer
+              - entity: input_number.bewaesserung_zone_3_dauer
+                name: Zone 3 Dauer
+              - entity: input_number.bewaesserung_zone_4_dauer
+                name: Zone 4 Dauer
+
+          # Zeitplan
+          - type: custom:scheduler-card
+            include:
+              - switch.bewaesserung*
+            title: Bewässerungs-Zeitplan

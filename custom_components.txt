@@ -1,0 +1,18 @@
+# HACS Custom Components
+# Format: domain==version (HACS repository)
+# Nach Wiederherstellung: HACS installieren, dann diese Komponenten über HACS nachinstallieren
+#
+# Installation: HACS → Integrationen → Suchen → Installieren
+
+alexa_media==5.11.0          # Alexa Media Player - Amazon Echo Steuerung
+diveracontrol==1.3.1         # Divera 24/7 - THW/Feuerwehr Alarmierung
+dreame_vacuum==v1.0.8        # Dreame Vacuum - Staubsauger Roboter (Willi/Robby)
+dwd==2025.12.1               # DWD Wetterwarnungen
+dwd_precipitation==2025.7.0b1  # DWD Niederschlagsradar
+dwd_precipitation_forecast==0.2.0  # DWD Niederschlagsprognose
+fritzbox_vpn==0.7.0          # FritzBox VPN Status
+hacs==2.0.5                  # HACS - Home Assistant Community Store
+meross_cloud==1.3.12         # Meross Cloud - Smart Plugs/Switches
+meross_lan==5.8.0            # Meross LAN - Lokale Steuerung
+petkit==0.1.14               # PetKit - Haustier Zubehör
+xiaomi_cloud_map_extractor==v2.2.5  # Xiaomi Cloud Map - Staubsauger Karte

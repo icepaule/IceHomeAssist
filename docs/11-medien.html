@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medien - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html" class="active">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Anwendungen
+                    <span class="separator">&rsaquo;</span>
+                    Medien
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Medien</h1>
+
+            <p>
+                Die Mediensteuerung umfasst Amazon Alexa Geräte über die HACS-Integration
+                <strong>Alexa Media Player</strong> sowie den Sony Bravia Fernseher über die
+                <strong>Android TV</strong> Integration. Zusammen ermöglichen sie eine zentrale Steuerung
+                aller Mediengeräte im Haus, einschließlich Text-to-Speech Durchsagen und
+                Multiroom-Audio.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>Alexa Media Player (HACS)</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Die <strong>Alexa Media Player</strong> Integration (Version 5.11.0) ist eine HACS Custom Component,
+                die Amazon Echo Geräte in Home Assistant einbindet. Sie ermöglicht die vollständige Steuerung
+                aller Echo-Funktionen: Medienwiedergabe, Lautstärke, Text-to-Speech, Routinen und mehr.
+            </p>
+
+            <h3>Installierte Geräte</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Entity</th>
+                        <th>Gerät</th>
+                        <th>Standort</th>
+                        <th>Funktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>media_player.marcus_echo_show_8_2nd_gen</code></td>
+                        <td>Echo Show 8 (2. Gen.)</td>
+                        <td>Wohnzimmer</td>
+                        <td>Audio, Video, Display, TTS</td>
+                    </tr>
+                    <tr>
+                        <td><code>media_player.uberall</code></td>
+                        <td>Gruppe "Überall"</td>
+                        <td>Alle Räume</td>
+                        <td>Multiroom-Audio, TTS</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Einrichtung der Integration</h3>
+            <p>
+                Die Einrichtung der Alexa Media Player Integration erfordert besondere Aufmerksamkeit, da
+                Amazon strenge Bot-Erkennungsmechanismen einsetzt.
+            </p>
+
+            <h4>Voraussetzungen</h4>
+            <ul>
+                <li>HACS muss installiert und eingerichtet sein</li>
+                <li>Amazon-Konto mit aktivierter <strong>Zwei-Faktor-Authentifizierung (2FA)</strong></li>
+                <li>Die 2FA ist zwingend erforderlich, um Amazons Bot-Erkennung zu umgehen</li>
+            </ul>
+
+            <h4>Installationsschritte</h4>
+            <ol>
+                <li>In HACS nach <em>Alexa Media Player</em> suchen und installieren</li>
+                <li>Home Assistant neu starten</li>
+                <li><strong>Einstellungen</strong> &rarr; <strong>Geräte &amp; Dienste</strong> &rarr; <strong>Integration hinzufügen</strong></li>
+                <li>Nach <em>Alexa Media Player</em> suchen</li>
+                <li>Amazon-E-Mail und Passwort eingeben</li>
+                <li>Den <strong>2FA-Code</strong> eingeben, wenn aufgefordert</li>
+                <li>Bei Erfolg erscheinen die Echo-Geräte automatisch als Entities</li>
+            </ol>
+
+            <h4>Häufiges Problem: HTTP 500 Fehler</h4>
+            <p>
+                Beim Setup kann es zu <strong>500 Internal Server Error</strong> kommen. Dies ist
+                <em>kein</em> Fehler in Home Assistant oder der Integration, sondern Amazons Bot-Erkennung
+                (intern "aamation" Challenge genannt). Lösungsansätze:
+            </p>
+            <ul>
+                <li>2FA auf dem Amazon-Konto aktivieren (wichtigster Schritt)</li>
+                <li>Einige Minuten warten und erneut versuchen</li>
+                <li>VPN deaktivieren, falls aktiv</li>
+                <li>Einen anderen Browser für den Amazon-Login verwenden</li>
+                <li>Das Amazon-Konto vorher im Browser auf demselben Gerät einloggen</li>
+            </ul>
+
+            <h3>Konfigurationsoptionen</h3>
+            <pre><code># Die Alexa Media Player Integration wird über die UI konfiguriert.
+# Folgende Optionen sind verfügbar:
+
+# E-Mail:          Amazon Login E-Mail
+# Passwort:        Amazon Login Passwort
+# 2FA Code:        Aktueller 2FA-Code
+# Amazon Domain:   amazon.de (für Deutschland)
+# Include Devices: Komma-getrennte Liste (leer = alle)
+# Exclude Devices: Geräte ausschließen
+# Scan Interval:   Aktualisierungsintervall (Standard: 60s)</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Text-to-Speech (TTS) über Alexa</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Eine der nützlichsten Funktionen ist die Möglichkeit, Sprachdurchsagen über die Echo-Geräte
+                zu machen. Dies wird für Benachrichtigungen aus Automatisierungen verwendet, z.B. wenn die
+                Waschmaschine fertig ist oder der Strompreis sich ändert.
+            </p>
+
+            <h3>TTS-Beispiele</h3>
+            <pre><code># Einzelnes Gerät ansprechen
+service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+data:
+  message: "Die Waschmaschine ist fertig."
+  data:
+    type: tts
+
+# Alle Geräte gleichzeitig (Multiroom)
+service: notify.alexa_media_uberall
+data:
+  message: "Achtung, der Strompreis ist jetzt sehr günstig!"
+  data:
+    type: tts
+
+# TTS mit Lautstärke-Anpassung
+service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+data:
+  message: "Guten Morgen! Es ist {{ now().strftime('%H:%M') }} Uhr."
+  data:
+    type: tts
+
+# Ankündigung (announce) - unterbricht laufende Wiedergabe
+service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+data:
+  message: "Wichtige Durchsage: Die Haustür wurde geöffnet."
+  data:
+    type: announce</code></pre>
+
+            <h3>TTS in Automatisierungen</h3>
+            <pre><code># Beispiel: Täglicher Wetterbericht
+- alias: "Morgen-Briefing"
+  trigger:
+    - platform: time
+      at: "07:00:00"
+  condition:
+    - condition: state
+      entity_id: person.marcus
+      state: "home"
+  action:
+    - service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+      data:
+        message: >
+          Guten Morgen! Heute ist {{ now().strftime('%A, der %d. %B') }}.
+          Die aktuelle Außentemperatur beträgt
+          {{ states('sensor.openweathermap_temperature') }} Grad.
+          Der Strompreis liegt bei
+          {{ states('sensor.electricity_price') }} Cent pro Kilowattstunde.
+        data:
+          type: tts</code></pre>
+
+            <h3>Medienwiedergabe steuern</h3>
+            <pre><code># Musik abspielen
+service: media_player.play_media
+target:
+  entity_id: media_player.marcus_echo_show_8_2nd_gen
+data:
+  media_content_id: "Ambient Music"
+  media_content_type: "AMAZON_MUSIC"
+
+# Lautstärke setzen (0.0 - 1.0)
+service: media_player.volume_set
+target:
+  entity_id: media_player.marcus_echo_show_8_2nd_gen
+data:
+  volume_level: 0.3
+
+# Wiedergabe pausieren
+service: media_player.media_pause
+target:
+  entity_id: media_player.marcus_echo_show_8_2nd_gen
+
+# Wiedergabe stoppen
+service: media_player.media_stop
+target:
+  entity_id: media_player.marcus_echo_show_8_2nd_gen</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Android TV - Sony Bravia</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Der Sony Bravia Fernseher ist über die <strong>Android TV</strong> Integration in Home Assistant
+                eingebunden. Die Integration ermöglicht das Ein-/Ausschalten, die App-Steuerung und die
+                Anzeige des aktuellen Wiedergabestatus.
+            </p>
+
+            <h3>Integration einrichten</h3>
+            <ol>
+                <li><strong>Einstellungen</strong> &rarr; <strong>Geräte &amp; Dienste</strong> &rarr; <strong>Integration hinzufügen</strong></li>
+                <li>Nach <em>Android TV</em> suchen</li>
+                <li>Die <strong>IP-Adresse</strong> des Fernsehers eingeben</li>
+                <li>Den Gerätetyp <strong>Android TV</strong> auswählen</li>
+                <li>Den auf dem Fernseher angezeigten <strong>Pairing-Code</strong> eingeben</li>
+                <li>Die ADB-Verbindung wird hergestellt und das Gerät erscheint</li>
+            </ol>
+
+            <h3>Verfügbare Entity</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Entity</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>media_player.sony_bravia</code></td>
+                        <td>Media Player</td>
+                        <td>Hauptsteuerung des Fernsehers</td>
+                    </tr>
+                    <tr>
+                        <td><code>remote.sony_bravia</code></td>
+                        <td>Remote</td>
+                        <td>Fernbedienungsfunktionen</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Steuerungsmöglichkeiten</h3>
+            <pre><code># Fernseher einschalten
+service: media_player.turn_on
+target:
+  entity_id: media_player.sony_bravia
+
+# Fernseher ausschalten
+service: media_player.turn_off
+target:
+  entity_id: media_player.sony_bravia
+
+# App starten (z.B. Netflix)
+service: media_player.select_source
+target:
+  entity_id: media_player.sony_bravia
+data:
+  source: "Netflix"
+
+# Lautstärke regeln
+service: media_player.volume_set
+target:
+  entity_id: media_player.sony_bravia
+data:
+  volume_level: 0.2
+
+# Taste senden (über Remote Entity)
+service: remote.send_command
+target:
+  entity_id: remote.sony_bravia
+data:
+  command: "HOME"</code></pre>
+
+            <h3>Automatisierungen mit dem Fernseher</h3>
+            <pre><code># Fernseher automatisch nach Inaktivität ausschalten
+- alias: "TV Auto-Off nach Inaktivität"
+  trigger:
+    - platform: state
+      entity_id: media_player.sony_bravia
+      to: "idle"
+      for:
+        hours: 2
+  condition:
+    - condition: time
+      after: "23:00:00"
+      before: "06:00:00"
+  action:
+    - service: media_player.turn_off
+      target:
+        entity_id: media_player.sony_bravia
+    - service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+      data:
+        message: "Der Fernseher wurde nach zwei Stunden Inaktivität ausgeschaltet."
+        data:
+          type: tts</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Medien Dashboard</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Das Medien Dashboard bietet eine zentrale Übersicht und Steuerung aller Mediengeräte.
+                Es verwendet verschiedene Lovelace-Karten.
+            </p>
+
+            <h3>Dashboard-Aufbau</h3>
+            <pre><code># dashboards/medien.yaml
+views:
+  - title: Medien
+    icon: mdi:multimedia
+    cards:
+      # Alexa Echo Show - Steuerung
+      - type: media-control
+        entity: media_player.marcus_echo_show_8_2nd_gen
+
+      # Alexa Gruppe - Überall
+      - type: media-control
+        entity: media_player.uberall
+
+      # Sony Bravia TV
+      - type: media-control
+        entity: media_player.sony_bravia
+
+      # Schnellzugriff: TTS Durchsage
+      - type: entities
+        title: Schnellaktionen
+        entities:
+          - type: button
+            name: "Test-Durchsage"
+            tap_action:
+              action: call-service
+              service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+              data:
+                message: "Dies ist eine Test-Durchsage."
+                data:
+                  type: tts
+
+      # Geräte-Status
+      - type: entities
+        title: Medienstatus
+        entities:
+          - entity: media_player.marcus_echo_show_8_2nd_gen
+            name: Echo Show 8
+          - entity: media_player.uberall
+            name: Alexa Überall
+          - entity: media_player.sony_bravia
+            name: Sony Bravia TV</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Alexa Routinen und Skills</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Über die Alexa Media Player Integration können auch Alexa-Routinen ausgelöst und benutzerdefinierte
+                Befehle gesendet werden.
+            </p>
+
+            <h3>Alexa-Routine auslösen</h3>
+            <pre><code># Routine über Sequenz-Befehl auslösen
+service: media_player.play_media
+target:
+  entity_id: media_player.marcus_echo_show_8_2nd_gen
+data:
+  media_content_id: "Guten Morgen Routine"
+  media_content_type: "routine"</code></pre>
+
+            <h3>Alexa-Befehle senden</h3>
+            <pre><code># Sprachbefehl simulieren
+service: media_player.play_media
+target:
+  entity_id: media_player.marcus_echo_show_8_2nd_gen
+data:
+  media_content_id: "Wie wird das Wetter heute?"
+  media_content_type: "custom"</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Tipps und Best Practices</h2>
+            <!-- ============================================================ -->
+
+            <ul>
+                <li><strong>TTS-Lautstärke beachten:</strong> Nachts sollte die TTS-Lautstärke reduziert oder komplett deaktiviert werden. Dies kann über eine Zeitbedingung in Automatisierungen gesteuert werden.</li>
+                <li><strong>Gruppe nutzen:</strong> Für wichtige Durchsagen die Gruppe "Überall" verwenden, damit die Nachricht in jedem Raum gehört wird.</li>
+                <li><strong>2FA aktuell halten:</strong> Die Alexa-Integration muss gelegentlich neu authentifiziert werden. 2FA-Codes bereithalten.</li>
+                <li><strong>Netzwerkstabilität:</strong> Alle Mediengeräte sollten eine stabile WLAN- oder LAN-Verbindung haben, um Ausfälle zu vermeiden.</li>
+                <li><strong>TV-Quellen benennen:</strong> Die Android TV Quellen (Apps) können in Home Assistant mit benutzerdefinierten Namen versehen werden für eine bessere Übersicht.</li>
+                <li><strong>Medien-Timeout:</strong> Bei der Alexa-Integration kann es zu Timeouts kommen, wenn das Amazon-Cookie abgelaufen ist. In diesem Fall die Integration neu konfigurieren.</li>
+            </ul>
+
+            <div class="page-nav">
+                <a href="10-energie.html"><div><div class="label">Zurück</div>Energie</div></a>
+                <a href="12-netzwerk.html"><div><div class="label">Weiter</div>Netzwerk</div></a>
+            </div>
+            <div class="footer">IceHomeAssist Dokumentation &middot; Erstellt Februar 2026</div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) a.classList.add('active');
+});
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs"},
+];
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i => i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q));
+    results.innerHTML = matches.length === 0 ? '<div class="search-result-item">Keine Ergebnisse</div>' :
+        matches.map(m => `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`).join('');
+    results.classList.add('active');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.search-container')) document.getElementById('searchResults').classList.remove('active'); });
+</script>
+</body>
+</html>

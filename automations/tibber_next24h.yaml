@@ -1,0 +1,325 @@
+# Tibber Next 24h Price Forecast
+# Konvertiert von: script.js.common.Tibber
+#
+# Original-Funktion:
+# - Liest Tibber Preise für heute und morgen
+# - Erstellt 24-Stunden Preisvorhersage
+# - Identifiziert günstigste Stunden
+# - Berechnet Durchschnitts-, Min- und Max-Preise
+#
+# Benötigt:
+# - Tibber Integration (native HA Integration)
+# - Input Helpers (werden hier definiert)
+
+# =============================================================================
+# INPUT HELPERS
+# =============================================================================
+input_number:
+  tibber_cheapest_hours:
+    name: "Tibber Günstigste Stunden Anzahl"
+    min: 1
+    max: 8
+    step: 1
+    mode: slider
+    icon: mdi:clock-check
+
+# =============================================================================
+# TEMPLATE SENSORS
+# =============================================================================
+template:
+  - sensor:
+      # Durchschnittspreis der nächsten 24 Stunden
+      - name: "Tibber Avg Price 24h"
+        unique_id: tibber_avg_price_24h
+        unit_of_measurement: "€/kWh"
+        state_class: measurement
+        device_class: monetary
+        icon: mdi:chart-line
+        state: >
+          {% set prices = state_attr('sensor.tibber_prices', 'today') | default([]) %}
+          {% set prices_tomorrow = state_attr('sensor.tibber_prices', 'tomorrow') | default([]) %}
+          {% set now_hour = now().hour %}
+          {% set all_prices = [] %}
+
+          {# Heute ab aktueller Stunde #}
+          {% for p in prices %}
+            {% if loop.index0 >= now_hour %}
+              {% set all_prices = all_prices + [p.total] %}
+            {% endif %}
+          {% endfor %}
+
+          {# Morgen auffüllen bis 24 Stunden #}
+          {% set needed = 24 - (all_prices | length) %}
+          {% for p in prices_tomorrow[:needed] %}
+            {% set all_prices = all_prices + [p.total] %}
+          {% endfor %}
+
+          {% if all_prices | length > 0 %}
+            {{ (all_prices | sum / all_prices | length) | round(4) }}
+          {% else %}
+            {{ 0 }}
+          {% endif %}
+        availability: "{{ state_attr('sensor.tibber_prices', 'today') is not none }}"
+
+      # Minimaler Preis der nächsten 24 Stunden
+      - name: "Tibber Min Price 24h"
+        unique_id: tibber_min_price_24h
+        unit_of_measurement: "€/kWh"
+        state_class: measurement
+        device_class: monetary
+        icon: mdi:arrow-down-bold
+        state: >
+          {% set prices = state_attr('sensor.tibber_prices', 'today') | default([]) %}
+          {% set prices_tomorrow = state_attr('sensor.tibber_prices', 'tomorrow') | default([]) %}
+          {% set now_hour = now().hour %}
+          {% set all_prices = [] %}
+
+          {% for p in prices %}
+            {% if loop.index0 >= now_hour %}
+              {% set all_prices = all_prices + [p.total] %}
+            {% endif %}
+          {% endfor %}
+
+          {% set needed = 24 - (all_prices | length) %}
+          {% for p in prices_tomorrow[:needed] %}
+            {% set all_prices = all_prices + [p.total] %}
+          {% endfor %}
+
+          {% if all_prices | length > 0 %}
+            {{ all_prices | min | round(4) }}
+          {% else %}
+            {{ 0 }}
+          {% endif %}
+        availability: "{{ state_attr('sensor.tibber_prices', 'today') is not none }}"
+
+      # Maximaler Preis der nächsten 24 Stunden
+      - name: "Tibber Max Price 24h"
+        unique_id: tibber_max_price_24h
+        unit_of_measurement: "€/kWh"
+        state_class: measurement
+        device_class: monetary
+        icon: mdi:arrow-up-bold
+        state: >
+          {% set prices = state_attr('sensor.tibber_prices', 'today') | default([]) %}
+          {% set prices_tomorrow = state_attr('sensor.tibber_prices', 'tomorrow') | default([]) %}
+          {% set now_hour = now().hour %}
+          {% set all_prices = [] %}
+
+          {% for p in prices %}
+            {% if loop.index0 >= now_hour %}
+              {% set all_prices = all_prices + [p.total] %}
+            {% endif %}
+          {% endfor %}
+
+          {% set needed = 24 - (all_prices | length) %}
+          {% for p in prices_tomorrow[:needed] %}
+            {% set all_prices = all_prices + [p.total] %}
+          {% endfor %}
+
+          {% if all_prices | length > 0 %}
+            {{ all_prices | max | round(4) }}
+          {% else %}
+            {{ 0 }}
+          {% endif %}
+        availability: "{{ state_attr('sensor.tibber_prices', 'today') is not none }}"
+
+      # Aktuelle Stunde: Ist günstig?
+      - name: "Tibber Current Hour Is Cheap"
+        unique_id: tibber_current_hour_is_cheap
+        state: >
+          {% set prices = state_attr('sensor.tibber_prices', 'today') | default([]) %}
+          {% set prices_tomorrow = state_attr('sensor.tibber_prices', 'tomorrow') | default([]) %}
+          {% set now_hour = now().hour %}
+          {% set n_cheap = states('input_number.tibber_cheapest_hours') | int(4) %}
+          {% set all_prices = [] %}
+
+          {% for p in prices %}
+            {% if loop.index0 >= now_hour %}
+              {% set all_prices = all_prices + [{'hour': loop.index0, 'price': p.total, 'today': true}] %}
+            {% endif %}
+          {% endfor %}
+
+          {% set needed = 24 - (all_prices | length) %}
+          {% for p in prices_tomorrow[:needed] %}
+            {% set all_prices = all_prices + [{'hour': loop.index0, 'price': p.total, 'today': false}] %}
+          {% endfor %}
+
+          {% set sorted = all_prices | sort(attribute='price') %}
+          {% set cheapest = sorted[:n_cheap] %}
+
+          {% set is_cheap = false %}
+          {% for c in cheapest %}
+            {% if c.today and c.hour == now_hour %}
+              {% set is_cheap = true %}
+            {% endif %}
+          {% endfor %}
+          {{ is_cheap }}
+        icon: >
+          {% if is_state('sensor.tibber_current_hour_is_cheap', 'True') %}
+            mdi:cash-check
+          {% else %}
+            mdi:cash-remove
+          {% endif %}
+
+      # Text: Günstigste Stunden
+      - name: "Tibber Cheapest Hours Text"
+        unique_id: tibber_cheapest_hours_text
+        state: >
+          {% set prices = state_attr('sensor.tibber_prices', 'today') | default([]) %}
+          {% set prices_tomorrow = state_attr('sensor.tibber_prices', 'tomorrow') | default([]) %}
+          {% set now_hour = now().hour %}
+          {% set n_cheap = states('input_number.tibber_cheapest_hours') | int(4) %}
+          {% set all_prices = [] %}
+
+          {% for p in prices %}
+            {% if loop.index0 >= now_hour %}
+              {% set all_prices = all_prices + [{'hour': loop.index0, 'price': p.total, 'day': 'heute'}] %}
+            {% endif %}
+          {% endfor %}
+
+          {% set needed = 24 - (all_prices | length) %}
+          {% for p in prices_tomorrow[:needed] %}
+            {% set all_prices = all_prices + [{'hour': loop.index0, 'price': p.total, 'day': 'morgen'}] %}
+          {% endfor %}
+
+          {% set sorted = all_prices | sort(attribute='price') %}
+          {% set cheapest = sorted[:n_cheap] %}
+
+          {% set texts = [] %}
+          {% for c in cheapest %}
+            {% set texts = texts + [c.day ~ ' ' ~ '%02d' | format(c.hour) ~ ':00'] %}
+          {% endfor %}
+          {{ texts | join(', ') }}
+        icon: mdi:clock-outline
+
+      # Aktueller Tibber Preis (vereinfacht)
+      - name: "Tibber Current Price"
+        unique_id: tibber_current_price
+        unit_of_measurement: "€/kWh"
+        state_class: measurement
+        device_class: monetary
+        icon: mdi:currency-eur
+        state: >
+          {% set prices = state_attr('sensor.tibber_prices', 'today') | default([]) %}
+          {% set now_hour = now().hour %}
+          {% if prices | length > now_hour %}
+            {{ prices[now_hour].total | round(4) }}
+          {% else %}
+            {{ 0 }}
+          {% endif %}
+
+      # Preisniveau (günstig/normal/teuer)
+      - name: "Tibber Price Level"
+        unique_id: tibber_price_level
+        state: >
+          {% set current = states('sensor.tibber_current_price') | float(0) %}
+          {% set avg = states('sensor.tibber_avg_price_24h') | float(0) %}
+          {% set min_price = states('sensor.tibber_min_price_24h') | float(0) %}
+          {% set max_price = states('sensor.tibber_max_price_24h') | float(0) %}
+
+          {% if avg == 0 %}
+            unknown
+          {% elif current <= min_price * 1.1 %}
+            very_cheap
+          {% elif current <= avg * 0.9 %}
+            cheap
+          {% elif current >= max_price * 0.9 %}
+            very_expensive
+          {% elif current >= avg * 1.1 %}
+            expensive
+          {% else %}
+            normal
+          {% endif %}
+        icon: >
+          {% set level = states('sensor.tibber_price_level') %}
+          {% if level == 'very_cheap' %}mdi:cash-multiple
+          {% elif level == 'cheap' %}mdi:cash
+          {% elif level == 'expensive' %}mdi:cash-minus
+          {% elif level == 'very_expensive' %}mdi:cash-remove
+          {% else %}mdi:cash{% endif %}
+
+# =============================================================================
+# UTILITY METER (für tägliche/monatliche Kosten-Tracking)
+# FIX: source was sensor.tibber_accumulated_cost which doesn't exist.
+# Changed to sensor.tibber_pulse_paule_accumulated_cost (the actual Tibber entity).
+# =============================================================================
+utility_meter:
+  tibber_daily_cost:
+    source: sensor.tibber_pulse_paule_accumulated_cost
+    name: "Tibber Tageskosten"
+    cycle: daily
+
+  tibber_monthly_cost:
+    source: sensor.tibber_pulse_paule_accumulated_cost
+    name: "Tibber Monatskosten"
+    cycle: monthly
+
+  tibber_yearly_cost:
+    source: sensor.tibber_pulse_paule_accumulated_cost
+    name: "Tibber Jahreskosten"
+    cycle: yearly
+
+# =============================================================================
+# AUTOMATIONS
+# =============================================================================
+automation:
+  # Benachrichtigung bei sehr günstigen Preisen
+  - id: tibber_cheap_price_notification
+    alias: "Tibber: Günstige Preise Benachrichtigung"
+    description: "Benachrichtigt wenn Strompreis sehr günstig ist"
+    trigger:
+      - platform: state
+        entity_id: sensor.tibber_price_level
+        to: "very_cheap"
+    condition:
+      - condition: time
+        after: "06:00:00"
+        before: "22:00:00"
+    action:
+      - service: notify.notify
+        data:
+          title: "⚡ Tibber: Sehr günstiger Strom!"
+          message: >
+            Aktueller Preis: {{ states('sensor.tibber_current_price') }} €/kWh
+            (Min: {{ states('sensor.tibber_min_price_24h') }} €/kWh)
+    mode: single
+
+  # Benachrichtigung bei teuren Preisen
+  - id: tibber_expensive_price_notification
+    alias: "Tibber: Teure Preise Warnung"
+    description: "Warnt wenn Strompreis sehr teuer ist"
+    trigger:
+      - platform: state
+        entity_id: sensor.tibber_price_level
+        to: "very_expensive"
+    condition:
+      - condition: time
+        after: "06:00:00"
+        before: "22:00:00"
+    action:
+      - service: notify.notify
+        data:
+          title: "⚠️ Tibber: Teurer Strom!"
+          message: >
+            Aktueller Preis: {{ states('sensor.tibber_current_price') }} €/kWh
+            (Max: {{ states('sensor.tibber_max_price_24h') }} €/kWh)
+            Günstigere Zeiten: {{ states('sensor.tibber_cheapest_hours_text') }}
+    mode: single
+
+  # Tägliche Zusammenfassung der günstigsten Stunden
+  - id: tibber_daily_forecast
+    alias: "Tibber: Tägliche Preisvorhersage"
+    description: "Sendet morgens die günstigsten Stunden des Tages"
+    trigger:
+      - platform: time
+        at: "07:00:00"
+    action:
+      - service: notify.notify
+        data:
+          title: "📊 Tibber Tagesvorhersage"
+          message: >
+            Günstigste Stunden heute: {{ states('sensor.tibber_cheapest_hours_text') }}
+            Durchschnitt: {{ states('sensor.tibber_avg_price_24h') }} €/kWh
+            Min: {{ states('sensor.tibber_min_price_24h') }} €/kWh
+            Max: {{ states('sensor.tibber_max_price_24h') }} €/kWh
+    mode: single

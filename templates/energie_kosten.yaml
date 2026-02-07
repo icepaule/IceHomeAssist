@@ -1,0 +1,348 @@
+# =============================================================================
+# Template Sensoren für Energiekosten
+# =============================================================================
+# Berechnet Kosten basierend auf Tibber-Preisen und Verbrauch
+# Tibber Entitäten:
+#   - sensor.paule_electricity_price (aktueller Preis in €/kWh)
+#   - sensor.tibber_pulse_paule_power (aktueller Verbrauch)
+#   - sensor.tibber_pulse_paule_accumulated_consumption (Verbrauch kWh)
+# =============================================================================
+
+- sensor:
+    # Aktueller Tibber Preis (in ct/kWh für bessere Lesbarkeit)
+    - name: "Tibber Preis Aktuell"
+      unique_id: tibber_price_current_ct
+      unit_of_measurement: "ct/kWh"
+      device_class: monetary
+      state: >
+        {% set price = states('sensor.paule_electricity_price') | float(0) %}
+        {{ (price * 100) | round(2) }}
+      icon: mdi:currency-eur
+      availability: >
+        {{ states('sensor.paule_electricity_price') not in ['unknown', 'unavailable'] }}
+
+    # Kosten Server pro Stunde (aktuell)
+    - name: "Server Kosten pro Stunde"
+      unique_id: server_cost_per_hour
+      unit_of_measurement: "ct"
+      state: >
+        {% set power = states('sensor.server_leistung') | float(0) %}
+        {% set price = states('sensor.paule_electricity_price') | float(0) %}
+        {{ ((power / 1000) * price * 100) | round(2) }}
+      icon: mdi:cash
+
+    # Kosten Küche pro Stunde (aktuell)
+    - name: "Küche Kosten pro Stunde"
+      unique_id: kueche_cost_per_hour
+      unit_of_measurement: "ct"
+      state: >
+        {% set power = states('sensor.kueche_leistung') | float(0) %}
+        {% set price = states('sensor.paule_electricity_price') | float(0) %}
+        {{ ((power / 1000) * price * 100) | round(2) }}
+      icon: mdi:cash
+
+    # Kosten Waschmaschine pro Stunde (aktuell)
+    - name: "Waschmaschine Kosten pro Stunde"
+      unique_id: waschmaschine_cost_per_hour
+      unit_of_measurement: "ct"
+      state: >
+        {% set power = states('sensor.waschmaschine_leistung') | float(0) %}
+        {% set price = states('sensor.paule_electricity_price') | float(0) %}
+        {{ ((power / 1000) * price * 100) | round(2) }}
+      icon: mdi:cash
+
+    # Kosten Trockner pro Stunde (aktuell)
+    - name: "Trockner Kosten pro Stunde"
+      unique_id: trockner_cost_per_hour
+      unit_of_measurement: "ct"
+      state: >
+        {% set power = states('sensor.trockner_leistung') | float(0) %}
+        {% set price = states('sensor.paule_electricity_price') | float(0) %}
+        {{ ((power / 1000) * price * 100) | round(2) }}
+      icon: mdi:cash
+
+    # Kosten Arbeitszimmer pro Stunde (aktuell)
+    - name: "Arbeitszimmer Kosten pro Stunde"
+      unique_id: arbeitszimmer_cost_per_hour
+      unit_of_measurement: "ct"
+      state: >
+        {% set power = states('sensor.arbeitszimmer_leistung') | float(0) %}
+        {% set price = states('sensor.paule_electricity_price') | float(0) %}
+        {{ ((power / 1000) * price * 100) | round(2) }}
+      icon: mdi:cash
+
+    # PV Ersparnis pro Stunde (basierend auf aktuellem Preis)
+    - name: "PV Ersparnis pro Stunde"
+      unique_id: pv_savings_per_hour
+      unit_of_measurement: "ct"
+      state: >
+        {% set power = states('sensor.pv_leistung') | float(0) %}
+        {% set price = states('sensor.paule_electricity_price') | float(0) %}
+        {{ ((power / 1000) * price * 100) | round(2) }}
+      icon: mdi:piggy-bank
+
+    # Preis Status (günstig/normal/teuer) basierend auf Durchschnitt
+    - name: "Tibber Preis Status"
+      unique_id: tibber_price_status
+      state: >
+        {% set current = states('sensor.paule_electricity_price') | float(0) %}
+        {% set avg = 0.30 %}  {# Durchschnittspreis ca. 30 ct/kWh #}
+        {% if current < avg * 0.7 %}
+          günstig
+        {% elif current > avg * 1.3 %}
+          teuer
+        {% else %}
+          normal
+        {% endif %}
+      icon: >
+        {% set current = states('sensor.paule_electricity_price') | float(0) %}
+        {% set avg = 0.30 %}
+        {% if current < avg * 0.7 %}
+          mdi:thumb-up
+        {% elif current > avg * 1.3 %}
+          mdi:thumb-down
+        {% else %}
+          mdi:thumbs-up-down
+        {% endif %}
+
+    # Netz-Verbrauch in W (von Tibber Pulse)
+    - name: "Netzverbrauch Aktuell"
+      unique_id: netz_verbrauch_power
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      state: "{{ states('sensor.tibber_pulse_paule_power') | float(0) }}"
+      icon: mdi:transmission-tower
+      availability: >
+        {{ states('sensor.tibber_pulse_paule_power') not in ['unknown', 'unavailable'] }}
+
+    # Eigenverbrauchsquote (wieviel PV wird selbst verbraucht)
+    - name: "PV Eigenverbrauchsquote"
+      unique_id: pv_self_consumption_ratio
+      unit_of_measurement: "%"
+      state: >
+        {% set pv = states('sensor.pv_leistung') | float(0) %}
+        {% set netz = states('sensor.tibber_pulse_paule_power') | float(0) %}
+        {% if pv > 0 %}
+          {% set export = (pv - netz) | abs if netz < 0 else 0 %}
+          {% set self_use = pv - export %}
+          {{ ((self_use / pv) * 100) | round(0) }}
+        {% else %}
+          0
+        {% endif %}
+      icon: mdi:home-lightning-bolt
+
+    # Geschätzte Kosten heute (basierend auf Tibber accumulated cost)
+    - name: "Stromkosten Heute"
+      unique_id: electricity_cost_today
+      unit_of_measurement: "€"
+      device_class: monetary
+      state: "{{ states('sensor.tibber_pulse_paule_accumulated_cost') | float(0) | round(2) }}"
+      icon: mdi:cash-multiple
+      availability: >
+        {{ states('sensor.tibber_pulse_paule_accumulated_cost') not in ['unknown', 'unavailable'] }}
+
+    # Netzeinspeisung (negative Werte = Einspeisung)
+    - name: "PV Netzeinspeisung"
+      unique_id: pv_grid_export
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      state: >
+        {% set power = states('sensor.tibber_pulse_paule_power_production') | float(0) %}
+        {{ power | round(0) }}
+      icon: mdi:transmission-tower-export
+      availability: >
+        {{ states('sensor.tibber_pulse_paule_power_production') not in ['unknown', 'unavailable'] }}
+
+    # =========================================================================
+    # Tibber Preis-Analyse (basierend auf Forecast-Daten)
+    # =========================================================================
+
+    # Durchschnittspreis heute (aus Tibber Attributen)
+    - name: "Tibber Durchschnittspreis Heute"
+      unique_id: tibber_avg_price_today
+      unit_of_measurement: "ct/kWh"
+      device_class: monetary
+      state: >
+        {% set avg = state_attr('sensor.paule_electricity_price', 'avg_price') %}
+        {{ (avg * 100) | round(2) if avg else 'unavailable' }}
+      icon: mdi:chart-line
+      availability: >
+        {{ state_attr('sensor.paule_electricity_price', 'avg_price') is not none }}
+
+    # Günstigster Preis heute (aus Tibber Attributen)
+    - name: "Tibber Günstigster Preis Heute"
+      unique_id: tibber_min_price_today
+      unit_of_measurement: "ct/kWh"
+      device_class: monetary
+      state: >
+        {% set min_p = state_attr('sensor.paule_electricity_price', 'min_price') %}
+        {{ (min_p * 100) | round(2) if min_p else 'unavailable' }}
+      icon: mdi:arrow-down-bold
+      availability: >
+        {{ state_attr('sensor.paule_electricity_price', 'min_price') is not none }}
+
+    # Teuerster Preis heute (aus Tibber Attributen)
+    - name: "Tibber Teuerster Preis Heute"
+      unique_id: tibber_max_price_today
+      unit_of_measurement: "ct/kWh"
+      device_class: monetary
+      state: >
+        {% set max_p = state_attr('sensor.paule_electricity_price', 'max_price') %}
+        {{ (max_p * 100) | round(2) if max_p else 'unavailable' }}
+      icon: mdi:arrow-up-bold
+      availability: >
+        {{ state_attr('sensor.paule_electricity_price', 'max_price') is not none }}
+
+    # Preis-Ranking (wie teuer ist es gerade im Tagesverlauf)
+    - name: "Tibber Preis Ranking"
+      unique_id: tibber_price_ranking
+      unit_of_measurement: "%"
+      state: >
+        {% set ranking = state_attr('sensor.paule_electricity_price', 'intraday_price_ranking') %}
+        {{ (ranking * 100) | round(0) if ranking else 'unavailable' }}
+      icon: mdi:chart-bar
+      availability: >
+        {{ state_attr('sensor.paule_electricity_price', 'intraday_price_ranking') is not none }}
+
+    # Günstigste Stunde heute (Uhrzeit)
+    - name: "Tibber Günstigste Stunde Heute"
+      unique_id: tibber_cheapest_hour_today
+      state: >
+        {% set prices = state_attr('sensor.paule_electricity_price', 'today') %}
+        {% if prices and prices | length > 0 %}
+          {% set min_price = prices | map(attribute='total') | min %}
+          {% for p in prices %}
+            {% if p.total == min_price %}
+              {{ as_timestamp(p.startsAt) | timestamp_custom('%H:%M') }}
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          unbekannt
+        {% endif %}
+      icon: mdi:clock-check
+
+    # Teuerste Stunde heute (Uhrzeit)
+    - name: "Tibber Teuerste Stunde Heute"
+      unique_id: tibber_expensive_hour_today
+      state: >
+        {% set prices = state_attr('sensor.paule_electricity_price', 'today') %}
+        {% if prices and prices | length > 0 %}
+          {% set max_price = prices | map(attribute='total') | max %}
+          {% for p in prices %}
+            {% if p.total == max_price %}
+              {{ as_timestamp(p.startsAt) | timestamp_custom('%H:%M') }}
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          unbekannt
+        {% endif %}
+      icon: mdi:clock-alert
+
+    # Stunden unter Schwelle heute
+    - name: "Tibber Günstige Stunden Heute"
+      unique_id: tibber_cheap_hours_count
+      unit_of_measurement: "Stunden"
+      state: >
+        {% set prices = state_attr('sensor.paule_electricity_price', 'today') %}
+        {% set threshold = states('input_number.strompreis_schwelle') | float(25) / 100 %}
+        {% if prices and prices | length > 0 %}
+          {{ prices | selectattr('total', 'lt', threshold) | list | length }}
+        {% else %}
+          0
+        {% endif %}
+      icon: mdi:currency-eur-off
+
+    # =========================================================================
+    # Geschätzte Tageskosten pro Verbraucher
+    # Berechnung: kWh heute * effektiver Durchschnittspreis (aus Tibber)
+    # =========================================================================
+
+    - name: "Server Kosten Heute"
+      unique_id: server_kosten_heute
+      unit_of_measurement: "ct"
+      state: >
+        {% set kwh = states('sensor.server_energie_heute') | float(0) %}
+        {% set total_kwh = states('sensor.tibber_pulse_paule_accumulated_consumption') | float(0) %}
+        {% set total_eur = states('sensor.tibber_pulse_paule_accumulated_cost') | float(0) %}
+        {% if total_kwh > 0 and total_eur > 0 %}
+          {{ (kwh * total_eur / total_kwh * 100) | round(1) }}
+        {% else %}
+          {{ (kwh * states('sensor.paule_electricity_price') | float(0.30) * 100) | round(1) }}
+        {% endif %}
+      icon: mdi:cash
+
+    - name: "Arbeitszimmer Kosten Heute"
+      unique_id: arbeitszimmer_kosten_heute
+      unit_of_measurement: "ct"
+      state: >
+        {% set kwh = states('sensor.arbeitszimmer_energie_heute') | float(0) %}
+        {% set total_kwh = states('sensor.tibber_pulse_paule_accumulated_consumption') | float(0) %}
+        {% set total_eur = states('sensor.tibber_pulse_paule_accumulated_cost') | float(0) %}
+        {% if total_kwh > 0 and total_eur > 0 %}
+          {{ (kwh * total_eur / total_kwh * 100) | round(1) }}
+        {% else %}
+          {{ (kwh * states('sensor.paule_electricity_price') | float(0.30) * 100) | round(1) }}
+        {% endif %}
+      icon: mdi:cash
+
+    - name: "Küche Kosten Heute"
+      unique_id: kueche_kosten_heute
+      unit_of_measurement: "ct"
+      state: >
+        {% set kwh = states('sensor.kueche_energie_heute') | float(0) %}
+        {% set total_kwh = states('sensor.tibber_pulse_paule_accumulated_consumption') | float(0) %}
+        {% set total_eur = states('sensor.tibber_pulse_paule_accumulated_cost') | float(0) %}
+        {% if total_kwh > 0 and total_eur > 0 %}
+          {{ (kwh * total_eur / total_kwh * 100) | round(1) }}
+        {% else %}
+          {{ (kwh * states('sensor.paule_electricity_price') | float(0.30) * 100) | round(1) }}
+        {% endif %}
+      icon: mdi:cash
+
+    - name: "Waschmaschine Kosten Heute"
+      unique_id: waschmaschine_kosten_heute
+      unit_of_measurement: "ct"
+      state: >
+        {% set kwh = states('sensor.waschmaschine_energie_heute') | float(0) %}
+        {% set total_kwh = states('sensor.tibber_pulse_paule_accumulated_consumption') | float(0) %}
+        {% set total_eur = states('sensor.tibber_pulse_paule_accumulated_cost') | float(0) %}
+        {% if total_kwh > 0 and total_eur > 0 %}
+          {{ (kwh * total_eur / total_kwh * 100) | round(1) }}
+        {% else %}
+          {{ (kwh * states('sensor.paule_electricity_price') | float(0.30) * 100) | round(1) }}
+        {% endif %}
+      icon: mdi:cash
+
+    - name: "Trockner Kosten Heute"
+      unique_id: trockner_kosten_heute
+      unit_of_measurement: "ct"
+      state: >
+        {% set kwh = states('sensor.trockner_energie_heute') | float(0) %}
+        {% set total_kwh = states('sensor.tibber_pulse_paule_accumulated_consumption') | float(0) %}
+        {% set total_eur = states('sensor.tibber_pulse_paule_accumulated_cost') | float(0) %}
+        {% if total_kwh > 0 and total_eur > 0 %}
+          {{ (kwh * total_eur / total_kwh * 100) | round(1) }}
+        {% else %}
+          {{ (kwh * states('sensor.paule_electricity_price') | float(0.30) * 100) | round(1) }}
+        {% endif %}
+      icon: mdi:cash
+
+    # Durchschnittspreis morgen (falls verfügbar)
+    - name: "Tibber Durchschnittspreis Morgen"
+      unique_id: tibber_avg_price_tomorrow
+      unit_of_measurement: "ct/kWh"
+      device_class: monetary
+      state: >
+        {% set prices = state_attr('sensor.paule_electricity_price', 'tomorrow') %}
+        {% if prices and prices | length > 0 %}
+          {% set total = prices | map(attribute='total') | list %}
+          {{ ((total | sum / total | length) * 100) | round(2) }}
+        {% else %}
+          nicht verfügbar
+        {% endif %}
+      icon: mdi:chart-line-variant
+      availability: >
+        {% set prices = state_attr('sensor.paule_electricity_price', 'tomorrow') %}
+        {{ prices is not none and prices | length > 0 }}

@@ -1,0 +1,229 @@
+# Energy Package - PV System & Tibber Integration
+# Migrated from ioBroker PV_Matrix, follow_the_sun, Tibber scripts
+#
+# This package consolidates all energy-related configuration.
+
+# =============================================================================
+# TEMPLATE SENSORS
+# FIX: Updated entity references:
+#   sensor.pv_inverter_power -> sensor.pv_leistung (configuration.yaml MQTT sensor)
+#   sensor.pv_inverter_energy_today -> sensor.pv_energie_heute (configuration.yaml)
+#   sensor.electricity_price -> sensor.paule_electricity_price (Tibber integration)
+#   sensor.grid_power -> sensor.netzverbrauch_aktuell (template in energie_kosten.yaml)
+# =============================================================================
+template:
+  - sensor:
+      # Total PV production
+      - name: "PV Total Power"
+        unique_id: pv_total_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {% set p1 = states('sensor.pv_leistung')|float(0) %}
+          {{ p1 | round(1) }}
+        availability: >
+          {{ states('sensor.pv_leistung') not in ['unknown', 'unavailable'] }}
+
+      # PV daily energy production
+      - name: "PV Energy Today"
+        unique_id: pv_energy_today
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total_increasing
+        state: >
+          {{ states('sensor.pv_energie_heute')|float(0) | round(2) }}
+
+      # Tibber current price
+      - name: "Tibber Current Price"
+        unique_id: tibber_current_price
+        unit_of_measurement: "EUR/kWh"
+        state: >
+          {{ states('sensor.paule_electricity_price')|float(0) | round(4) }}
+
+      # Daily savings from PV
+      - name: "PV Daily Savings"
+        unique_id: pv_daily_savings
+        unit_of_measurement: "EUR"
+        state: >
+          {% set energy = states('sensor.pv_energy_today')|float(0) %}
+          {% set price = states('sensor.tibber_current_price')|float(0.30) %}
+          {{ (energy * price) | round(2) }}
+
+      # Monthly savings calculation
+      - name: "PV Monthly Savings"
+        unique_id: pv_monthly_savings
+        unit_of_measurement: "EUR"
+        state: >
+          {% set energy = states('sensor.pv_energy_monthly')|float(0) %}
+          {% set avg_price = 0.30 %}  {# Average price assumption #}
+          {{ (energy * avg_price) | round(2) }}
+
+      # Sun position for panel tracking (follow_the_sun)
+      - name: "Optimal Panel Angle"
+        unique_id: optimal_panel_angle
+        unit_of_measurement: "°"
+        state: >
+          {% set elevation = state_attr('sun.sun', 'elevation')|float(0) %}
+          {% set optimal = 90 - elevation %}
+          {{ [0, [optimal, 60]|min]|max | round(0) }}
+
+      # Grid export/import indicator
+      # FIX: sensor.grid_power -> sensor.netzverbrauch_aktuell
+      - name: "Grid Direction"
+        unique_id: grid_direction
+        state: >
+          {% set grid = states('sensor.netzverbrauch_aktuell')|float(0) %}
+          {% if grid > 50 %}
+            importing
+          {% elif grid < -50 %}
+            exporting
+          {% else %}
+            balanced
+          {% endif %}
+        icon: >
+          {% set grid = states('sensor.netzverbrauch_aktuell')|float(0) %}
+          {% if grid > 50 %}
+            mdi:transmission-tower-import
+          {% elif grid < -50 %}
+            mdi:transmission-tower-export
+          {% else %}
+            mdi:transmission-tower
+          {% endif %}
+
+# =============================================================================
+# UTILITY METERS
+# =============================================================================
+utility_meter:
+  pv_energy_daily:
+    source: sensor.pv_energy_today
+    cycle: daily
+
+  pv_energy_monthly:
+    source: sensor.pv_energy_today
+    cycle: monthly
+
+  pv_energy_yearly:
+    source: sensor.pv_energy_today
+    cycle: yearly
+
+  grid_import_daily:
+    source: sensor.grid_import
+    cycle: daily
+
+  grid_export_daily:
+    source: sensor.grid_export
+    cycle: daily
+
+# =============================================================================
+# INPUT HELPERS
+# =============================================================================
+input_boolean:
+  pv_auto_tracking:
+    name: "PV Auto Tracking"
+    icon: mdi:solar-power-variant
+
+  pv_manual_override:
+    name: "PV Manual Override"
+    icon: mdi:hand-back-left
+
+# FIX: Removed duplicate input_number.pv_manual_angle - it is already defined
+# in pv_follow_the_sun.yaml with the correct min:20/max:70 range.
+
+# =============================================================================
+# AUTOMATIONS
+# =============================================================================
+automation:
+  # Auto-adjust panel angle based on sun position (follow_the_sun)
+  - id: pv_auto_tracking
+    alias: "PV: Auto Panel Tracking"
+    description: "Migrated from follow_the_sun script"
+    trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: state
+        entity_id: input_boolean.pv_auto_tracking
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.pv_auto_tracking
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.pv_manual_override
+        state: "off"
+      - condition: sun
+        after: sunrise
+        before: sunset
+    action:
+      - service: number.set_value
+        target:
+          entity_id: number.pv_panel_angle
+        data:
+          value: "{{ states('sensor.optimal_panel_angle')|int }}"
+    mode: single
+
+  # Notify on high production
+  - id: pv_high_production_notification
+    alias: "PV: High Production Notification"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.pv_total_power
+        above: 3000
+        for:
+          minutes: 5
+    action:
+      - service: notify.telegram
+        data:
+          title: "☀️ PV Hochleistung"
+          message: >
+            Aktuelle PV-Leistung: {{ states('sensor.pv_total_power') }}W
+            Tagesertrag: {{ states('sensor.pv_energy_today') }}kWh
+            Ersparnis heute: {{ states('sensor.pv_daily_savings') }}€
+    mode: single
+
+  # Low Tibber price notification
+  - id: tibber_low_price_alert
+    alias: "Tibber: Low Price Alert"
+    description: "Migrated from Tibber script"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.tibber_current_price
+        below: 0.15
+    condition:
+      - condition: time
+        after: "06:00:00"
+        before: "22:00:00"
+    action:
+      - service: notify.telegram
+        data:
+          title: "💰 Günstiger Strompreis"
+          message: >
+            Aktueller Tibber-Preis: {{ states('sensor.tibber_current_price') }}€/kWh
+            Guter Zeitpunkt zum Laden/Waschen!
+    mode: single
+
+# =============================================================================
+# SCRIPTS
+# =============================================================================
+script:
+  pv_set_angle:
+    alias: "PV: Set Panel Angle"
+    description: "Set PV panel to specific angle"
+    fields:
+      angle:
+        description: "Target angle in degrees"
+        example: 30
+    sequence:
+      - service: number.set_value
+        target:
+          entity_id: number.pv_panel_angle
+        data:
+          value: "{{ angle }}"
+      - service: logbook.log
+        data:
+          name: "PV System"
+          message: "Panel angle set to {{ angle }}°"
+    mode: single
+
+  # FIX: Removed duplicate pv_emergency_flat script - it is already defined in
+  # pv_follow_the_sun.yaml which uses the correct MQTT-based distance control.

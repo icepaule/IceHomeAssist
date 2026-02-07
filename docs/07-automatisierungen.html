@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatisierungen - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Automatisierungen
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Automatisierungen</h1>
+            <p>
+                Das IceHomeAssist-System verwendet zwei Automatisierungs-Systeme: Die nativen
+                HA-Automatisierungen (4 YAML-Dateien) und Node-RED Flows (für WiFi-Buttons).
+                Diese Seite beschreibt die 4 HA-Automatisierungen im Detail. Für Node-RED siehe
+                die <a href="08-nodered.html">Node-RED-Seite</a>.
+            </p>
+
+            <!-- Grundkonzepte -->
+            <h2>Grundkonzepte</h2>
+            <div class="card">
+                <h3>Aufbau einer Automatisierung</h3>
+                <p>Jede Home-Assistant-Automatisierung besteht aus drei Hauptkomponenten:</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Komponente</th>
+                            <th>Beschreibung</th>
+                            <th>Beispiel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Trigger</strong></td>
+                            <td>Löst die Automatisierung aus</td>
+                            <td>Zeitplan, Sensorwert-Änderung, MQTT-Nachricht</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Condition</strong></td>
+                            <td>Optionale Bedingungen, die erfüllt sein müssen</td>
+                            <td>Nur wenn Strompreis unter X Cent, nur tagsüber</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Action</strong></td>
+                            <td>Aktionen, die ausgeführt werden</td>
+                            <td>Gerät einschalten, Benachrichtigung senden, Szene aktivieren</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <pre><code><span class="cmt"># Grundstruktur einer Automatisierung</span>
+<span class="kw">alias:</span> <span class="str">"Name der Automatisierung"</span>
+<span class="kw">description:</span> <span class="str">"Beschreibung"</span>
+<span class="kw">trigger:</span>
+  - <span class="kw">platform:</span> <span class="val">state</span>
+    <span class="kw">entity_id:</span> <span class="val">sensor.beispiel</span>
+<span class="kw">condition:</span>
+  - <span class="kw">condition:</span> <span class="val">numeric_state</span>
+    <span class="kw">entity_id:</span> <span class="val">sensor.beispiel</span>
+    <span class="kw">below:</span> <span class="val">10</span>
+<span class="kw">action:</span>
+  - <span class="kw">service:</span> <span class="val">switch.turn_on</span>
+    <span class="kw">target:</span>
+      <span class="kw">entity_id:</span> <span class="val">switch.beispiel</span>
+<span class="kw">mode:</span> <span class="val">single</span></code></pre>
+
+            <!-- Übersicht -->
+            <h2>Übersicht der 4 Automatisierungen</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Automatisierung</th>
+                        <th>Datei</th>
+                        <th>Zweck</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>PV Tibber Savings</strong></td>
+                        <td><code>pv_tibber_savings.yaml</code></td>
+                        <td>Berechnet Einsparungen durch PV-Eigenverbrauch vs. Tibber-Preis</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Strompreis Automationen</strong></td>
+                        <td><code>strompreis_automationen.yaml</code></td>
+                        <td>Schaltet Geräte basierend auf dem aktuellen Tibber-Strompreis</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tibber Next 24h</strong></td>
+                        <td><code>tibber_next24h.yaml</code></td>
+                        <td>Aktualisiert die Strompreisvorhersage für die nächsten 24 Stunden</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Vacuum Schedule</strong></td>
+                        <td><code>vacuum_schedule.yaml</code></td>
+                        <td>Automatischer Staubsauger-Zeitplan mit Raum-Rotation</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Detaillierte Beschreibungen -->
+            <h2>1. PV Tibber Savings</h2>
+            <div class="card">
+                <p>
+                    Diese Automatisierung berechnet, wie viel Geld durch den PV-Eigenverbrauch
+                    eingespart wird. Sie vergleicht den aktuellen PV-Ertrag mit dem Tibber-Strompreis
+                    und summiert die Einsparungen über den Tag.
+                </p>
+                <pre><code><span class="cmt"># automations/pv_tibber_savings.yaml</span>
+
+<span class="kw">alias:</span> <span class="str">"PV Tibber Einsparungen berechnen"</span>
+<span class="kw">description:</span> <span class="str">"Berechnet die Einsparungen durch PV-Eigenverbrauch"</span>
+<span class="kw">trigger:</span>
+  - <span class="kw">platform:</span> <span class="val">time_pattern</span>
+    <span class="kw">minutes:</span> <span class="str">"/5"</span>
+    <span class="cmt"># Alle 5 Minuten aktualisieren</span>
+<span class="kw">condition:</span>
+  - <span class="kw">condition:</span> <span class="val">numeric_state</span>
+    <span class="kw">entity_id:</span> <span class="val">sensor.pv_leistung</span>
+    <span class="kw">above:</span> <span class="val">0</span>
+    <span class="cmt"># Nur wenn PV-Anlage Strom produziert</span>
+<span class="kw">action:</span>
+  - <span class="kw">service:</span> <span class="val">input_number.set_value</span>
+    <span class="kw">target:</span>
+      <span class="kw">entity_id:</span> <span class="val">input_number.pv_savings_today</span>
+    <span class="kw">data:</span>
+      <span class="kw">value:</span> <span class="str">&gt;
+        {{ states('input_number.pv_savings_today')|float +
+           (states('sensor.pv_leistung')|float / 1000 * 5/60 *
+            states('sensor.tibber_price')|float) }}</span>
+<span class="kw">mode:</span> <span class="val">single</span></code></pre>
+                <div class="info-box">
+                    <strong>Logik:</strong> PV-Leistung (W) wird in kWh umgerechnet (geteilt durch 1000,
+                    multipliziert mit 5/60 für das 5-Minuten-Intervall) und mit dem aktuellen
+                    Tibber-Strompreis (EUR/kWh) multipliziert.
+                </div>
+            </div>
+
+            <h2>2. Strompreis Automationen</h2>
+            <div class="card">
+                <p>
+                    Steuert Geräte automatisch basierend auf dem aktuellen Tibber-Strompreis.
+                    Bei niedrigen Preisen werden energieintensive Geräte eingeschaltet,
+                    bei hohen Preisen werden sie ausgeschaltet.
+                </p>
+                <pre><code><span class="cmt"># automations/strompreis_automationen.yaml</span>
+
+<span class="kw">alias:</span> <span class="str">"Strompreis-basierte Gerätesteuerung"</span>
+<span class="kw">description:</span> <span class="str">"Schaltet Geräte basierend auf dem aktuellen Tibber-Strompreis"</span>
+<span class="kw">trigger:</span>
+  - <span class="kw">platform:</span> <span class="val">state</span>
+    <span class="kw">entity_id:</span> <span class="val">sensor.tibber_price</span>
+    <span class="cmt"># Reagiert auf jede Strompreisänderung</span>
+<span class="kw">action:</span>
+  - <span class="kw">choose:</span>
+    <span class="cmt"># Günstiger Strom (unter 15 Cent/kWh)</span>
+    - <span class="kw">conditions:</span>
+        - <span class="kw">condition:</span> <span class="val">numeric_state</span>
+          <span class="kw">entity_id:</span> <span class="val">sensor.tibber_price</span>
+          <span class="kw">below:</span> <span class="val">0.15</span>
+      <span class="kw">sequence:</span>
+        - <span class="kw">service:</span> <span class="val">notify.persistent_notification</span>
+          <span class="kw">data:</span>
+            <span class="kw">title:</span> <span class="str">"Strompreis niedrig"</span>
+            <span class="kw">message:</span> <span class="str">"Aktueller Preis: {{ states('sensor.tibber_price') }} EUR/kWh"</span>
+    <span class="cmt"># Teurer Strom (über 30 Cent/kWh)</span>
+    - <span class="kw">conditions:</span>
+        - <span class="kw">condition:</span> <span class="val">numeric_state</span>
+          <span class="kw">entity_id:</span> <span class="val">sensor.tibber_price</span>
+          <span class="kw">above:</span> <span class="val">0.30</span>
+      <span class="kw">sequence:</span>
+        - <span class="kw">service:</span> <span class="val">notify.persistent_notification</span>
+          <span class="kw">data:</span>
+            <span class="kw">title:</span> <span class="str">"Strompreis hoch"</span>
+            <span class="kw">message:</span> <span class="str">"Aktueller Preis: {{ states('sensor.tibber_price') }} EUR/kWh - Verbrauch reduzieren!"</span>
+<span class="kw">mode:</span> <span class="val">single</span></code></pre>
+            </div>
+
+            <h2>3. Tibber Next 24h</h2>
+            <div class="card">
+                <p>
+                    Ruft die Strompreise für die nächsten 24 Stunden von der Tibber-API ab und
+                    speichert sie für die Anzeige im Energie-Dashboard und für die
+                    Strompreis-Automatisierungen.
+                </p>
+                <pre><code><span class="cmt"># automations/tibber_next24h.yaml</span>
+
+<span class="kw">alias:</span> <span class="str">"Tibber Preise nächste 24h aktualisieren"</span>
+<span class="kw">description:</span> <span class="str">"Holt die Strompreisvorhersage für morgen (verfügbar ab ca. 13 Uhr)"</span>
+<span class="kw">trigger:</span>
+  - <span class="kw">platform:</span> <span class="val">time</span>
+    <span class="kw">at:</span> <span class="str">"13:15:00"</span>
+    <span class="cmt"># Tibber veröffentlicht die Preise für morgen gegen 13 Uhr</span>
+  - <span class="kw">platform:</span> <span class="val">time</span>
+    <span class="kw">at:</span> <span class="str">"00:05:00"</span>
+    <span class="cmt"># Mitternacht: Tageswerte zurücksetzen</span>
+<span class="kw">action:</span>
+  - <span class="kw">service:</span> <span class="val">homeassistant.update_entity</span>
+    <span class="kw">target:</span>
+      <span class="kw">entity_id:</span> <span class="val">sensor.tibber_prices</span>
+  - <span class="kw">delay:</span>
+      <span class="kw">seconds:</span> <span class="val">5</span>
+  - <span class="kw">service:</span> <span class="val">input_number.set_value</span>
+    <span class="kw">target:</span>
+      <span class="kw">entity_id:</span> <span class="val">input_number.tibber_min_price_today</span>
+    <span class="kw">data:</span>
+      <span class="kw">value:</span> <span class="str">"{{ state_attr('sensor.tibber_prices', 'min_price') | float(0) }}"</span>
+  - <span class="kw">service:</span> <span class="val">input_number.set_value</span>
+    <span class="kw">target:</span>
+      <span class="kw">entity_id:</span> <span class="val">input_number.tibber_max_price_today</span>
+    <span class="kw">data:</span>
+      <span class="kw">value:</span> <span class="str">"{{ state_attr('sensor.tibber_prices', 'max_price') | float(0) }}"</span>
+<span class="kw">mode:</span> <span class="val">single</span></code></pre>
+            </div>
+
+            <h2>4. Vacuum Schedule</h2>
+            <div class="card">
+                <p>
+                    Startet den Dreame Staubsauger nach einem festen Zeitplan. An verschiedenen
+                    Wochentagen werden unterschiedliche Räume gereinigt (Rotation).
+                </p>
+                <pre><code><span class="cmt"># automations/vacuum_schedule.yaml</span>
+
+<span class="kw">alias:</span> <span class="str">"Staubsauger Zeitplan"</span>
+<span class="kw">description:</span> <span class="str">"Automatische Reinigung nach Wochentag-Rotation"</span>
+<span class="kw">trigger:</span>
+  - <span class="kw">platform:</span> <span class="val">time</span>
+    <span class="kw">at:</span> <span class="str">"10:00:00"</span>
+    <span class="cmt"># Starte täglich um 10 Uhr</span>
+<span class="kw">condition:</span>
+  - <span class="kw">condition:</span> <span class="val">state</span>
+    <span class="kw">entity_id:</span> <span class="val">vacuum.dreame_staubsauger</span>
+    <span class="kw">state:</span> <span class="str">"docked"</span>
+    <span class="cmt"># Nur wenn der Staubsauger in der Ladestation ist</span>
+  - <span class="kw">condition:</span> <span class="val">time</span>
+    <span class="kw">weekday:</span>
+      - <span class="val">mon</span>
+      - <span class="val">wed</span>
+      - <span class="val">fri</span>
+    <span class="cmt"># Nur Montag, Mittwoch, Freitag</span>
+<span class="kw">action:</span>
+  - <span class="kw">choose:</span>
+    <span class="cmt"># Montag: Wohnzimmer + Küche</span>
+    - <span class="kw">conditions:</span>
+        - <span class="kw">condition:</span> <span class="val">time</span>
+          <span class="kw">weekday:</span>
+            - <span class="val">mon</span>
+      <span class="kw">sequence:</span>
+        - <span class="kw">service:</span> <span class="val">dreame_vacuum.vacuum_clean_segment</span>
+          <span class="kw">target:</span>
+            <span class="kw">entity_id:</span> <span class="val">vacuum.dreame_staubsauger</span>
+          <span class="kw">data:</span>
+            <span class="kw">segments:</span>
+              - <span class="val">1</span>  <span class="cmt"># Wohnzimmer</span>
+              - <span class="val">3</span>  <span class="cmt"># Küche</span>
+    <span class="cmt"># Mittwoch: Schlafzimmer + Flur</span>
+    - <span class="kw">conditions:</span>
+        - <span class="kw">condition:</span> <span class="val">time</span>
+          <span class="kw">weekday:</span>
+            - <span class="val">wed</span>
+      <span class="kw">sequence:</span>
+        - <span class="kw">service:</span> <span class="val">dreame_vacuum.vacuum_clean_segment</span>
+          <span class="kw">target:</span>
+            <span class="kw">entity_id:</span> <span class="val">vacuum.dreame_staubsauger</span>
+          <span class="kw">data:</span>
+            <span class="kw">segments:</span>
+              - <span class="val">2</span>  <span class="cmt"># Schlafzimmer</span>
+              - <span class="val">4</span>  <span class="cmt"># Flur</span>
+    <span class="cmt"># Freitag: Komplettreinigung</span>
+    - <span class="kw">conditions:</span>
+        - <span class="kw">condition:</span> <span class="val">time</span>
+          <span class="kw">weekday:</span>
+            - <span class="val">fri</span>
+      <span class="kw">sequence:</span>
+        - <span class="kw">service:</span> <span class="val">vacuum.start</span>
+          <span class="kw">target:</span>
+            <span class="kw">entity_id:</span> <span class="val">vacuum.dreame_staubsauger</span>
+<span class="kw">mode:</span> <span class="val">single</span></code></pre>
+            </div>
+
+            <!-- Scripts -->
+            <h2>Scripts</h2>
+            <p>
+                Scripts sind wiederverwendbare Aktionssequenzen, die von Automatisierungen, Dashboards
+                oder manuell aufgerufen werden können. Sie werden in den jeweiligen Packages definiert
+                (z.B. WiFi-Button-Actions in <code>packages/wifi_buttons.yaml</code>).
+            </p>
+
+            <pre><code><span class="cmt"># Beispiel: Script in einem Package</span>
+<span class="kw">script:</span>
+  <span class="kw">announce_strompreis:</span>
+    <span class="kw">alias:</span> <span class="str">"Strompreis ansagen"</span>
+    <span class="kw">description:</span> <span class="str">"Sagt den aktuellen Strompreis über Alexa an"</span>
+    <span class="kw">sequence:</span>
+      - <span class="kw">service:</span> <span class="val">notify.alexa_media_marcus_echo_show_8_2nd_gen</span>
+        <span class="kw">data:</span>
+          <span class="kw">message:</span> <span class="str">"Der aktuelle Strompreis beträgt {{ states('sensor.tibber_price') }} Euro pro Kilowattstunde."</span>
+          <span class="kw">data:</span>
+            <span class="kw">type:</span> <span class="str">"tts"</span>
+    <span class="kw">mode:</span> <span class="val">single</span></code></pre>
+
+            <div class="info-box">
+                <strong>HA vs. Node-RED:</strong> Im IceHomeAssist-System werden die meisten einfachen
+                Automatisierungen (Zeitpläne, Preisabfragen) nativ in HA definiert. Komplexere,
+                event-basierte Logik (WiFi-Buttons mit dynamischer Funktionszuweisung über
+                <code>input_select</code>) wird über Node-RED gesteuert. Mehr dazu auf der
+                <a href="08-nodered.html">Node-RED-Seite</a>.
+            </div>
+
+            <h2>Automatisierungs-Modi</h2>
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Modus</th>
+                            <th>Beschreibung</th>
+                            <th>Verwendung</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>single</code></td>
+                            <td>Ignoriert neue Trigger, solange die Automatisierung läuft</td>
+                            <td>Standard für alle 4 Automatisierungen</td>
+                        </tr>
+                        <tr>
+                            <td><code>restart</code></td>
+                            <td>Startet bei neuem Trigger die laufende Ausführung neu</td>
+                            <td>Geeignet für Timeouts/Delays</td>
+                        </tr>
+                        <tr>
+                            <td><code>queued</code></td>
+                            <td>Reiht neue Trigger in eine Warteschlange ein</td>
+                            <td>Für sequenzielle Verarbeitung</td>
+                        </tr>
+                        <tr>
+                            <td><code>parallel</code></td>
+                            <td>Führt mehrere Instanzen gleichzeitig aus</td>
+                            <td>Für unabhängige Aktionen</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="page-nav">
+                <a href="06-dashboards.html">
+                    <div><div class="label">Zurück</div>Dashboards</div>
+                </a>
+                <a href="08-nodered.html">
+                    <div><div class="label">Weiter</div>Node-RED</div>
+                </a>
+            </div>
+            <div class="footer">
+                IceHomeAssist Dokumentation &middot; Erstellt Februar 2026
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) {
+        a.classList.add('active');
+    }
+});
+
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation Inhaltsverzeichnis"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker Container Komponenten"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker Setup"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes Netzwerk"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages Secrets"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Switch WiFi Radar"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive GPS Tracker"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
+];
+
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i =>
+        i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Keine Ergebnisse</div>';
+    } else {
+        results.innerHTML = matches.map(m =>
+            `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`
+        ).join('');
+    }
+    results.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-container')) {
+        document.getElementById('searchResults').classList.remove('active');
+    }
+});
+</script>
+</body>
+</html>

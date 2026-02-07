@@ -1,0 +1,359 @@
+# Media Dashboard
+# Basiert auf VIS Views 700-799, 900-999
+# Alexa Echo, TV, Kodi, Spotify, Radio
+
+title: Medien
+views:
+  - title: Medien
+    path: medien
+    icon: mdi:play-circle
+    type: sections
+    max_columns: 3
+    sections:
+      # ===== NOW PLAYING =====
+      - type: grid
+        title: Aktive Wiedergabe
+        cards:
+          - type: custom:mushroom-media-player-card
+            entity: media_player.aktiver_player
+            use_media_info: true
+            show_volume_level: true
+            volume_controls:
+              - volume_buttons
+              - volume_set
+            media_controls:
+              - play_pause_stop
+              - previous
+              - next
+            collapsible_controls: false
+
+      # ===== ECHO GERÄTE =====
+      - type: grid
+        title: "🔊 Echo Geräte"
+        cards:
+          # Wohnzimmer Echo
+          - type: custom:mushroom-media-player-card
+            entity: media_player.echo_wohnzimmer
+            name: Echo Wohnzimmer
+            use_media_info: true
+            show_volume_level: true
+            collapsible_controls: true
+
+          # Küche Echo
+          - type: custom:mushroom-media-player-card
+            entity: media_player.echo_kueche
+            name: Echo Küche
+            use_media_info: true
+            show_volume_level: true
+            collapsible_controls: true
+
+          # Bad Echo
+          - type: custom:mushroom-media-player-card
+            entity: media_player.echo_bad
+            name: Echo Bad
+            use_media_info: true
+            show_volume_level: true
+            collapsible_controls: true
+
+          # Gruppen
+          - type: entities
+            title: Echo Gruppen
+            entities:
+              - entity: media_player.echo_gruppe_eg
+                name: Gruppe EG
+              - entity: media_player.echo_gruppe_alle
+                name: Alle Echos
+
+          # TTS / Ankündigungen
+          - type: custom:mushroom-template-card
+            primary: Durchsage
+            secondary: An alle Echos
+            icon: mdi:bullhorn
+            icon_color: blue
+            tap_action:
+              action: call-service
+              service: script.alexa_announce
+              data:
+                message: "{{ states('input_text.alexa_message') }}"
+
+      # ===== RADIOSENDER =====
+      - type: grid
+        title: "📻 Radio"
+        cards:
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: action
+                icon: mdi:radio
+                icon_color: red
+                content: WDR 2
+                tap_action:
+                  action: call-service
+                  service: media_player.play_media
+                  target:
+                    entity_id: media_player.echo_wohnzimmer
+                  data:
+                    media_content_id: WDR 2
+                    media_content_type: TUNEIN
+
+              - type: action
+                icon: mdi:radio
+                icon_color: blue
+                content: 1Live
+                tap_action:
+                  action: call-service
+                  service: media_player.play_media
+                  target:
+                    entity_id: media_player.echo_wohnzimmer
+                  data:
+                    media_content_id: 1Live
+                    media_content_type: TUNEIN
+
+              - type: action
+                icon: mdi:radio
+                icon_color: orange
+                content: NDR 2
+                tap_action:
+                  action: call-service
+                  service: media_player.play_media
+                  target:
+                    entity_id: media_player.echo_wohnzimmer
+                  data:
+                    media_content_id: NDR 2
+                    media_content_type: TUNEIN
+
+          # Weitere Sender
+          - type: entities
+            title: Radiosender
+            show_header_toggle: false
+            entities:
+              - type: button
+                name: SWR3
+                icon: mdi:radio
+                tap_action:
+                  action: call-service
+                  service: media_player.play_media
+                  target:
+                    entity_id: media_player.echo_wohnzimmer
+                  data:
+                    media_content_id: SWR3
+                    media_content_type: TUNEIN
+
+              - type: button
+                name: Bayern 3
+                icon: mdi:radio
+                tap_action:
+                  action: call-service
+                  service: media_player.play_media
+                  target:
+                    entity_id: media_player.echo_wohnzimmer
+                  data:
+                    media_content_id: Bayern 3
+                    media_content_type: TUNEIN
+
+              - type: button
+                name: Radio Bob
+                icon: mdi:radio
+                tap_action:
+                  action: call-service
+                  service: media_player.play_media
+                  target:
+                    entity_id: media_player.echo_wohnzimmer
+                  data:
+                    media_content_id: Radio Bob
+                    media_content_type: TUNEIN
+
+      # ===== SPOTIFY =====
+      - type: grid
+        title: "🎵 Spotify"
+        cards:
+          - type: custom:mushroom-media-player-card
+            entity: media_player.spotify
+            use_media_info: true
+            show_volume_level: true
+            volume_controls:
+              - volume_buttons
+            media_controls:
+              - play_pause_stop
+              - previous
+              - next
+              - shuffle
+              - repeat
+
+          # Playlists
+          - type: entities
+            title: Playlists
+            show_header_toggle: false
+            entities:
+              - type: button
+                name: Chill
+                icon: mdi:playlist-music
+                tap_action:
+                  action: call-service
+                  service: media_player.play_media
+                  target:
+                    entity_id: media_player.spotify
+                  data:
+                    media_content_id: spotify:playlist:xxxxx
+                    media_content_type: playlist
+
+              - type: button
+                name: Party
+                icon: mdi:playlist-music
+                tap_action:
+                  action: call-service
+                  service: media_player.play_media
+                  target:
+                    entity_id: media_player.spotify
+                  data:
+                    media_content_id: spotify:playlist:xxxxx
+                    media_content_type: playlist
+
+      # ===== TV / KODI =====
+      - type: grid
+        title: "📺 TV & Kodi"
+        cards:
+          # TV
+          - type: custom:mushroom-media-player-card
+            entity: media_player.kd_55xe8505
+            name: Samsung TV
+            use_media_info: true
+            collapsible_controls: true
+
+          # Kodi
+          - type: custom:mushroom-media-player-card
+            entity: media_player.kodi
+            name: Kodi
+            use_media_info: true
+            show_volume_level: true
+            media_controls:
+              - play_pause_stop
+              - previous
+              - next
+
+          # Kodi Navigation
+          - type: grid
+            square: true
+            columns: 3
+            cards:
+              - type: custom:mushroom-template-card
+                icon: mdi:blank
+                tap_action:
+                  action: none
+              - type: custom:mushroom-template-card
+                icon: mdi:chevron-up
+                tap_action:
+                  action: call-service
+                  service: kodi.call_method
+                  target:
+                    entity_id: media_player.kodi
+                  data:
+                    method: Input.Up
+              - type: custom:mushroom-template-card
+                icon: mdi:blank
+                tap_action:
+                  action: none
+
+              - type: custom:mushroom-template-card
+                icon: mdi:chevron-left
+                tap_action:
+                  action: call-service
+                  service: kodi.call_method
+                  target:
+                    entity_id: media_player.kodi
+                  data:
+                    method: Input.Left
+              - type: custom:mushroom-template-card
+                icon: mdi:checkbox-blank-circle
+                tap_action:
+                  action: call-service
+                  service: kodi.call_method
+                  target:
+                    entity_id: media_player.kodi
+                  data:
+                    method: Input.Select
+              - type: custom:mushroom-template-card
+                icon: mdi:chevron-right
+                tap_action:
+                  action: call-service
+                  service: kodi.call_method
+                  target:
+                    entity_id: media_player.kodi
+                  data:
+                    method: Input.Right
+
+              - type: custom:mushroom-template-card
+                icon: mdi:keyboard-return
+                tap_action:
+                  action: call-service
+                  service: kodi.call_method
+                  target:
+                    entity_id: media_player.kodi
+                  data:
+                    method: Input.Back
+              - type: custom:mushroom-template-card
+                icon: mdi:chevron-down
+                tap_action:
+                  action: call-service
+                  service: kodi.call_method
+                  target:
+                    entity_id: media_player.kodi
+                  data:
+                    method: Input.Down
+              - type: custom:mushroom-template-card
+                icon: mdi:home
+                tap_action:
+                  action: call-service
+                  service: kodi.call_method
+                  target:
+                    entity_id: media_player.kodi
+                  data:
+                    method: Input.Home
+
+      # ===== CHROMECAST =====
+      - type: grid
+        title: "📡 Chromecast"
+        cards:
+          - type: custom:mushroom-media-player-card
+            entity: media_player.chromecast_wohnzimmer
+            name: Chromecast Wohnzimmer
+            use_media_info: true
+            collapsible_controls: true
+
+      # ===== TV PROGRAMM =====
+      - type: grid
+        title: "📅 TV Programm"
+        cards:
+          - type: markdown
+            content: |
+              **Jetzt im TV:**
+
+              Das TV-Programm kann über die TVSpielfilm Integration oder
+              EPG-Daten angezeigt werden.
+
+              Empfehlung: HACS Card "Upcoming Media Card" oder
+              "TV Program Card" verwenden.
+
+  # ===== PLEX =====
+  - title: Plex
+    path: plex
+    icon: mdi:plex
+    subview: true
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-title-card
+            title: Plex Media Server
+
+          - type: custom:mushroom-media-player-card
+            entity: media_player.plex
+            use_media_info: true
+            show_volume_level: true
+
+          # Plex Recent
+          - type: markdown
+            content: |
+              **Zuletzt hinzugefügt:**
+
+              Für Plex-Übersicht empfohlen:
+              - HACS: "Plex Recently Added Card"
+              - HACS: "Upcoming Media Card"

@@ -1,0 +1,172 @@
+# =============================================================================
+# NETZWERK SWITCHES - SNMP MONITORING
+# =============================================================================
+# Switch Keller: CSS326-24G-2S+ (192.168.178.165) - SwOS v2.18
+# Switch Arbeitszimmer: CSS326-24G-2S+ (192.168.178.8) - SwOS v2.18
+# Switch NUC: CRS305-1G-4S+ (192.168.178.191) - SNMP nicht erreichbar
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# SNMP Platform Sensoren (Uptime, Temperatur)
+# -----------------------------------------------------------------------------
+sensor:
+  # --- Keller ---
+  - platform: snmp
+    host: 192.168.178.165
+    community: public
+    baseoid: .1.3.6.1.2.1.1.3.0
+    name: "SW Keller Uptime"
+    unique_id: css326_keller_uptime
+    value_template: >
+      {% set ticks = value | int(0) %}
+      {% set days = ticks // 8640000 %}
+      {% set hours = (ticks % 8640000) // 360000 %}
+      {% set minutes = (ticks % 360000) // 6000 %}
+      {{ days }}d {{ hours }}h {{ minutes }}m
+    icon: mdi:clock-outline
+    scan_interval: 300
+
+  - platform: snmp
+    host: 192.168.178.165
+    community: public
+    baseoid: .1.3.6.1.4.1.14988.1.1.3.11.0
+    name: "SW Keller Temperatur"
+    unique_id: css326_keller_temperatur
+    value_template: "{{ (value | int(0) / 10) | round(1) }}"
+    unit_of_measurement: "°C"
+    icon: mdi:thermometer
+    scan_interval: 300
+
+  # --- Arbeitszimmer ---
+  - platform: snmp
+    host: 192.168.178.8
+    community: public
+    baseoid: .1.3.6.1.2.1.1.3.0
+    name: "SW AZ Uptime"
+    unique_id: css326_az_uptime
+    value_template: >
+      {% set ticks = value | int(0) %}
+      {% set days = ticks // 8640000 %}
+      {% set hours = (ticks % 8640000) // 360000 %}
+      {% set minutes = (ticks % 360000) // 6000 %}
+      {{ days }}d {{ hours }}h {{ minutes }}m
+    icon: mdi:clock-outline
+    scan_interval: 300
+
+  - platform: snmp
+    host: 192.168.178.8
+    community: public
+    baseoid: .1.3.6.1.4.1.14988.1.1.3.11.0
+    name: "SW AZ Temperatur"
+    unique_id: css326_az_temperatur
+    value_template: "{{ (value | int(0) / 10) | round(1) }}"
+    unit_of_measurement: "°C"
+    icon: mdi:thermometer
+    scan_interval: 300
+
+# -----------------------------------------------------------------------------
+# Command Line Sensoren
+# Unified Script: snmp_switch_ports.py <host>
+# Liefert JSON: {count, ports: [{port, name, speed, in, out, util, bar}]}
+# -----------------------------------------------------------------------------
+command_line:
+  # --- Keller Port Details + Auslastung ---
+  - sensor:
+      name: "SW Keller Ports"
+      unique_id: css326_keller_port_details
+      command: "python3 /config/scripts/snmp_switch_ports.py 192.168.178.165"
+      value_template: "{{ value_json.count }}"
+      unit_of_measurement: "Ports"
+      json_attributes:
+        - ports
+      scan_interval: 120
+      command_timeout: 20
+      icon: mdi:lan
+
+  # --- Arbeitszimmer Port Details + Auslastung ---
+  - sensor:
+      name: "SW AZ Ports"
+      unique_id: css326_az_port_details
+      command: "python3 /config/scripts/snmp_switch_ports.py 192.168.178.8"
+      value_template: "{{ value_json.count }}"
+      unit_of_measurement: "Ports"
+      json_attributes:
+        - ports
+      scan_interval: 120
+      command_timeout: 20
+      icon: mdi:lan
+
+  # --- Erreichbarkeit ---
+  - binary_sensor:
+      name: "SW Keller Online"
+      unique_id: css326_keller_online
+      command: "ping -c 1 -W 2 192.168.178.165 > /dev/null 2>&1 && echo ON || echo OFF"
+      payload_on: "ON"
+      payload_off: "OFF"
+      device_class: connectivity
+      scan_interval: 60
+
+  - binary_sensor:
+      name: "SW AZ Online"
+      unique_id: css326_az_online
+      command: "ping -c 1 -W 2 192.168.178.8 > /dev/null 2>&1 && echo ON || echo OFF"
+      payload_on: "ON"
+      payload_off: "OFF"
+      device_class: connectivity
+      scan_interval: 60
+
+  - binary_sensor:
+      name: "SW NUC Online"
+      unique_id: crs305_backbone_online
+      command: "ping -c 1 -W 2 192.168.178.191 > /dev/null 2>&1 && echo ON || echo OFF"
+      payload_on: "ON"
+      payload_off: "OFF"
+      device_class: connectivity
+      scan_interval: 60
+
+# -----------------------------------------------------------------------------
+# Template Sensoren
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      - name: "SW Keller Status"
+        unique_id: css326_keller_status
+        state: >
+          {% if is_state('binary_sensor.css326_keller_online', 'on') %}
+            {% set ports = states('sensor.css326_keller_port_details') | int(0) %}
+            {% set temp = states('sensor.css326_keller_temperatur') | float(0) %}
+            {% if temp > 70 %}
+              Warnung ({{ temp }}°C)
+            {% else %}
+              OK ({{ ports }} Ports, {{ temp }}°C)
+            {% endif %}
+          {% else %}
+            Offline
+          {% endif %}
+        icon: >
+          {% if is_state('binary_sensor.css326_keller_online', 'on') %}
+            mdi:lan-check
+          {% else %}
+            mdi:lan-disconnect
+          {% endif %}
+
+      - name: "SW AZ Status"
+        unique_id: css326_az_status
+        state: >
+          {% if is_state('binary_sensor.css326_az_online', 'on') %}
+            {% set ports = states('sensor.css326_az_port_details') | int(0) %}
+            {% set temp = states('sensor.css326_az_temperatur') | float(0) %}
+            {% if temp > 70 %}
+              Warnung ({{ temp }}°C)
+            {% else %}
+              OK ({{ ports }} Ports, {{ temp }}°C)
+            {% endif %}
+          {% else %}
+            Offline
+          {% endif %}
+        icon: >
+          {% if is_state('binary_sensor.css326_az_online', 'on') %}
+            mdi:lan-check
+          {% else %}
+            mdi:lan-disconnect
+          {% endif %}

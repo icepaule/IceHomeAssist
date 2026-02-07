@@ -1,0 +1,208 @@
+title: Energie
+views:
+  - title: Übersicht
+    path: uebersicht
+    icon: mdi:flash
+    cards:
+      # PV Anlage
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: "## ☀️ Photovoltaik"
+          - type: gauge
+            entity: sensor.pv_leistung
+            name: Aktuelle Leistung
+            min: 0
+            max: 600
+            severity:
+              green: 300
+              yellow: 100
+              red: 0
+          - type: entities
+            entities:
+              - entity: sensor.pv_leistung
+                name: Leistung
+              - entity: sensor.pv_energie_heute
+                name: Heute
+              - entity: sensor.pv_energie_gestern
+                name: Gestern
+              - entity: sensor.pv_energie_gesamt
+                name: Gesamt
+          - type: history-graph
+            title: PV Leistung 24h
+            hours_to_show: 24
+            entities:
+              - entity: sensor.pv_leistung
+                name: Leistung
+
+      # Server
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: "## 🖥️ Server"
+          - type: gauge
+            entity: sensor.server_leistung
+            name: Aktuelle Leistung
+            min: 0
+            max: 800
+            severity:
+              green: 0
+              yellow: 500
+              red: 700
+          - type: entities
+            entities:
+              - entity: sensor.server_leistung
+                name: Leistung
+              - entity: sensor.server_energie_heute
+                name: Heute
+              - entity: sensor.server_energie_gesamt
+                name: Gesamt
+
+      # Haushaltsgeräte
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: "## 🏠 Haushaltsgeräte"
+          - type: entities
+            title: Küche
+            entities:
+              - entity: sensor.kueche_leistung
+                name: Leistung
+              - entity: sensor.kueche_energie_heute
+                name: Heute
+              - entity: sensor.kueche_energie_gesamt
+                name: Gesamt
+          - type: entities
+            title: Waschmaschine
+            entities:
+              - entity: sensor.waschmaschine_leistung
+                name: Leistung
+              - entity: sensor.waschmaschine_energie_heute
+                name: Heute
+              - entity: sensor.waschmaschine_energie_gesamt
+                name: Gesamt
+          - type: entities
+            title: Trockner
+            entities:
+              - entity: sensor.trockner_leistung
+                name: Leistung
+              - entity: sensor.trockner_energie_heute
+                name: Heute
+              - entity: sensor.trockner_energie_gesamt
+                name: Gesamt
+
+  - title: PV Detail
+    path: pv
+    icon: mdi:solar-power
+    cards:
+      - type: gauge
+        entity: sensor.pv_leistung
+        name: Aktuelle Einspeisung
+        min: 0
+        max: 600
+        severity:
+          green: 400
+          yellow: 200
+          red: 0
+
+      - type: entities
+        title: Live Daten
+        entities:
+          - entity: sensor.pv_leistung
+            name: Leistung
+          - entity: sensor.pv_spannung
+            name: Spannung
+          - entity: sensor.pv_strom
+            name: Strom
+          - entity: switch.strom_pv
+            name: Schalter
+
+      - type: entities
+        title: Energie
+        entities:
+          - entity: sensor.pv_energie_heute
+            name: Heute
+          - entity: sensor.pv_energie_gestern
+            name: Gestern
+          - entity: sensor.pv_energie_gesamt
+            name: Gesamt (seit 01.09.2023)
+
+      - type: history-graph
+        title: Leistungsverlauf
+        hours_to_show: 48
+        entities:
+          - entity: sensor.pv_leistung
+
+  - title: Verbraucher
+    path: verbraucher
+    icon: mdi:power-plug
+    cards:
+      - type: entities
+        title: Alle Verbraucher
+        show_header_toggle: false
+        entities:
+          - entity: sensor.server_leistung
+            name: Server
+            icon: mdi:server
+          - entity: sensor.kueche_leistung
+            name: Küche
+            icon: mdi:countertop
+          - entity: sensor.waschmaschine_leistung
+            name: Waschmaschine
+            icon: mdi:washing-machine
+          - entity: sensor.trockner_leistung
+            name: Trockner
+            icon: mdi:tumble-dryer
+
+      - type: history-graph
+        title: Verbrauch 24h
+        hours_to_show: 24
+        entities:
+          - entity: sensor.server_leistung
+            name: Server
+          - entity: sensor.kueche_leistung
+            name: Küche
+
+      - type: entities
+        title: Schalter
+        entities:
+          - entity: switch.strom_server
+            name: Server
+          - entity: switch.strom_kueche
+            name: Küche
+          - entity: switch.strom_waschmaschine
+            name: Waschmaschine
+          - entity: switch.strom_trockner
+            name: Trockner
+
+  - title: Statistik
+    path: statistik
+    icon: mdi:chart-line
+    cards:
+      - type: entities
+        title: Energie Heute
+        entities:
+          - entity: sensor.pv_energie_heute
+            name: PV Erzeugt
+          - entity: sensor.server_energie_heute
+            name: Server
+          - entity: sensor.kueche_energie_heute
+            name: Küche
+          - entity: sensor.waschmaschine_energie_heute
+            name: Waschmaschine
+          - entity: sensor.trockner_energie_heute
+            name: Trockner
+
+      - type: entities
+        title: Energie Gesamt
+        entities:
+          - entity: sensor.pv_energie_gesamt
+            name: PV Erzeugt
+          - entity: sensor.server_energie_gesamt
+            name: Server
+          - entity: sensor.kueche_energie_gesamt
+            name: Küche
+          - entity: sensor.waschmaschine_energie_gesamt
+            name: Waschmaschine
+          - entity: sensor.trockner_energie_gesamt
+            name: Trockner

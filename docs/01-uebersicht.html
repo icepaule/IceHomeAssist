@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Systemübersicht - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Systemübersicht
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Systemübersicht</h1>
+            <p>
+                Das IceHomeAssist-System basiert auf einem Intel NUC, der als kompakter, stromsparender
+                Heimserver fungiert. Auf dem NUC läuft Debian Linux mit Docker, in dem der Home-Assistant-Container
+                als HA OS betrieben wird. Diese Seite bietet einen umfassenden Überblick über die
+                Systemarchitektur, Hardware und den gesamten Software-Stack.
+            </p>
+
+            <!-- Architektur-Diagramm -->
+            <h2>Architekturdiagramm</h2>
+            <pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                        Intel NUC (x86-64)                       │
+│                     Debian 13 (Bookworm/Trixie)                 │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                     Docker Engine                          │  │
+│  │                                                            │  │
+│  │  ┌──────────────────────────────────────────────────────┐  │  │
+│  │  │          Home Assistant OS Container                  │  │  │
+│  │  │   ghcr.io/home-assistant/qemux86-64-homeassistant    │  │  │
+│  │  │                                                       │  │  │
+│  │  │  ┌─────────────┐  ┌──────────┐  ┌───────────────┐   │  │  │
+│  │  │  │  HA Core    │  │ Addons   │  │   HACS        │   │  │  │
+│  │  │  │             │  │          │  │               │   │  │  │
+│  │  │  │ Dashboards  │  │ Node-RED │  │ 12 Custom     │   │  │  │
+│  │  │  │ Automations │  │ Mosquitto│  │ Components    │   │  │  │
+│  │  │  │ Packages    │  │ Matter   │  │               │   │  │  │
+│  │  │  └─────────────┘  └──────────┘  └───────────────┘   │  │  │
+│  │  │                                                       │  │  │
+│  │  │  Volume: /var/lib/homeassistant:/data                 │  │  │
+│  │  │  Netzwerk: --network=host                             │  │  │
+│  │  └──────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  Ports: 8123 (HA), 1880 (Node-RED), 1883 (MQTT)               │
+└────────────────────┬────────────────────────────────────────────┘
+                     │ Netzwerk (LAN)
+                     │
+        ┌────────────┼────────────────────────┐
+        │            │                        │
+   ┌────▼────┐  ┌───▼──────┐  ┌─────────────▼──────────────┐
+   │  WiFi   │  │  MQTT    │  │    Cloud-Dienste            │
+   │ Geräte  │  │ Geräte   │  │                             │
+   │         │  │          │  │  Tibber, DWD, Divera,       │
+   │ Alexa   │  │ Tasmota  │  │  Meross Cloud, PetKit,     │
+   │ Bravia  │  │ ESP32    │  │  Amazon (Alexa)             │
+   │ UniFi   │  │ Sensoren │  │                             │
+   └─────────┘  └──────────┘  └────────────────────────────-┘</code></pre>
+
+            <!-- Hardware -->
+            <h2>Hardware</h2>
+            <div class="card">
+                <h3>Intel NUC</h3>
+                <p>
+                    Der Intel NUC dient als zentraler Heimserver. Durch seinen kompakten Formfaktor und
+                    den geringen Stromverbrauch eignet er sich ideal für den 24/7-Dauerbetrieb.
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Eigenschaft</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Plattform</strong></td>
+                            <td>Intel NUC (x86-64)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Betriebssystem</strong></td>
+                            <td>Debian 13 (Kernel 6.12.63+deb13-amd64)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Netzwerk</strong></td>
+                            <td>Gigabit Ethernet (LAN)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Betrieb</strong></td>
+                            <td>24/7 Dauerbetrieb</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Primäre Aufgabe</strong></td>
+                            <td>Home Assistant, Docker Host</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>Angeschlossene Geräte</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Gerät</th>
+                            <th>Verbindung</th>
+                            <th>Protokoll</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ESP32-S3 WiFi Buttons</td>
+                            <td>WiFi / MQTT</td>
+                            <td>Tasmota MQTT</td>
+                        </tr>
+                        <tr>
+                            <td>Tasmota Energiesensoren</td>
+                            <td>WiFi / MQTT</td>
+                            <td>Tasmota MQTT</td>
+                        </tr>
+                        <tr>
+                            <td>Amazon Echo Show 8</td>
+                            <td>WiFi / Cloud</td>
+                            <td>Alexa Media Player</td>
+                        </tr>
+                        <tr>
+                            <td>Sony Bravia TV</td>
+                            <td>LAN / WiFi</td>
+                            <td>Android TV / REST</td>
+                        </tr>
+                        <tr>
+                            <td>Dreame Staubsauger</td>
+                            <td>WiFi / Cloud</td>
+                            <td>Dreame Vacuum / Xiaomi Cloud</td>
+                        </tr>
+                        <tr>
+                            <td>Meross Geräte</td>
+                            <td>WiFi / LAN + Cloud</td>
+                            <td>Meross LAN / Cloud</td>
+                        </tr>
+                        <tr>
+                            <td>UniFi Netzwerkgeräte</td>
+                            <td>LAN</td>
+                            <td>UniFi Integration</td>
+                        </tr>
+                        <tr>
+                            <td>Fritz!Box Router</td>
+                            <td>LAN</td>
+                            <td>Fritz!Box / TR-064</td>
+                        </tr>
+                        <tr>
+                            <td>PetKit Geräte</td>
+                            <td>WiFi / Cloud</td>
+                            <td>PetKit Integration</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Software-Stack -->
+            <h2>Software-Stack</h2>
+            <div class="card">
+                <h3>Schichtenmodell</h3>
+                <pre><code>┌───────────────────────────────────────┐
+│       Benutzer-Interface (UI)        │  <span class="cmt">Dashboards, Companion App</span>
+├───────────────────────────────────────┤
+│       Home Assistant Core            │  <span class="cmt">Automationen, Integrationen</span>
+├───────────────────────────────────────┤
+│       Addons                         │  <span class="cmt">Node-RED, Mosquitto, Matter</span>
+├───────────────────────────────────────┤
+│       Home Assistant OS              │  <span class="cmt">Supervisor, Container-Mgmt</span>
+├───────────────────────────────────────┤
+│       Docker Engine                  │  <span class="cmt">Container Runtime</span>
+├───────────────────────────────────────┤
+│       Debian 13 Linux                │  <span class="cmt">Host-Betriebssystem</span>
+├───────────────────────────────────────┤
+│       Intel NUC Hardware             │  <span class="cmt">x86-64 Plattform</span>
+└───────────────────────────────────────┘</code></pre>
+            </div>
+
+            <h3>Addon-Übersicht</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Addon</th>
+                        <th>Funktion</th>
+                        <th>Port</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Node-RED</strong> <span class="badge">addon_a0d7b954_nodered</span></td>
+                        <td>Flow-basierte Automatisierung, WiFi-Button-Steuerung</td>
+                        <td>1880</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Mosquitto</strong></td>
+                        <td>MQTT Broker für Tasmota-Geräte und interne Kommunikation</td>
+                        <td>1883</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Matter Server</strong></td>
+                        <td>Matter-Protokoll-Unterstützung für kompatible Geräte</td>
+                        <td>5580</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Netzwerk-Topologie -->
+            <h2>Netzwerk-Topologie</h2>
+            <p>
+                Das Heimnetzwerk wird primär über eine Fritz!Box als Router und UniFi-Geräte für die
+                Switch- und WiFi-Infrastruktur betrieben. Der NUC ist per Gigabit-Ethernet direkt an
+                den Netzwerk-Switch angeschlossen.
+            </p>
+            <pre><code>          Internet
+              │
+        ┌─────▼─────┐
+        │  Fritz!Box │  <span class="cmt">Router, DSL/Fiber, VPN</span>
+        │            │
+        └─────┬──────┘
+              │
+        ┌─────▼──────────┐
+        │  UniFi Switch   │  <span class="cmt">Managed Switch, SNMP</span>
+        │                 │
+        ├─────┬─────┬─────┤
+        │     │     │     │
+   ┌────▼┐ ┌──▼──┐ │  ┌──▼──────┐
+   │ NUC │ │ TV  │ │  │ UniFi   │
+   │ (HA)│ │Bravia│ │  │ AP(s)   │
+   └─────┘ └─────┘ │  └────┬────┘
+                    │       │ WiFi
+              ┌─────▼───┐   │
+              │ weitere  │   ├── Echo Show 8
+              │ LAN-     │   ├── ESP32 Buttons
+              │ Geräte   │   ├── Tasmota Sensoren
+              └─────────┘   ├── Dreame Staubsauger
+                            ├── Meross Geräte
+                            └── PetKit Geräte</code></pre>
+
+            <div class="info-box">
+                <strong>Netzwerkmodus:</strong> Der Home-Assistant-Container läuft im
+                <code>--network=host</code>-Modus. Das bedeutet, er teilt sich den gesamten
+                Netzwerk-Stack mit dem Host-System. Dies ist erforderlich für mDNS-Discovery,
+                MQTT und andere Protokolle, die Broadcast/Multicast nutzen.
+            </div>
+
+            <!-- Datenflüsse -->
+            <h2>Datenflüsse</h2>
+            <div class="card">
+                <h3>Kommunikationswege</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Quelle</th>
+                            <th>Ziel</th>
+                            <th>Protokoll</th>
+                            <th>Zweck</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Tasmota-Geräte</td>
+                            <td>Mosquitto</td>
+                            <td>MQTT</td>
+                            <td>Energiedaten, Button-Events</td>
+                        </tr>
+                        <tr>
+                            <td>Mosquitto</td>
+                            <td>HA Core</td>
+                            <td>MQTT</td>
+                            <td>Sensor-Updates, Steuerung</td>
+                        </tr>
+                        <tr>
+                            <td>Mosquitto</td>
+                            <td>Node-RED</td>
+                            <td>MQTT</td>
+                            <td>WiFi-Button-Automationen</td>
+                        </tr>
+                        <tr>
+                            <td>HA Core</td>
+                            <td>Tibber API</td>
+                            <td>HTTPS</td>
+                            <td>Strompreise, Verbrauchsdaten</td>
+                        </tr>
+                        <tr>
+                            <td>HA Core</td>
+                            <td>DWD API</td>
+                            <td>HTTPS</td>
+                            <td>Wetterdaten, Niederschlag</td>
+                        </tr>
+                        <tr>
+                            <td>HA Core</td>
+                            <td>Amazon API</td>
+                            <td>HTTPS</td>
+                            <td>Alexa Media Player Steuerung</td>
+                        </tr>
+                        <tr>
+                            <td>HA Core</td>
+                            <td>Divera API</td>
+                            <td>HTTPS</td>
+                            <td>THW-Alarmierungen</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="page-nav">
+                <a href="index.html">
+                    <div><div class="label">Zurück</div>Startseite</div>
+                </a>
+                <a href="02-installation.html">
+                    <div><div class="label">Weiter</div>Installation</div>
+                </a>
+            </div>
+            <div class="footer">
+                IceHomeAssist Dokumentation &middot; Erstellt Februar 2026
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) {
+        a.classList.add('active');
+    }
+});
+
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation Inhaltsverzeichnis"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker Container Komponenten"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker Setup"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes Netzwerk"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages Secrets"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Switch WiFi Radar"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive GPS Tracker"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
+];
+
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i =>
+        i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Keine Ergebnisse</div>';
+    } else {
+        results.innerHTML = matches.map(m =>
+            `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`
+        ).join('');
+    }
+    results.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-container')) {
+        document.getElementById('searchResults').classList.remove('active');
+    }
+});
+</script>
+</body>
+</html>

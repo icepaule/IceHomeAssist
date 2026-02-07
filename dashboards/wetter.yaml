@@ -1,0 +1,445 @@
+title: Wetter & Warnungen
+views:
+  # ===========================================================================
+  # WETTER AKTUELL + RADAR + PEGEL + WARNUNGEN
+  # ===========================================================================
+  - title: Aktuell
+    path: aktuell
+    icon: mdi:weather-cloudy
+    cards:
+      # -----------------------------------------------------------------
+      # WARNUNGEN OBEN (nur wenn aktiv)
+      # -----------------------------------------------------------------
+      - type: conditional
+        conditions:
+          - entity: sensor.nina_munchen_warnungen_anzahl
+            state_not: "0"
+        card:
+          type: custom:mushroom-template-card
+          primary: >
+            NINA: {{ states('sensor.nina_munchen_warnung_aktuell') }}
+          secondary: >
+            Schwere: {{ states('sensor.nina_munchen_warnung_schwere') }}
+          icon: mdi:alert
+          icon_color: red
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 0, 0, 0.15) !important;
+                border: 2px solid red !important;
+              }
+
+      # -----------------------------------------------------------------
+      # WETTER ÜBERSICHT
+      # -----------------------------------------------------------------
+      - type: weather-forecast
+        entity: weather.forecast_home
+        show_forecast: true
+
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.wetter_temperatur_aktuell
+            name: Temperatur
+          - type: entity
+            entity: sensor.wetter_gefuhlt
+            name: Gefühlt
+          - type: entity
+            entity: sensor.wetter_luftfeuchtigkeit
+            name: Feuchte
+
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.wetter_wind
+            name: Wind
+          - type: entity
+            entity: sensor.wetter_windrichtung
+            name: Richtung
+          - type: entity
+            entity: sensor.wetter_luftdruck
+            name: Druck
+
+      # Heute
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.wetter_heute_max
+            name: Max
+          - type: entity
+            entity: sensor.wetter_heute_min
+            name: Min
+          - type: entity
+            entity: sensor.wetter_regenwahrscheinlichkeit
+            name: Regen %
+          - type: entity
+            entity: binary_sensor.wetter_regen_erwartet
+            name: Regen?
+
+      # -----------------------------------------------------------------
+      # NIEDERSCHLAGSRADAR BAYERN (DWD animiertes GIF)
+      # -----------------------------------------------------------------
+      - type: markdown
+        content: "## Niederschlagsradar Bayern"
+
+      - type: picture
+        image: "https://www.dwd.de/DWD/wetter/radar/radfilm_bay_akt.gif"
+        tap_action:
+          action: url
+          url_path: "https://www.dwd.de/DE/leistungen/radarbild_film/radarbild_film.html"
+
+      # Interaktives Radar (Windy - zum Reinzoomen)
+      - type: markdown
+        content: "## Interaktives Radar"
+
+      - type: iframe
+        url: "https://embed.windy.com/embed2.html?lat=YOUR_LAT&lon=YOUR_LON&detailLat=YOUR_LAT&detailLon=YOUR_LON&width=650&height=450&zoom=7&level=surface&overlay=radar&product=radar&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1"
+        aspect_ratio: "16:10"
+
+      # -----------------------------------------------------------------
+      # WARNUNGEN (NINA / DWD)
+      # -----------------------------------------------------------------
+      - type: markdown
+        content: "## Warnungen München"
+
+      - type: entities
+        title: Warnstatus
+        show_header_toggle: false
+        entities:
+          - entity: sensor.nina_munchen_warnungen_anzahl
+            name: NINA Warnungen
+          - entity: sensor.nina_munchen_warnung_aktuell
+            name: Aktuelle Warnung
+          - entity: sensor.nina_munchen_warnung_schwere
+            name: Schwere
+          - entity: sensor.nina_munchen_warnung_typ
+            name: Typ
+          - entity: sensor.dwd_munchen_warnungen
+            name: DWD Wetterwarnungen
+
+      - type: entities
+        title: THW Status
+        show_header_toggle: false
+        entities:
+          - entity: sensor.thw_einsatz_wahrscheinlich
+            name: Einsatz-Einschätzung
+          - entity: binary_sensor.thw_alarmbereitschaft
+            name: Alarmbereitschaft
+
+      # -----------------------------------------------------------------
+      # PEGELSTÄNDE RAUM MÜNCHEN
+      # -----------------------------------------------------------------
+      - type: markdown
+        content: "## Pegelstände Raum München"
+
+      # Isar München - Live-Chart von HND Bayern
+      - type: picture
+        image: "https://www.hnd.bayern.de/webservices/graphik.php?cache=hnd&statnr=16005701&thema=hochwasser.meldestufen&wert=wasserstand&vhs=false&geber=0"
+        tap_action:
+          action: url
+          url_path: "https://www.hnd.bayern.de/pegel/isar/muenchen-16005701"
+
+      - type: markdown
+        content: >
+          **Isar München** — Meldestufen: 1=240cm, 2=300cm, 3=380cm, 4=520cm
+
+      # Weitere Pegel als Charts
+      - type: horizontal-stack
+        cards:
+          - type: picture
+            image: "https://www.hnd.bayern.de/webservices/graphik.php?cache=hnd&statnr=16006500&thema=hochwasser.meldestufen&wert=wasserstand&vhs=false&geber=0"
+            tap_action:
+              action: url
+              url_path: "https://www.hnd.bayern.de/pegel/isar/freising-16006500"
+          - type: picture
+            image: "https://www.hnd.bayern.de/webservices/graphik.php?cache=hnd&statnr=16003502&thema=hochwasser.meldestufen&wert=wasserstand&vhs=false&geber=0"
+            tap_action:
+              action: url
+              url_path: "https://www.hnd.bayern.de/pegel/isar/bad-toelz-bruecke-16003502"
+
+      - type: markdown
+        content: >
+          Links: **Isar Freising** — Rechts: **Isar Bad Tölz**
+
+      - type: horizontal-stack
+        cards:
+          - type: picture
+            image: "https://www.hnd.bayern.de/webservices/graphik.php?cache=hnd&statnr=16605006&thema=hochwasser.meldestufen&wert=wasserstand&vhs=false&geber=0"
+            tap_action:
+              action: url
+              url_path: "https://www.hnd.bayern.de/pegel/iller_lech/fuerstenfeldbruck-16605006"
+          - type: picture
+            image: "https://www.hnd.bayern.de/webservices/graphik.php?cache=hnd&statnr=16655004&thema=hochwasser.meldestufen&wert=wasserstand&vhs=false&geber=0"
+            tap_action:
+              action: url
+              url_path: "https://www.hnd.bayern.de/pegel/isar/dachau-16655004"
+
+      - type: markdown
+        content: >
+          Links: **Amper Fürstenfeldbruck** — Rechts: **Amper Dachau**
+
+      # Pegel Tabelle mit Meldestufen
+      - type: markdown
+        title: Pegelstände (Werte & Meldestufen)
+        content: |
+          | Pegel | Aktuell | MS1 | MS2 | MS3 | MS4 |
+          |-------|--------:|----:|----:|----:|----:|
+          | **Isar München** | {{ states('sensor.pegel_isar_munchen') }} cm | 240 | 300 | 380 | 520 |
+          | **Isar Freising** | {{ states('sensor.pegel_isar_freising') }} cm | 230 | 280 | 360 | 400 |
+          | **Isar Bad Tölz** | {{ states('sensor.pegel_isar_bad_tolz') }} cm | 200 | 250 | - | 270 |
+          | **Isar Puppling** | {{ states('sensor.pegel_isar_puppling') }} cm | 280 | 350 | 450 | 500 |
+          | **Amper FFB** | {{ states('sensor.pegel_amper_furstenfeldbruck') }} cm | 170 | 210 | 220 | 250 |
+          | **Amper Inkofen** | {{ states('sensor.pegel_amper_inkofen') }} cm | 220 | 270 | 340 | 390 |
+
+          {% set pegelstationen = [
+            ('sensor.pegel_isar_munchen', 240),
+            ('sensor.pegel_isar_freising', 230),
+            ('sensor.pegel_isar_bad_tolz', 200),
+            ('sensor.pegel_isar_puppling', 280),
+            ('sensor.pegel_amper_furstenfeldbruck', 170),
+            ('sensor.pegel_amper_inkofen', 220)
+          ] %}
+          {% set ns = namespace(warn=false) %}
+          {% for entity, ms1 in pegelstationen %}
+            {% if states(entity) | int(0) >= ms1 %}
+              {% set ns.warn = true %}
+            {% endif %}
+          {% endfor %}
+          {% if ns.warn %}
+          **Achtung: Mindestens ein Pegel hat Meldestufe 1 erreicht!**
+          {% else %}
+          Alle Pegel im Normalbereich.
+          {% endif %}
+
+      # -----------------------------------------------------------------
+      # SCHUPPEN WETTERSTATION
+      # -----------------------------------------------------------------
+      - type: entities
+        title: Schuppen Wetterstation (Luft1)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.luft1_wetterstation_schuppen_temperatur
+            name: Temperatur (BMP280)
+          - entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
+            name: Temperatur (DHT11)
+          - entity: sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit
+            name: Luftfeuchtigkeit
+          - entity: sensor.luft1_wetterstation_schuppen_luftdruck
+            name: Luftdruck
+          - entity: sensor.schuppen_taupunkt
+            name: Taupunkt
+
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.luft1_wetterstation_schuppen_temperatur
+            name: Schuppen
+            min: -10
+            max: 40
+            severity:
+              green: 15
+              yellow: 25
+              red: 30
+            needle: true
+          - type: gauge
+            entity: sensor.wetter_temperatur_aktuell
+            name: Online
+            min: -10
+            max: 40
+            severity:
+              green: 15
+              yellow: 25
+              red: 30
+            needle: true
+
+  # ===========================================================================
+  # WARNUNGEN (Detail-View)
+  # ===========================================================================
+  - title: Warnungen
+    path: warnungen
+    icon: mdi:alert
+    cards:
+      - type: markdown
+        content: "## Aktuelle Warnungen"
+
+      - type: conditional
+        conditions:
+          - entity: sensor.nina_munchen_warnungen_anzahl
+            state_not: "0"
+        card:
+          type: markdown
+          content: |
+            ### NINA Warnung aktiv!
+            **{{ states('sensor.nina_munchen_warnung_aktuell') }}**
+
+            Schwere: {{ states('sensor.nina_munchen_warnung_schwere') }}
+
+      - type: entities
+        title: NINA Warnungen München
+        show_header_toggle: false
+        entities:
+          - entity: sensor.nina_munchen_warnungen_anzahl
+            name: Anzahl Warnungen
+          - entity: sensor.nina_munchen_warnung_aktuell
+            name: Aktuelle Warnung
+          - entity: sensor.nina_munchen_warnung_typ
+            name: Typ
+          - entity: sensor.nina_munchen_warnung_schwere
+            name: Schwere
+
+      - type: entities
+        title: DWD Wetterwarnungen München
+        show_header_toggle: false
+        entities:
+          - entity: sensor.dwd_munchen_warnungen
+            name: Anzahl Warnungen
+
+      - type: entities
+        title: THW Status
+        show_header_toggle: false
+        entities:
+          - entity: sensor.thw_einsatz_wahrscheinlich
+            name: Einsatz-Einschätzung
+          - entity: binary_sensor.thw_alarmbereitschaft
+            name: Alarmbereitschaft
+          - entity: input_boolean.thw_dienst_aktiv
+            name: Dienst aktiv
+          - entity: input_boolean.thw_benachrichtigungen
+            name: Benachrichtigungen
+
+  # ===========================================================================
+  # VORHERSAGE
+  # ===========================================================================
+  - title: Vorhersage
+    path: vorhersage
+    icon: mdi:calendar-week
+    cards:
+      - type: markdown
+        content: "## 7-Tage Vorhersage"
+
+      - type: weather-forecast
+        entity: weather.forecast_home
+        show_forecast: true
+        forecast_type: daily
+
+      - type: history-graph
+        title: Temperaturverlauf (48h)
+        hours_to_show: 48
+        entities:
+          - entity: sensor.wetter_temperatur_aktuell
+            name: Temperatur
+
+  # ===========================================================================
+  # FAMILIE
+  # ===========================================================================
+  - title: Familie
+    path: familie
+    icon: mdi:account-group
+    cards:
+      - type: markdown
+        content: "## Familie"
+
+      - type: entities
+        title: Einkaufsliste (Bring!)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.einkaufsliste_anzahl
+            name: Artikel
+          - entity: sensor.einkaufsliste_status
+            name: Status
+          - entity: binary_sensor.einkauf_notig
+            name: Einkauf nötig?
+
+      - type: todo-list
+        title: Einkaufsliste
+        entity: todo.shopping_list
+
+  # ===========================================================================
+  # BILDER
+  # ===========================================================================
+  - title: Bilder
+    path: bilder
+    icon: mdi:image-multiple
+    cards:
+      - type: markdown
+        content: |
+          ## Bilder / Fotorahmen
+
+          **1. Google Fotos (HACS)** — HACS → "Google Photos"
+
+          **2. Local Media** — Bilder in /config/www/ ablegen
+
+      - type: picture
+        title: Familienfoto
+        image: /local/bilder/familie.jpg
+
+      - type: media-control
+        entity: media_player.kd_55xe8505
+
+  # ===========================================================================
+  # STEUERUNG
+  # ===========================================================================
+  - title: Steuerung
+    path: steuerung
+    icon: mdi:cog
+    cards:
+      - type: markdown
+        content: "## Einstellungen"
+
+      - type: entities
+        title: WiFi Button Aktionen
+        show_header_toggle: false
+        entities:
+          - entity: input_select.wifibutton1_button1_single_action
+            name: "Taste 1 kurz"
+          - entity: input_select.wifibutton1_button1_double_action
+            name: "Taste 1 doppelt"
+          - entity: input_select.wifibutton1_button3_single_action
+            name: "Taste 3 kurz"
+          - entity: sensor.wifi_button_letzte_aktion
+            name: "Letzte Aktion"
+
+      - type: entities
+        title: TV Steuerung
+        show_header_toggle: false
+        entities:
+          - entity: sensor.sony_tv_status
+            name: TV Status
+          - entity: input_boolean.tv_dashboard_modus
+            name: Dashboard auf TV
+          - entity: input_select.tv_favoriten_app
+            name: App starten
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: TV An
+            icon: mdi:television
+            tap_action:
+              action: call-service
+              service: script.tv_einschalten
+          - type: button
+            name: TV Aus
+            icon: mdi:television-off
+            tap_action:
+              action: call-service
+              service: script.tv_ausschalten
+          - type: button
+            name: Dashboard
+            icon: mdi:view-dashboard
+            tap_action:
+              action: call-service
+              service: script.tv_dashboard_anzeigen
+              data:
+                dashboard: lovelace-energie
+
+      - type: entities
+        title: Benachrichtigungen
+        show_header_toggle: false
+        entities:
+          - entity: input_boolean.thw_benachrichtigungen
+            name: THW Warnungen
+          - entity: input_boolean.bring_erinnerung_aktiv
+            name: Einkaufserinnerungen
+          - entity: input_boolean.guenstiger_strom_benachrichtigung
+            name: Strompreis-Benachrichtigungen

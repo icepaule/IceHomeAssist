@@ -1,0 +1,253 @@
+# =============================================================================
+# WETTER PAKET - Wetter, Vorhersagen, Warnungen
+# =============================================================================
+# Enthält:
+# - Luft1 Tasmota Wettersensor (Schuppen)
+# - OpenWeatherMap Integration Sensoren
+# - Wettervorhersage Templates
+# - DWD Wetterwarnungen (via REST)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# MQTT Sensoren für Luft1 (Tasmota Wetterstation im Schuppen)
+# -----------------------------------------------------------------------------
+mqtt:
+  sensor:
+    # === Luft1 - DHT11 Sensor ===
+    - name: "Schuppen Temperatur DHT"
+      unique_id: luft1_dht11_temp
+      state_topic: "tele/Luft1/SENSOR"
+      value_template: "{{ value_json.DHT11.Temperature | default(value_json.AM2301.Temperature) | default('N/A') }}"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      icon: mdi:thermometer
+
+    - name: "Schuppen Luftfeuchtigkeit"
+      unique_id: luft1_dht11_humidity
+      state_topic: "tele/Luft1/SENSOR"
+      value_template: "{{ value_json.DHT11.Humidity | default(value_json.AM2301.Humidity) | default('N/A') }}"
+      unit_of_measurement: "%"
+      device_class: humidity
+      state_class: measurement
+      icon: mdi:water-percent
+
+    # === Luft1 - BMP280 Sensor ===
+    - name: "Schuppen Temperatur BMP"
+      unique_id: luft1_bmp280_temp
+      state_topic: "tele/Luft1/SENSOR"
+      value_template: "{{ value_json.BMP280.Temperature | default('N/A') }}"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      icon: mdi:thermometer
+
+    - name: "Schuppen Luftdruck"
+      unique_id: luft1_bmp280_pressure
+      state_topic: "tele/Luft1/SENSOR"
+      value_template: "{{ value_json.BMP280.Pressure | default('N/A') }}"
+      unit_of_measurement: "hPa"
+      device_class: pressure
+      state_class: measurement
+      icon: mdi:gauge
+
+    # Luft1 Taupunkt (falls vorhanden)
+    - name: "Schuppen Taupunkt"
+      unique_id: luft1_dewpoint
+      state_topic: "tele/Luft1/SENSOR"
+      value_template: "{{ value_json.DHT11.DewPoint | default(value_json.AM2301.DewPoint) | default('N/A') }}"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      icon: mdi:thermometer-water
+
+# -----------------------------------------------------------------------------
+# Template Sensoren für Wetter-Aufbereitung
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      # Aktuelle Temperatur formatiert
+      - name: "Wetter Temperatur Aktuell"
+        unique_id: wetter_temp_aktuell
+        state: >
+          {% set temp = state_attr('weather.home', 'temperature') %}
+          {{ temp | round(1) if temp else 'N/A' }}
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:thermometer
+
+      # Gefühlte Temperatur
+      - name: "Wetter Gefühlt"
+        unique_id: wetter_gefuehlt
+        state: >
+          {% set temp = state_attr('weather.home', 'apparent_temperature') %}
+          {{ temp | round(1) if temp else 'N/A' }}
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:thermometer-lines
+
+      # Luftfeuchtigkeit
+      - name: "Wetter Luftfeuchtigkeit"
+        unique_id: wetter_luftfeuchtigkeit
+        state: >
+          {% set hum = state_attr('weather.home', 'humidity') %}
+          {{ hum | round(0) if hum else 'N/A' }}
+        unit_of_measurement: "%"
+        device_class: humidity
+        icon: mdi:water-percent
+
+      # Windgeschwindigkeit
+      - name: "Wetter Wind"
+        unique_id: wetter_wind
+        state: >
+          {% set wind = state_attr('weather.home', 'wind_speed') %}
+          {{ wind | round(1) if wind else 'N/A' }}
+        unit_of_measurement: "km/h"
+        icon: mdi:weather-windy
+
+      # Windrichtung als Text
+      - name: "Wetter Windrichtung"
+        unique_id: wetter_windrichtung
+        state: >
+          {% set bearing = state_attr('weather.home', 'wind_bearing') %}
+          {% if bearing is none %}
+            N/A
+          {% elif bearing >= 337.5 or bearing < 22.5 %}
+            Nord
+          {% elif bearing >= 22.5 and bearing < 67.5 %}
+            Nordost
+          {% elif bearing >= 67.5 and bearing < 112.5 %}
+            Ost
+          {% elif bearing >= 112.5 and bearing < 157.5 %}
+            Südost
+          {% elif bearing >= 157.5 and bearing < 202.5 %}
+            Süd
+          {% elif bearing >= 202.5 and bearing < 247.5 %}
+            Südwest
+          {% elif bearing >= 247.5 and bearing < 292.5 %}
+            West
+          {% else %}
+            Nordwest
+          {% endif %}
+        icon: mdi:compass
+
+      # Luftdruck
+      - name: "Wetter Luftdruck"
+        unique_id: wetter_luftdruck
+        state: >
+          {% set pressure = state_attr('weather.home', 'pressure') %}
+          {{ pressure | round(0) if pressure else 'N/A' }}
+        unit_of_measurement: "hPa"
+        device_class: pressure
+        icon: mdi:gauge
+
+      # Wetterzustand auf Deutsch
+      - name: "Wetter Zustand"
+        unique_id: wetter_zustand
+        state: >
+          {% set condition = states('weather.home') %}
+          {% set mapping = {
+            'clear-night': 'Klare Nacht',
+            'cloudy': 'Bewölkt',
+            'fog': 'Nebel',
+            'hail': 'Hagel',
+            'lightning': 'Gewitter',
+            'lightning-rainy': 'Gewitter mit Regen',
+            'partlycloudy': 'Teilweise bewölkt',
+            'pouring': 'Starkregen',
+            'rainy': 'Regen',
+            'snowy': 'Schnee',
+            'snowy-rainy': 'Schneeregen',
+            'sunny': 'Sonnig',
+            'windy': 'Windig',
+            'windy-variant': 'Windig mit Wolken',
+            'exceptional': 'Außergewöhnlich'
+          } %}
+          {{ mapping.get(condition, condition) }}
+        icon: mdi:weather-partly-cloudy
+
+      # Vorhersage Heute Max
+      # FIX: state_attr('weather.home', 'forecast') was removed in HA 2024.x.
+      # To restore, use weather.get_forecasts service action in an automation
+      # and store the result in an input_text or trigger-based template sensor.
+      - name: "Wetter Heute Max"
+        unique_id: wetter_heute_max
+        state: "N/A"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:thermometer-chevron-up
+
+      # Vorhersage Heute Min
+      # FIX: state_attr('weather.home', 'forecast') was removed in HA 2024.x.
+      - name: "Wetter Heute Min"
+        unique_id: wetter_heute_min
+        state: "N/A"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:thermometer-chevron-down
+
+      # Regenwahrscheinlichkeit Heute
+      # FIX: state_attr('weather.home', 'forecast') was removed in HA 2024.x.
+      - name: "Wetter Regenwahrscheinlichkeit"
+        unique_id: wetter_regenwahrscheinlichkeit
+        state: "0"
+        unit_of_measurement: "%"
+        icon: mdi:weather-rainy
+
+      # UV-Index (falls verfügbar)
+      - name: "Wetter UV Index"
+        unique_id: wetter_uv_index
+        state: >
+          {% set uv = state_attr('weather.home', 'uv_index') %}
+          {{ uv | round(1) if uv else 'N/A' }}
+        icon: mdi:weather-sunny-alert
+
+  # Binary Sensor für Regen
+  # FIX: state_attr('weather.home', 'forecast') was removed in HA 2024.x.
+  - binary_sensor:
+      - name: "Wetter Regen Erwartet"
+        unique_id: wetter_regen_erwartet
+        state: "false"
+        device_class: moisture
+        icon: mdi:umbrella
+
+# -----------------------------------------------------------------------------
+# REST Sensoren für DWD Wetterwarnungen
+# -----------------------------------------------------------------------------
+rest:
+  # DWD Wetterwarnungen für Region (WarnCellID muss angepasst werden)
+  # WarnCellID finden: https://www.dwd.de/DE/leistungen/opendata/help/warnungen/cap_warncellids_csv.html
+  - resource: "https://www.dwd.de/DWD/warnungen/warnapp/json/warnings.json"
+    scan_interval: 900  # 15 Minuten
+    sensor:
+      - name: "DWD Wetterwarnungen Anzahl"
+        unique_id: dwd_warnungen_anzahl
+        value_template: >
+          {% set data = value_json %}
+          {% if data and 'warnings' in data %}
+            {{ data.warnings | length }}
+          {% else %}
+            0
+          {% endif %}
+        icon: mdi:alert-circle
+
+# -----------------------------------------------------------------------------
+# Automationen für Wetterwarnungen
+# -----------------------------------------------------------------------------
+automation:
+  - id: wetter_warnung_benachrichtigung
+    alias: "Wetterwarnung Benachrichtigung"
+    description: "Benachrichtigt bei neuen Wetterwarnungen"
+    trigger:
+      - platform: state
+        entity_id: sensor.dwd_wetterwarnungen_anzahl
+    condition:
+      - condition: template
+        value_template: "{{ trigger.to_state.state | int > trigger.from_state.state | int }}"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Wetterwarnung"
+          message: "Es gibt {{ states('sensor.dwd_wetterwarnungen_anzahl') }} aktive Wetterwarnungen vom DWD!"
+          notification_id: dwd_warnung
+    mode: single

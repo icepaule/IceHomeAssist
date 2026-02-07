@@ -1,0 +1,645 @@
+- id: '1769593707635'
+  name: New scene
+  entities:
+    vacuum.willi_robby:
+      fan_speed_list:
+      - Silent
+      - Standard
+      - Strong
+      - Turbo
+      fan_speed: Standard
+      water_tank: false
+      error: No error
+      cleaning_time: 17
+      cleaned_area: 20
+      voice_packet_id: EN
+      timezone: Europe/Berlin
+      main_brush_time_left: 144
+      main_brush_left: 48
+      side_brush_time_left: 44
+      side_brush_left: 22
+      filter_left: 0
+      filter_time_left: 0
+      sensor_dirty_left: 0
+      sensor_dirty_time_left: 0
+      total_cleaned_area: 18856
+      total_cleaning_time: 26553
+      cleaning_count: 765
+      dnd_start: '22:00'
+      dnd_end: 08:00
+      serial_number: YOUR_SERIAL_NUMBER
+      water_volume_list:
+      - Low
+      - Medium
+      - High
+      water_volume: Medium
+      cleaning_sequence:
+      charging: false
+      started: true
+      paused: false
+      running: true
+      returning_paused: false
+      returning: false
+      mapping: false
+      device_class: dreame_vacuum
+      icon: mdi:robot-vacuum
+      friendly_name: ' Willi / Robby'
+      supported_features: 15292
+      active_segments:
+      - 3
+      - 2
+      - 1
+      selected_map: Map 1
+      rooms:
+        Map 1:
+        - id: 1
+          name: Kitchen
+          icon: mdi:chef-hat
+        - id: 2
+          name: Living Room 2
+          icon: mdi:sofa-outline
+        - id: 3
+          name: Living Room
+          icon: mdi:sofa-outline
+      state: cleaning
+    sensor.willi_robby_battery_level:
+      unit_of_measurement: '%'
+      device_class: battery
+      icon: mdi:battery-80
+      friendly_name: Willi / Robby Battery Level
+      state: '78'
+    switch.willi_robby_carpet_boost:
+      icon: mdi:upload-off
+      friendly_name: Willi / Robby Carpet Boost
+      state: 'off'
+    binary_sensor.willi_robby_charging_state:
+      device_class: battery_charging
+      icon: mdi:power-plug-off
+      friendly_name: Willi / Robby Charging State
+      state: 'off'
+    sensor.willi_robby_charging_status:
+      value: 2
+      device_class: dreame_vacuum__charging_status
+      icon: mdi:home-lightning-bolt
+      friendly_name: Willi / Robby Charging Status
+      state: not_charging
+    sensor.willi_robby_cleaned_area:
+      unit_of_measurement: m²
+      icon: mdi:ruler-square
+      friendly_name: Willi / Robby Cleaned Area
+      state: '20'
+    sensor.willi_robby_cleaning_count:
+      unit_of_measurement: x
+      icon: mdi:counter
+      friendly_name: Willi / Robby Cleaning Count
+      state: '765'
+    sensor.willi_robby_cleaning_history:
+      '2026-01-26 10:30:18':
+        cleaning_time: 27 min
+        cleaned_area: 28 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2026-01-23 10:30:44':
+        cleaning_time: 41 min
+        cleaned_area: 32 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2026-01-21 10:30:31':
+        cleaning_time: 47 min
+        cleaned_area: 33 m²
+        status: Cleaning
+        completed: true
+        water_tank: Not installed
+      '2026-01-19 10:31:06':
+        cleaning_time: 47 min
+        cleaned_area: 33 m²
+        status: Cleaning
+        completed: true
+        water_tank: Not installed
+      '2026-01-16 15:08:58':
+        cleaning_time: 26 min
+        cleaned_area: 24 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2026-01-16 10:30:40':
+        cleaning_time: 0 min
+        cleaned_area: 0 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2026-01-14 10:31:08':
+        cleaning_time: 29 min
+        cleaned_area: 25 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2026-01-12 10:31:12':
+        cleaning_time: 34 min
+        cleaned_area: 27 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2026-01-05 10:31:05':
+        cleaning_time: 61 min
+        cleaned_area: 40 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2026-01-02 10:31:09':
+        cleaning_time: 38 min
+        cleaned_area: 31 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2025-12-29 10:30:32':
+        cleaning_time: 26 min
+        cleaned_area: 27 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2025-12-26 10:30:48':
+        cleaning_time: 0 min
+        cleaned_area: 0 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2025-12-24 12:28:01':
+        cleaning_time: 34 min
+        cleaned_area: 25 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2025-12-23 12:11:41':
+        cleaning_time: 9 min
+        cleaned_area: 15 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2025-12-23 11:22:08':
+        cleaning_time: 22 min
+        cleaned_area: 12 m²
+        status: Cleaning
+        completed: true
+        water_tank: Not installed
+      '2025-12-17 10:30:22':
+        cleaning_time: 0 min
+        cleaned_area: 0 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2025-12-15 20:18:26':
+        cleaning_time: 25 min
+        cleaned_area: 30 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      '2025-12-15 10:30:20':
+        cleaning_time: 44 min
+        cleaned_area: 32 m²
+        status: Cleaning
+        completed: true
+        water_tank: Not installed
+      '2025-12-12 10:31:04':
+        cleaning_time: 41 min
+        cleaned_area: 32 m²
+        status: Cleaning
+        completed: true
+        water_tank: Not installed
+      '2025-12-10 10:31:01':
+        cleaning_time: 33 min
+        cleaned_area: 30 m²
+        status: Cleaning
+        completed: false
+        water_tank: Not installed
+      device_class: timestamp
+      icon: mdi:clipboard-text-clock
+      friendly_name: Willi / Robby Cleaning History
+      state: '2026-01-26T09:30:18+00:00'
+    sensor.willi_robby_cleaning_time:
+      unit_of_measurement: min
+      icon: mdi:timer-sand
+      friendly_name: Willi / Robby Cleaning Time
+      state: '17'
+    button.willi_robby_clear_warning:
+      icon: mdi:clipboard-check-outline
+      friendly_name: Willi / Robby Clear Warning
+      state: unavailable
+    camera.willi_robby_map:
+      access_token: YOUR_ACCESS_TOKEN
+      calibration_points:
+      - vacuum:
+          x: 0
+          y: 0
+        map:
+          x: 736
+          y: 212
+      - vacuum:
+          x: 1000
+          y: 0
+        map:
+          x: 816
+          y: 212
+      - vacuum:
+          x: 0
+          y: 1000
+        map:
+          x: 736
+          y: 132
+      entity_picture: /api/camera_proxy/camera.willi_robby_map?token=YOUR_ACCESS_TOKEN
+      icon: mdi:map
+      friendly_name: Willi / Robby Willi / Robby Current Map
+      supported_features: 0
+      charger_position:
+        x: -5572
+        y: 1886
+        a: 270
+      rooms:
+        '1':
+          x0: -1700
+          y0: -650
+          x1: 1300
+          y1: 1350
+          room_id: 1
+          name: Kitchen
+          type: 4
+          index: 0
+          icon: mdi:chef-hat
+          color_index: 1
+          x: -200
+          y: 400
+          letter: A
+        '2':
+          x0: -8450
+          y0: -3150
+          x1: -7100
+          y1: -1350
+          room_id: 2
+          name: Living Room 2
+          type: 1
+          index: 1
+          icon: mdi:sofa-outline
+          color_index: 2
+          x: -7800
+          y: -2200
+          letter: B
+        '3':
+          x0: -7150
+          y0: -3700
+          x1: 1250
+          y1: 1850
+          room_id: 3
+          name: Living Room
+          type: 1
+          index: 0
+          icon: mdi:sofa-outline
+          color_index: 0
+          x: -2950
+          y: -900
+          letter: C
+      vacuum_position:
+        x: -657
+        y: -909
+        a: 126
+      map_id: 2
+      rotation: 0
+      updated_at: '2026-01-28T10:48:26.055891'
+      walls:
+      - x0: -3780
+        y0: -1893
+        x1: -1198
+        y1: -1910
+      - x0: -728
+        y0: 248
+        x1: 603
+        y1: 239
+      - x0: -8474
+        y0: -2683
+        x1: -7740
+        y1: -3193
+      no_go_areas:
+      - x0: 926
+        y0: 7
+        x1: 1426
+        y1: 7
+        x2: 1426
+        y2: 1413
+        x3: 926
+        y3: 1413
+      is_empty: false
+      frame_id: 527
+      state: '2026-01-28 10:47:28'
+    switch.willi_robby_dnd:
+      icon: mdi:minus-circle-off-outline
+      friendly_name: Willi / Robby DnD
+      state: 'off'
+    sensor.willi_robby_error:
+      value: 0
+      device_class: dreame_vacuum__error
+      icon: mdi:check-circle-outline
+      friendly_name: Willi / Robby Error
+      state: no_error
+    select.willi_robby_map_rotation:
+      options:
+      - '0'
+      - '90'
+      - '180'
+      - '270'
+      icon: mdi:crop-rotate
+      friendly_name: Willi / Robby Map Rotation
+      state: '0'
+    switch.willi_robby_map_saving:
+      icon: mdi:map-legend
+      friendly_name: Willi / Robby Map Saving
+      state: 'on'
+    switch.willi_robby_multi_floor_map:
+      icon: mdi:layers-off
+      friendly_name: Willi / Robby Multi Floor Map
+      state: 'off'
+    device_tracker.pc_d4_d2_d6_f8_de_ff:
+      source_type: router
+      ip: 192.168.x.x
+      mac: XX:XX:XX:XX:XX:XX
+      host_name: YOUR_HOSTNAME
+      last_time_reachable: '2026-01-28T09:48:22+00:00'
+      connected_to: fritz.box
+      connection_type: WLAN
+      ssid: Bad!Net
+      icon: mdi:lan-connect
+      friendly_name: PC-D4-D2-D6-F8-DE-FF
+      state: home
+    switch.pc_d4_d2_d6_f8_de_ff_internet_access:
+      icon: mdi:router-wireless-settings
+      friendly_name: PC-D4-D2-D6-F8-DE-FF Internet Access
+      state: 'on'
+    sensor.willi_robby_relocation_status:
+      value: 0
+      device_class: dreame_vacuum__relocation_status
+      icon: mdi:map-marker-radius
+      friendly_name: Willi / Robby Relocation Status
+      state: located
+    button.willi_robby_reset_filter:
+      icon: mdi:air-filter
+      friendly_name: Willi / Robby Reset Filter
+      state: unknown
+    button.willi_robby_reset_main_brush:
+      icon: mdi:car-turbocharger
+      friendly_name: Willi / Robby Reset Main Brush
+      state: unknown
+    button.willi_robby_reset_sensor:
+      icon: mdi:radar
+      friendly_name: Willi / Robby Reset Sensor
+      state: unknown
+    button.willi_robby_reset_side_brush:
+      icon: mdi:pinwheel-outline
+      friendly_name: Willi / Robby Reset Side Brush
+      state: unknown
+    switch.willi_robby_resume_cleaning:
+      icon: mdi:play-pause
+      friendly_name: Willi / Robby Resume Cleaning
+      state: 'on'
+    select.willi_robby_room_1_name:
+      options:
+      - Room 1
+      - Living Room 3
+      - Primary Bedroom
+      - Study
+      - Kitchen
+      - Dining Hall
+      - Bathroom
+      - Balcony
+      - Corridor
+      - Utility Room
+      - Closet
+      - Meeting Room
+      - Office
+      - Fitness Area
+      - Recreation Area
+      - Secondary Bedroom
+      room_id: 1
+      index: 0
+      type: 4
+      icon: mdi:chef-hat
+      friendly_name: Willi / Robby Willi / Robby Room 1 Name
+      state: Kitchen
+    select.willi_robby_room_2_name:
+      options:
+      - Room 2
+      - Living Room 2
+      - Primary Bedroom
+      - Study
+      - Kitchen 2
+      - Dining Hall
+      - Bathroom
+      - Balcony
+      - Corridor
+      - Utility Room
+      - Closet
+      - Meeting Room
+      - Office
+      - Fitness Area
+      - Recreation Area
+      - Secondary Bedroom
+      room_id: 2
+      index: 1
+      type: 1
+      icon: mdi:sofa-outline
+      friendly_name: Willi / Robby Willi / Robby Room 2 Name
+      state: Living Room 2
+    select.willi_robby_room_3_name:
+      options:
+      - Room 3
+      - Living Room
+      - Primary Bedroom
+      - Study
+      - Kitchen 2
+      - Dining Hall
+      - Bathroom
+      - Balcony
+      - Corridor
+      - Utility Room
+      - Closet
+      - Meeting Room
+      - Office
+      - Fitness Area
+      - Recreation Area
+      - Secondary Bedroom
+      room_id: 3
+      index: 0
+      type: 1
+      icon: mdi:sofa-outline
+      friendly_name: Willi / Robby Willi / Robby Room 3 Name
+      state: Living Room
+    camera.willi_robby_map_1:
+      access_token: YOUR_ACCESS_TOKEN
+      charger_position:
+        x: -5572
+        y: 1886
+        a: 270
+      rooms:
+        '1':
+          x0: -1700
+          y0: -650
+          x1: 1300
+          y1: 1350
+          room_id: 1
+          name: Kitchen
+          type: 4
+          index: 0
+          icon: mdi:chef-hat
+          color_index: 1
+          x: -200
+          y: 400
+          letter: A
+        '2':
+          x0: -8450
+          y0: -3150
+          x1: -7100
+          y1: -1350
+          room_id: 2
+          name: Living Room 2
+          type: 1
+          index: 1
+          icon: mdi:sofa-outline
+          color_index: 2
+          x: -7800
+          y: -2200
+          letter: B
+        '3':
+          x0: -7150
+          y0: -3700
+          x1: 1250
+          y1: 1850
+          room_id: 3
+          name: Living Room
+          type: 1
+          index: 0
+          icon: mdi:sofa-outline
+          color_index: 0
+          x: -2950
+          y: -900
+          letter: C
+      map_id: 6
+      map_name: Map 1
+      rotation: 0
+      updated_at: '2026-01-28T10:47:22.971641'
+      walls:
+      - x0: -3780
+        y0: -1893
+        x1: -1198
+        y1: -1910
+      - x0: -728
+        y0: 248
+        x1: 603
+        y1: 239
+      - x0: -8474
+        y0: -2683
+        x1: -7740
+        y1: -3193
+      no_go_areas:
+      - x0: 926
+        y0: 7
+        x1: 1426
+        y1: 7
+        x2: 1426
+        y2: 1413
+        x3: 926
+        y3: 1413
+      is_empty: false
+      map_index: 1
+      calibration_points:
+      - vacuum:
+          x: 0
+          y: 0
+        map:
+          x: 736
+          y: 208
+      - vacuum:
+          x: 1000
+          y: 0
+        map:
+          x: 816
+          y: 208
+      - vacuum:
+          x: 0
+          y: 1000
+        map:
+          x: 736
+          y: 128
+      entity_picture: /api/camera_proxy/camera.willi_robby_map_1?token=YOUR_ACCESS_TOKEN
+      icon: mdi:map-search
+      friendly_name: Willi / Robby Willi / Robby Saved Map 1
+      supported_features: 0
+      state: '2026-01-28 10:47:22'
+    select.willi_robby_selected_map:
+      options:
+      - Map 1
+      icon: mdi:map-check
+      friendly_name: Willi / Robby Selected Map
+      state: unavailable
+    sensor.willi_robby_state:
+      value: 1
+      device_class: dreame_vacuum__state
+      icon: mdi:robot-vacuum
+      friendly_name: Willi / Robby State
+      state: sweeping
+    sensor.willi_robby_status:
+      value: 2
+      device_class: dreame_vacuum__status
+      icon: mdi:vacuum
+      friendly_name: Willi / Robby Status
+      state: cleaning
+    select.willi_robby_suction_level:
+      options:
+      - quiet
+      - standard
+      - strong
+      - turbo
+      value: 1
+      device_class: dreame_vacuum__suction_level
+      icon: mdi:fan-speed-2
+      friendly_name: Willi / Robby Suction Level
+      state: standard
+    sensor.willi_robby_task_status:
+      value: 1
+      device_class: dreame_vacuum__task_status
+      icon: mdi:file-tree
+      friendly_name: Willi / Robby Task Status
+      state: cleaning
+    sensor.willi_robby_total_cleaned_area:
+      unit_of_measurement: m²
+      icon: mdi:set-square
+      friendly_name: Willi / Robby Total Cleaned Area
+      state: '18856'
+    sensor.willi_robby_total_cleaning_time:
+      unit_of_measurement: min
+      device_class: duration
+      icon: mdi:timer-outline
+      friendly_name: Willi / Robby Total Cleaning Time
+      state: '26553'
+    number.willi_robby_volume:
+      min: 0
+      max: 100
+      step: 1
+      mode: slider
+      icon: mdi:volume-high
+      friendly_name: Willi / Robby Volume
+      state: '75'
+    sensor.willi_robby_water_tank:
+      value: 0
+      device_class: dreame_vacuum__water_tank_and_mop
+      icon: mdi:water-pump-off
+      friendly_name: Willi / Robby Water Tank
+      state: not_installed
+    select.willi_robby_water_volume:
+      options:
+      - low
+      - medium
+      - high
+      device_class: dreame_vacuum__water_volume
+      icon: mdi:water-off
+      friendly_name: Willi / Robby Water Volume
+      state: unavailable
+  metadata: {}

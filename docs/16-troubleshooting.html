@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html" class="active">Troubleshooting</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Betrieb
+                    <span class="separator">&rsaquo;</span>
+                    Troubleshooting
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>Troubleshooting</h1>
+
+            <p>
+                Diese Seite sammelt häufige Probleme und deren Lösungen für die IceHomeAssist-Installation.
+                Die Einträge sind nach Kategorie geordnet und enthalten konkrete Befehle zur Diagnose
+                und Behebung.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>1. Docker Container startet nicht oder stürzt ab</h2>
+            <!-- ============================================================ -->
+
+            <h3>Symptome</h3>
+            <ul>
+                <li>Home Assistant Web-UI ist nicht erreichbar unter Port 8123</li>
+                <li><code>docker ps</code> zeigt den Container nicht als "Up" an</li>
+                <li>Container startet und stoppt sofort wieder (Restart-Loop)</li>
+            </ul>
+
+            <h3>Diagnose</h3>
+            <pre><code># Container-Status prüfen
+docker ps -a | grep homeassistant
+
+# Container-Logs anzeigen (letzte 100 Zeilen)
+docker logs --tail 100 homeassistant
+
+# Container-Logs live verfolgen
+docker logs -f homeassistant
+
+# Detaillierte Container-Informationen
+docker inspect homeassistant
+
+# Systemressourcen prüfen
+df -h                    # Festplattenplatz
+free -m                  # Arbeitsspeicher
+docker system df         # Docker Speicherverbrauch</code></pre>
+
+            <h3>Häufige Ursachen und Lösungen</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ursache</th>
+                        <th>Lösung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Festplatte voll</td>
+                        <td><code>docker system prune -a</code> zum Aufräumen alter Images; Log-Dateien löschen</td>
+                    </tr>
+                    <tr>
+                        <td>RAM erschöpft</td>
+                        <td>Unnötige Integrationen deaktivieren; Recorder-Purge-Intervall kürzen</td>
+                    </tr>
+                    <tr>
+                        <td>Korrupte Konfiguration</td>
+                        <td>Konfiguration vor dem Start prüfen (siehe YAML-Fehler weiter unten)</td>
+                    </tr>
+                    <tr>
+                        <td>Port 8123 belegt</td>
+                        <td><code>ss -tlnp | grep 8123</code> prüfen; konkurrierenden Prozess beenden</td>
+                    </tr>
+                    <tr>
+                        <td>Docker Daemon nicht gestartet</td>
+                        <td><code>sudo systemctl start docker</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Container neu starten</h3>
+            <pre><code># Sanfter Neustart
+docker restart homeassistant
+
+# Container stoppen, löschen und neu erstellen
+docker stop homeassistant
+docker rm homeassistant
+docker run -d \
+    --name homeassistant \
+    --privileged \
+    --restart=unless-stopped \
+    -e TZ=Europe/Berlin \
+    -v /var/lib/homeassistant/homeassistant:/config \
+    -v /run/dbus:/run/dbus:ro \
+    --network=host \
+    ghcr.io/home-assistant/qemux86-64-homeassistant:stable</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>2. Home Assistant Logs prüfen</h2>
+            <!-- ============================================================ -->
+
+            <h3>Log-Dateien Übersicht</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Log</th>
+                        <th>Zugriff</th>
+                        <th>Inhalt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>HA Core Log</td>
+                        <td>Web-UI: Einstellungen &rarr; System &rarr; Protokolle</td>
+                        <td>Integrations-Fehler, Automations-Log</td>
+                    </tr>
+                    <tr>
+                        <td>Docker Log</td>
+                        <td><code>docker logs homeassistant</code></td>
+                        <td>Start-Fehler, System-Meldungen</td>
+                    </tr>
+                    <tr>
+                        <td>home-assistant.log</td>
+                        <td><code>/var/lib/homeassistant/homeassistant/home-assistant.log</code></td>
+                        <td>Detailliertes Application-Log</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Log-Level erhöhen für Debugging</h3>
+            <pre><code># configuration.yaml - Debug-Logging für spezifische Komponenten
+logger:
+  default: warning
+  logs:
+    # MQTT Debug
+    homeassistant.components.mqtt: debug
+    # Alexa Media Player Debug
+    custom_components.alexa_media: debug
+    # Automatisierungen Debug
+    homeassistant.components.automation: debug
+    # Template Debug
+    homeassistant.helpers.template: debug
+    # Allgemeiner HA-Core Debug
+    homeassistant.core: info</code></pre>
+
+            <p>
+                <strong>Hinweis:</strong> Debug-Logging erzeugt sehr viele Log-Einträge und kann die
+                Performance beeinträchtigen. Nach der Fehlersuche den Log-Level wieder auf
+                <code>warning</code> zurücksetzen.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>3. MQTT-Probleme debuggen</h2>
+            <!-- ============================================================ -->
+
+            <h3>Symptome</h3>
+            <ul>
+                <li>Tasmota-Sensoren zeigen "unavailable"</li>
+                <li>Sensordaten aktualisieren sich nicht</li>
+                <li>MQTT-Schalter reagieren nicht</li>
+            </ul>
+
+            <h3>Diagnose-Schritte</h3>
+            <pre><code># 1. Mosquitto Addon Status prüfen
+# In der HA UI: Einstellungen > Add-ons > Mosquitto broker
+
+# 2. MQTT-Verbindung testen (von der Host-Konsole)
+mosquitto_sub -h localhost -u mqtt_user -P "password" -t "#" -v
+# Wenn Nachrichten eintreffen: Broker funktioniert
+
+# 3. Spezifisches Gerät testen
+mosquitto_sub -h localhost -u mqtt_user -P "password" \
+  -t "tele/Strom-PV/#" -v
+# Erwartung: Alle 300 Sekunden eine SENSOR-Nachricht
+
+# 4. Gerät manuell anfragen
+mosquitto_pub -h localhost -u mqtt_user -P "password" \
+  -t "cmnd/Strom-PV/Status" -m "0"
+# Erwartung: Antwort auf stat/Strom-PV/STATUS*
+
+# 5. Tasmota-Gerät direkt prüfen
+# Im Browser: http://IP_DES_GERAETS/ aufrufen
+# Konsole öffnen und MQTT-Status prüfen</code></pre>
+
+            <h3>Häufige MQTT-Probleme</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Ursache</th>
+                        <th>Lösung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Alle Sensoren unavailable</td>
+                        <td>Mosquitto Addon gestoppt</td>
+                        <td>Addon neu starten</td>
+                    </tr>
+                    <tr>
+                        <td>Einzelnes Gerät offline</td>
+                        <td>WLAN-Verbindung des Geräts verloren</td>
+                        <td>Gerät-IP im Router prüfen; Gerät neu starten</td>
+                    </tr>
+                    <tr>
+                        <td>Werte veraltet</td>
+                        <td>TelePeriod zu hoch (Standard: 300s)</td>
+                        <td><code>cmnd/DEVICE/TelePeriod 60</code></td>
+                    </tr>
+                    <tr>
+                        <td>Authentifizierungsfehler</td>
+                        <td>Passwort in Tasmota stimmt nicht mit Mosquitto überein</td>
+                        <td>Credentials in beiden Systemen abgleichen</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================ -->
+            <h2>4. Alexa Media Player - HTTP 500 Fehler</h2>
+            <!-- ============================================================ -->
+
+            <h3>Symptome</h3>
+            <ul>
+                <li>HTTP 500 Internal Server Error beim Einrichten der Alexa Media Player Integration</li>
+                <li>Login-Prozess schlägt fehl nach Eingabe der Amazon-Credentials</li>
+                <li>Fehlermeldung enthält "aamation" oder Captcha-Hinweis</li>
+            </ul>
+
+            <h3>Ursache</h3>
+            <p>
+                Der HTTP 500 Fehler wird <strong>nicht</strong> von Home Assistant verursacht, sondern von
+                <strong>Amazons Bot-Erkennung</strong>. Amazon erkennt den automatisierten Login-Versuch
+                und blockiert die Anfrage. Dies passiert besonders häufig bei Konten ohne 2FA.
+            </p>
+
+            <h3>Lösung</h3>
+            <ol>
+                <li>
+                    <strong>2FA auf dem Amazon-Konto aktivieren</strong> (wichtigster Schritt!)<br>
+                    amazon.de &rarr; Konto &rarr; Anmeldung &amp; Sicherheit &rarr; Zwei-Schritt-Verifizierung
+                </li>
+                <li>
+                    <strong>Einige Minuten warten</strong> und erneut versuchen<br>
+                    Amazons Rate-Limiting löst sich nach einiger Zeit auf
+                </li>
+                <li>
+                    <strong>Im Browser auf demselben Gerät einloggen</strong><br>
+                    Vor dem HA-Setup: amazon.de im Browser aufrufen und einloggen
+                </li>
+                <li>
+                    <strong>VPN deaktivieren</strong><br>
+                    VPN-Verbindungen werden von Amazon häufiger blockiert
+                </li>
+                <li>
+                    <strong>Integration-Eintrag löschen und neu anlegen</strong><br>
+                    Einstellungen &rarr; Geräte &amp; Dienste &rarr; Alexa Media Player &rarr; Löschen
+                </li>
+            </ol>
+
+            <!-- ============================================================ -->
+            <h2>5. YAML Syntax-Fehler</h2>
+            <!-- ============================================================ -->
+
+            <h3>Symptome</h3>
+            <ul>
+                <li>Home Assistant startet nicht nach Konfigurationsänderung</li>
+                <li>Fehlermeldung: "Invalid config" oder "Error loading configuration.yaml"</li>
+                <li>Bestimmte Integrationen oder Entities fehlen</li>
+            </ul>
+
+            <h3>Konfiguration prüfen</h3>
+            <pre><code># Konfiguration im Container prüfen
+docker exec homeassistant python3 -m homeassistant \
+    --script check_config -c /config
+
+# Oder über die Web-UI:
+# Entwicklerwerkzeuge > YAML > Konfiguration überprüfen
+
+# YAML-Syntax lokal prüfen (auf dem Host)
+python3 -c "import yaml; yaml.safe_load(open('/var/lib/homeassistant/homeassistant/configuration.yaml'))"</code></pre>
+
+            <h3>Häufige YAML-Fehler</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fehler</th>
+                        <th>Beispiel</th>
+                        <th>Lösung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Falsche Einrückung</td>
+                        <td>Tabs statt Leerzeichen verwendet</td>
+                        <td>Immer 2 Leerzeichen pro Ebene verwenden, keine Tabs</td>
+                    </tr>
+                    <tr>
+                        <td>Fehlender Doppelpunkt</td>
+                        <td><code>name "PV Leistung"</code> statt <code>name: "PV Leistung"</code></td>
+                        <td>Doppelpunkt nach jedem Schlüssel</td>
+                    </tr>
+                    <tr>
+                        <td>Sonderzeichen in Strings</td>
+                        <td><code>name: Küche: Steckdose</code></td>
+                        <td>Werte mit Sonderzeichen in Anführungszeichen setzen</td>
+                    </tr>
+                    <tr>
+                        <td>Doppelte Schlüssel</td>
+                        <td>Zwei <code>mqtt:</code>-Blöcke in derselben Datei</td>
+                        <td>Alle Einträge unter einem Schlüssel zusammenfassen</td>
+                    </tr>
+                    <tr>
+                        <td>Fehlende !secret-Referenz</td>
+                        <td><code>password: !secret mqtt_pw</code> (Schlüssel existiert nicht)</td>
+                        <td>Schlüssel in <code>secrets.yaml</code> prüfen</td>
+                    </tr>
+                    <tr>
+                        <td>Template-Syntax</td>
+                        <td><code>{{ states('sensor.xyz) }}</code> (fehlendes Anführungszeichen)</td>
+                        <td>Jinja2-Syntax sorgfältig prüfen</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Best Practice: Backup vor Änderungen</h3>
+            <pre><code># Immer ein Backup erstellen, bevor Konfigurationsdateien geändert werden
+sudo cp /var/lib/homeassistant/homeassistant/configuration.yaml \
+       /var/lib/homeassistant/homeassistant/configuration.yaml.bak
+
+# Nach der Änderung: Prüfen
+docker exec homeassistant python3 -m homeassistant \
+    --script check_config -c /config
+
+# Bei Fehler: Backup wiederherstellen
+sudo cp /var/lib/homeassistant/homeassistant/configuration.yaml.bak \
+       /var/lib/homeassistant/homeassistant/configuration.yaml</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>6. Container-Neustart: Patches gehen verloren</h2>
+            <!-- ============================================================ -->
+
+            <h3>Problem</h3>
+            <p>
+                Änderungen an Python-Bibliotheken innerhalb des Docker-Containers (z.B. unter
+                <code>/usr/local/lib/python3.13/...</code>) gehen bei einem Container-Neustart oder
+                Update verloren. Dies betrifft Hotfixes für Bibliotheken, die direkt im Container
+                gepatcht wurden.
+            </p>
+
+            <h3>Warum passiert das?</h3>
+            <p>
+                Docker-Container sind ephemeral (kurzlebig). Nur Dateien in gemounteten Volumes
+                (<code>/config</code>) überleben einen Neustart. Alles andere wird aus dem Image
+                neu erstellt.
+            </p>
+
+            <h3>Lösung</h3>
+            <pre><code># Option 1: Patch als Startup-Script
+# Erstelle ein Script, das beim Container-Start ausgeführt wird:
+
+# /var/lib/homeassistant/homeassistant/scripts/apply_patches.sh
+#!/bin/bash
+# Patches, die bei jedem Container-Start angewendet werden müssen
+pip install --force-reinstall some-package==1.2.3
+
+# Über shell_command in HA einbinden (nach jedem Neustart manuell ausführen):
+shell_command:
+  apply_patches: "bash /config/scripts/apply_patches.sh"
+
+# Option 2: Auf offizielles Fix warten
+# Prüfe GitHub Issues des betroffenen Pakets
+# Community-Fixes sind oft schneller als offizielle Releases
+
+# Option 3: Custom Docker Image erstellen (fortgeschritten)
+# Dockerfile:
+FROM ghcr.io/home-assistant/qemux86-64-homeassistant:stable
+RUN pip install --force-reinstall some-package==1.2.3</code></pre>
+
+            <p>
+                <strong>Hinweis:</strong> Der <code>httpx.AsyncClient()</code> hat einen Standard-Timeout
+                von 5 Sekunden. Das Erstellen eines AsyncClient im async-Kontext kann eine
+                "blocking call"-Warnung auslösen. Dies ist ein bekanntes Problem, kein kritischer Fehler.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>7. Datenbank-Probleme</h2>
+            <!-- ============================================================ -->
+
+            <h3>Symptome</h3>
+            <ul>
+                <li>Home Assistant startet sehr langsam</li>
+                <li>History- und Logbook-Seiten laden nicht</li>
+                <li>Fehlermeldung: "database is locked" oder "database disk image is malformed"</li>
+                <li>Hohe CPU-Last durch SQLite</li>
+            </ul>
+
+            <h3>Diagnose</h3>
+            <pre><code># Datenbankgröße prüfen
+ls -lh /var/lib/homeassistant/homeassistant/home-assistant_v2.db*
+
+# Typische Größen:
+# home-assistant_v2.db      500MB - 2GB (abhängig von Recorder-Einstellungen)
+# home-assistant_v2.db-shm  einige MB
+# home-assistant_v2.db-wal  variabel (Write-Ahead Log)</code></pre>
+
+            <h3>Lösung: Datenbank bereinigen</h3>
+            <pre><code># Option 1: Recorder-Purge über HA Service
+# Entwicklerwerkzeuge > Dienste:
+service: recorder.purge
+data:
+  keep_days: 7
+  repack: true
+
+# Option 2: Datenbank komplett löschen (Verlust aller Historien-Daten!)
+docker stop homeassistant
+sudo rm /var/lib/homeassistant/homeassistant/home-assistant_v2.db*
+docker start homeassistant
+# HA erstellt beim Start eine neue, leere Datenbank
+
+# Option 3: Recorder-Konfiguration optimieren
+recorder:
+  purge_keep_days: 7
+  commit_interval: 30
+  exclude:
+    entity_globs:
+      - sensor.*_energy_*      # Hochfrequente Sensoren ausschließen
+    event_types:
+      - call_service           # Service-Calls nicht loggen</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>8. Custom Component Updates</h2>
+            <!-- ============================================================ -->
+
+            <h3>Symptome</h3>
+            <ul>
+                <li>HACS zeigt verfügbare Updates an</li>
+                <li>Nach dem Update funktioniert eine Integration nicht mehr</li>
+                <li>"ModuleNotFoundError" oder "ImportError" nach Update</li>
+            </ul>
+
+            <h3>Sichere Update-Prozedur</h3>
+            <pre><code># 1. Vor dem Update: Backup erstellen
+sudo cp -r /var/lib/homeassistant/homeassistant/custom_components \
+           /var/lib/homeassistant/homeassistant/custom_components.bak
+
+# 2. Update über HACS durchführen
+# HACS > Updates > [Component] > Update
+
+# 3. Home Assistant neu starten
+docker restart homeassistant
+
+# 4. Logs prüfen
+docker logs --tail 50 homeassistant | grep -i error
+
+# 5. Bei Problemen: Rollback
+docker stop homeassistant
+sudo rm -rf /var/lib/homeassistant/homeassistant/custom_components
+sudo mv /var/lib/homeassistant/homeassistant/custom_components.bak \
+        /var/lib/homeassistant/homeassistant/custom_components
+docker start homeassistant</code></pre>
+
+            <h3>Bekannte Update-Probleme</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Problem</th>
+                        <th>Lösung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Alexa Media Player</td>
+                        <td>Re-Authentifizierung nötig nach Update</td>
+                        <td>Integration löschen und neu einrichten (mit 2FA)</td>
+                    </tr>
+                    <tr>
+                        <td>HACS selbst</td>
+                        <td>GitHub API Rate Limit überschritten</td>
+                        <td>GitHub Token in HACS hinterlegen</td>
+                    </tr>
+                    <tr>
+                        <td>Diverse</td>
+                        <td>Breaking Changes in neuer HA Version</td>
+                        <td>Release Notes vor HA-Update lesen</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================ -->
+            <h2>9. Netzwerk-Probleme</h2>
+            <!-- ============================================================ -->
+
+            <h3>Symptome</h3>
+            <ul>
+                <li>Integrationen zeigen "unavailable"</li>
+                <li>Geräte werden nicht gefunden</li>
+                <li>mDNS-Discovery funktioniert nicht</li>
+                <li>SNMP-Sensoren liefern keine Daten</li>
+            </ul>
+
+            <h3>Diagnose</h3>
+            <pre><code># DNS-Auflösung testen
+docker exec homeassistant nslookup amazon.de
+
+# Netzwerkverbindung prüfen
+docker exec homeassistant ping -c 3 192.168.1.1
+
+# Ports prüfen
+ss -tlnp | grep -E '(8123|1883|8883)'
+
+# Docker Netzwerk-Modus prüfen (sollte "host" sein)
+docker inspect homeassistant | grep NetworkMode
+
+# SNMP-Erreichbarkeit testen
+snmpwalk -v2c -c public 192.168.1.10 system
+
+# mDNS-Geräte im Netzwerk finden
+avahi-browse -art</code></pre>
+
+            <h3>Häufige Netzwerk-Probleme</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Ursache</th>
+                        <th>Lösung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>mDNS funktioniert nicht</td>
+                        <td>Container nicht im Host-Netzwerk</td>
+                        <td><code>--network=host</code> bei <code>docker run</code> verwenden</td>
+                    </tr>
+                    <tr>
+                        <td>UniFi nicht erreichbar</td>
+                        <td>SSL-Zertifikat abgelehnt</td>
+                        <td>In der Integration "SSL-Zertifikat verifizieren" deaktivieren</td>
+                    </tr>
+                    <tr>
+                        <td>SNMP Timeout</td>
+                        <td>SNMP auf MikroTik nicht aktiviert</td>
+                        <td>SNMP auf dem Switch aktivieren (siehe <a href="12-netzwerk.html">Netzwerk</a>)</td>
+                    </tr>
+                    <tr>
+                        <td>Tasmota-Geräte nicht erreichbar</td>
+                        <td>WLAN-Kanal oder IP geändert</td>
+                        <td>Tasmota Web-UI aufrufen und MQTT-Settings prüfen</td>
+                    </tr>
+                    <tr>
+                        <td>Fritz!Box Integration Timeout</td>
+                        <td>TR-064 Schnittstelle deaktiviert</td>
+                        <td>In der Fritz!Box TR-064 aktivieren (Heimnetz &rarr; Netzwerk)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================ -->
+            <h2>10. Node-RED Probleme</h2>
+            <!-- ============================================================ -->
+
+            <h3>Symptome</h3>
+            <ul>
+                <li>WiFi-Button-Automatisierungen funktionieren nicht</li>
+                <li>Node-RED Addon startet nicht</li>
+                <li>Flows gehen nach Update verloren</li>
+            </ul>
+
+            <h3>Diagnose und Lösungen</h3>
+            <pre><code># Node-RED Addon Logs prüfen
+# In HA: Einstellungen > Add-ons > Node-RED > Protokoll
+
+# Flows-Datei prüfen
+ls -la /var/lib/homeassistant/addon_configs/a0d7b954_nodered/flows.json
+
+# Flows manuell sichern
+sudo cp /var/lib/homeassistant/addon_configs/a0d7b954_nodered/flows.json \
+        /home/mpauli/flows_backup_$(date +%Y%m%d).json
+
+# Node-RED zurücksetzen (Vorsicht: Alle Flows gehen verloren!)
+# 1. Addon stoppen
+# 2. flows.json löschen
+# 3. Addon starten (erstellt neue leere Flows)
+# 4. Backup-Flows importieren</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>11. Allgemeine Diagnose-Befehle</h2>
+            <!-- ============================================================ -->
+
+            <h3>System-Status</h3>
+            <pre><code># Docker-Container Status
+docker ps -a
+
+# Docker Ressourcenverbrauch
+docker stats --no-stream
+
+# System-Ressourcen
+htop
+df -h
+free -m
+uptime
+
+# Docker-Logs aller Container
+docker logs --tail 20 homeassistant
+docker compose logs --tail 20</code></pre>
+
+            <h3>Home Assistant Befehle</h3>
+            <pre><code># Shell im Container öffnen
+docker exec -it homeassistant bash
+
+# HA Version prüfen
+docker exec homeassistant cat /config/.HA_VERSION
+
+# Konfiguration validieren
+docker exec homeassistant python3 -m homeassistant \
+    --script check_config -c /config
+
+# HA Core manuell neu starten (ohne Container-Neustart)
+# Über die UI: Entwicklerwerkzeuge > YAML > Home Assistant neu starten
+
+# Alle Automationen neu laden
+# Über die UI: Entwicklerwerkzeuge > YAML > Automationen neu laden</code></pre>
+
+            <h3>MQTT Schnelltest</h3>
+            <pre><code># Alle MQTT-Topics für 10 Sekunden mithören
+timeout 10 mosquitto_sub -h localhost -u mqtt_user -P "password" -t "#" -v
+
+# WiFi-Button Events testen
+mosquitto_sub -h localhost -u mqtt_user -P "password" \
+  -t "stat/wifibutton1/RESULT" -v
+
+# Tasmota-Gerät Status abfragen
+mosquitto_pub -h localhost -u mqtt_user -P "password" \
+  -t "cmnd/Strom-PV/Status" -m "0"</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>12. Notfall-Kontakte und Ressourcen</h2>
+            <!-- ============================================================ -->
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ressource</th>
+                        <th>URL / Befehl</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Home Assistant Community</td>
+                        <td><code>community.home-assistant.io</code></td>
+                        <td>Offizielles Forum mit Hilfe und Diskussionen</td>
+                    </tr>
+                    <tr>
+                        <td>HA GitHub Issues</td>
+                        <td><code>github.com/home-assistant/core/issues</code></td>
+                        <td>Bug-Reports und Feature-Requests</td>
+                    </tr>
+                    <tr>
+                        <td>Alexa Media Player Issues</td>
+                        <td><code>github.com/alandtse/alexa_media_player/issues</code></td>
+                        <td>Spezifische Probleme mit der Alexa-Integration</td>
+                    </tr>
+                    <tr>
+                        <td>Tasmota Dokumentation</td>
+                        <td><code>tasmota.github.io/docs/</code></td>
+                        <td>MQTT-Topics, Befehle, Gerätekonfiguration</td>
+                    </tr>
+                    <tr>
+                        <td>IceHomeAssist Repository</td>
+                        <td><code>github.com/icepaule/IceHomeAssist</code></td>
+                        <td>Eigene Konfiguration und Dokumentation</td>
+                    </tr>
+                    <tr>
+                        <td>Wiederherstellungs-Script</td>
+                        <td><code>curl -sSL https://raw.githubusercontent.com/icepaule/IceHomeAssist/main/restore.sh | sudo bash</code></td>
+                        <td>Komplettes System neu aufsetzen</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                <strong>Goldene Regel:</strong> Vor jeder Änderung an der Konfiguration immer ein
+                Backup erstellen (<code>cp datei datei.bak</code>). Prüfe Community-Foren und
+                GitHub-Issues, bevor du tief in die Code-Analyse einsteigst - meistens hat jemand
+                das Problem bereits gelöst.
+            </p>
+
+            <div class="page-nav">
+                <a href="15-wiederherstellung.html"><div><div class="label">Zurück</div>Wiederherstellung</div></a>
+                <span></span>
+            </div>
+            <div class="footer">IceHomeAssist Dokumentation &middot; Erstellt Februar 2026</div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) a.classList.add('active');
+});
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs"},
+];
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i => i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q));
+    results.innerHTML = matches.length === 0 ? '<div class="search-result-item">Keine Ergebnisse</div>' :
+        matches.map(m => `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`).join('');
+    results.classList.add('active');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.search-container')) document.getElementById('searchResults').classList.remove('active'); });
+</script>
+</body>
+</html>

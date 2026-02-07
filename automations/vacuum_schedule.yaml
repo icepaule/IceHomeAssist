@@ -1,0 +1,46 @@
+# Staubsauger Zeitplan-Automatisierung
+- id: vacuum_daily_schedule
+  alias: "Staubsauger Täglicher Zeitplan"
+  description: "Startet den Dreame F9 täglich"
+  trigger:
+    - platform: time
+      at: "10:00:00"
+  condition:
+    - condition: state
+      entity_id: vacuum.willi_robby
+      state: "docked"
+  action:
+    - service: vacuum.start
+      target:
+        entity_id: vacuum.willi_robby
+  mode: single
+
+- id: vacuum_return_when_home
+  alias: "Staubsauger zurück wenn jemand kommt"
+  trigger:
+    - platform: state
+      entity_id: person.marcus
+      to: "home"
+  condition:
+    - condition: state
+      entity_id: vacuum.willi_robby
+      state: "cleaning"
+  action:
+    - service: vacuum.return_to_base
+      target:
+        entity_id: vacuum.willi_robby
+  mode: single
+
+- id: vacuum_notification_done
+  alias: "Staubsauger fertig Benachrichtigung"
+  trigger:
+    - platform: state
+      entity_id: vacuum.willi_robby
+      from: "cleaning"
+      to: "returning"
+  action:
+    - service: persistent_notification.create
+      data:
+        title: "Staubsauger fertig"
+        message: "Reinigung abgeschlossen"
+  mode: single

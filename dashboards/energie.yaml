@@ -1,0 +1,396 @@
+# =============================================================================
+# Energie Dashboard - PV & Stromverbrauch
+# =============================================================================
+# Basiert auf VIS View PV_Anlage und Stromkauf
+#
+# Benötigte HACS-Karten:
+# - mini-graph-card
+# - mushroom
+# - apexcharts-card (optional, für erweiterte Charts)
+# =============================================================================
+
+title: Energie
+views:
+  # ===========================================================================
+  # ÜBERSICHT
+  # ===========================================================================
+  - title: Übersicht
+    path: energie-uebersicht
+    icon: mdi:flash
+    type: sections
+    max_columns: 3
+    sections:
+      # ----- PV ANLAGE -----
+      - type: grid
+        title: Photovoltaik
+        cards:
+          - type: gauge
+            entity: sensor.pv_leistung
+            name: Aktuelle Leistung
+            min: 0
+            max: 600
+            severity:
+              green: 300
+              yellow: 100
+              red: 0
+            needle: true
+
+          - type: entities
+            title: PV Statistik
+            show_header_toggle: false
+            entities:
+              - entity: sensor.pv_leistung
+                name: Aktuelle Leistung
+                icon: mdi:solar-power
+              - entity: sensor.pv_energie_heute
+                name: Heute
+                icon: mdi:calendar-today
+              - entity: sensor.pv_energie_gestern
+                name: Gestern
+                icon: mdi:calendar-minus
+              - entity: sensor.pv_energie_gesamt
+                name: Gesamt
+                icon: mdi:sigma
+
+          - type: custom:mini-graph-card
+            name: PV Tagesverlauf
+            entities:
+              - entity: sensor.pv_leistung
+                name: Leistung
+            hours_to_show: 24
+            points_per_hour: 12
+            line_color: "#FFC107"
+            line_width: 2
+            hour24: true
+            show:
+              labels: true
+              points: false
+              legend: false
+              fill: true
+
+      # ----- STROMVERBRAUCH -----
+      - type: grid
+        title: Stromverbrauch
+        cards:
+          - type: entities
+            title: Aktuelle Leistung
+            show_header_toggle: false
+            entities:
+              - entity: sensor.server_leistung
+                name: Server
+                icon: mdi:server
+              - entity: sensor.kueche_leistung
+                name: Küche
+                icon: mdi:countertop
+              - entity: sensor.waschmaschine_leistung
+                name: Waschmaschine
+                icon: mdi:washing-machine
+              - entity: sensor.trockner_leistung
+                name: Trockner
+                icon: mdi:tumble-dryer
+
+          - type: custom:mini-graph-card
+            name: Server 24h
+            entities:
+              - entity: sensor.server_leistung
+            hours_to_show: 24
+            points_per_hour: 6
+            line_color: "#2196F3"
+            show:
+              labels: true
+              points: false
+              fill: true
+
+      # ----- TIBBER STROMPREIS -----
+      - type: grid
+        title: Strompreis (Tibber)
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Aktueller Preis
+            secondary: >
+              {{ states('sensor.electricity_price_xxx') | default('--') }} ct/kWh
+            icon: mdi:currency-eur
+            icon_color: >
+              {% set price = states('sensor.electricity_price_xxx') | float(0) %}
+              {% if price < 20 %}green{% elif price < 35 %}amber{% else %}red{% endif %}
+
+          - type: markdown
+            content: |
+              ### Tibber Integration
+
+              Bitte Tibber über die HA-Integrationen hinzufügen:
+
+              1. Einstellungen → Geräte & Dienste
+              2. Integration hinzufügen → Tibber
+              3. Token eingeben (aus Tibber Developer Portal)
+
+              Der Token ist in `secrets.yaml` als `tibber_token` gespeichert.
+
+  # ===========================================================================
+  # PV ANLAGE DETAIL
+  # ===========================================================================
+  - title: PV Anlage
+    path: pv-anlage
+    icon: mdi:solar-power
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        title: Live Daten
+        cards:
+          - type: gauge
+            entity: sensor.pv_leistung
+            name: Aktuelle Einspeisung
+            min: 0
+            max: 600
+            severity:
+              green: 400
+              yellow: 200
+              red: 0
+            needle: true
+
+          - type: entities
+            entities:
+              - entity: sensor.pv_leistung
+                name: Leistung
+              - entity: sensor.pv_spannung
+                name: Spannung
+              - entity: sensor.pv_strom
+                name: Strom
+
+          - type: custom:mini-graph-card
+            name: Leistung Heute
+            entities:
+              - entity: sensor.pv_leistung
+            hours_to_show: 24
+            points_per_hour: 12
+            line_color: "#FFC107"
+            line_width: 3
+            hour24: true
+            show:
+              labels: true
+              points: false
+              fill: gradient
+
+      - type: grid
+        title: Energie & Statistik
+        cards:
+          - type: statistic
+            entity: sensor.pv_energie_heute
+            name: Heute erzeugt
+            period:
+              calendar:
+                period: day
+
+          - type: statistic
+            entity: sensor.pv_energie_gestern
+            name: Gestern
+
+          - type: entities
+            title: Energie Übersicht
+            entities:
+              - entity: sensor.pv_energie_heute
+                name: Heute
+              - entity: sensor.pv_energie_gestern
+                name: Gestern
+              - entity: sensor.pv_energie_gesamt
+                name: Gesamt
+
+          # Berechnung der Ersparnis (Template Sensor nötig)
+          - type: markdown
+            content: |
+              ### Ersparnis Berechnung
+
+              Die Ersparnis wird basierend auf dem aktuellen Tibber-Preis
+              und der erzeugten Energie berechnet.
+
+              Template-Sensoren in `templates/pv_savings.yaml` erstellen für:
+              - Tägliche Ersparnis
+              - Monatliche Ersparnis
+              - Jährliche Ersparnis
+
+  # ===========================================================================
+  # VERBRAUCHER DETAIL
+  # ===========================================================================
+  - title: Verbraucher
+    path: verbraucher
+    icon: mdi:power-plug
+    type: sections
+    max_columns: 2
+    sections:
+      # ----- SERVER -----
+      - type: grid
+        title: Server
+        cards:
+          - type: gauge
+            entity: sensor.server_leistung
+            name: Aktuelle Leistung
+            min: 0
+            max: 800
+            severity:
+              green: 0
+              yellow: 500
+              red: 700
+
+          - type: entities
+            entities:
+              - entity: sensor.server_leistung
+                name: Leistung
+              - entity: sensor.server_energie_heute
+                name: Heute
+              - entity: sensor.server_energie_gesamt
+                name: Gesamt
+              - entity: switch.strom_server
+                name: Schalter
+
+          - type: custom:mini-graph-card
+            name: Server 7 Tage
+            entities:
+              - entity: sensor.server_leistung
+            hours_to_show: 168
+            points_per_hour: 2
+            line_color: "#2196F3"
+            show:
+              fill: true
+
+      # ----- KÜCHE -----
+      - type: grid
+        title: Küche
+        cards:
+          - type: gauge
+            entity: sensor.kueche_leistung
+            name: Aktuelle Leistung
+            min: 0
+            max: 500
+
+          - type: entities
+            entities:
+              - entity: sensor.kueche_leistung
+                name: Leistung
+              - entity: sensor.kueche_energie_heute
+                name: Heute
+              - entity: sensor.kueche_energie_gesamt
+                name: Gesamt
+              - entity: switch.strom_kueche
+                name: Schalter
+
+      # ----- WASCHMASCHINE -----
+      - type: grid
+        title: Waschmaschine
+        cards:
+          - type: gauge
+            entity: sensor.waschmaschine_leistung
+            name: Aktuelle Leistung
+            min: 0
+            max: 2500
+
+          - type: entities
+            entities:
+              - entity: sensor.waschmaschine_leistung
+                name: Leistung
+              - entity: sensor.waschmaschine_energie_heute
+                name: Heute
+              - entity: sensor.waschmaschine_energie_gesamt
+                name: Gesamt
+              - entity: switch.strom_waschmaschine
+                name: Schalter
+
+          - type: conditional
+            conditions:
+              - entity: sensor.waschmaschine_leistung
+                state_not: "0"
+            card:
+              type: markdown
+              content: "🔄 **Waschmaschine läuft!**"
+
+      # ----- TROCKNER -----
+      - type: grid
+        title: Trockner
+        cards:
+          - type: gauge
+            entity: sensor.trockner_leistung
+            name: Aktuelle Leistung
+            min: 0
+            max: 3000
+
+          - type: entities
+            entities:
+              - entity: sensor.trockner_leistung
+                name: Leistung
+              - entity: sensor.trockner_energie_heute
+                name: Heute
+              - entity: sensor.trockner_energie_gesamt
+                name: Gesamt
+              - entity: switch.strom_trockner
+                name: Schalter
+
+          - type: conditional
+            conditions:
+              - entity: sensor.trockner_leistung
+                state_not: "0"
+            card:
+              type: markdown
+              content: "🔄 **Trockner läuft!**"
+
+  # ===========================================================================
+  # HISTORY / STATISTIK
+  # ===========================================================================
+  - title: Statistik
+    path: statistik
+    icon: mdi:chart-line
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        title: Energieverbrauch Historie
+        cards:
+          - type: history-graph
+            title: Leistung 24h
+            hours_to_show: 24
+            entities:
+              - entity: sensor.pv_leistung
+                name: PV
+              - entity: sensor.server_leistung
+                name: Server
+              - entity: sensor.kueche_leistung
+                name: Küche
+
+          - type: history-graph
+            title: Leistung 7 Tage
+            hours_to_show: 168
+            entities:
+              - entity: sensor.pv_leistung
+                name: PV
+              - entity: sensor.server_leistung
+                name: Server
+
+      - type: grid
+        title: Energie Vergleich
+        cards:
+          - type: entities
+            title: Energie Heute
+            entities:
+              - entity: sensor.pv_energie_heute
+                name: PV Erzeugt
+              - entity: sensor.server_energie_heute
+                name: Server
+              - entity: sensor.kueche_energie_heute
+                name: Küche
+              - entity: sensor.waschmaschine_energie_heute
+                name: Waschmaschine
+              - entity: sensor.trockner_energie_heute
+                name: Trockner
+
+          - type: entities
+            title: Energie Gesamt
+            entities:
+              - entity: sensor.pv_energie_gesamt
+                name: PV Erzeugt
+              - entity: sensor.server_energie_gesamt
+                name: Server
+              - entity: sensor.kueche_energie_gesamt
+                name: Küche
+              - entity: sensor.waschmaschine_energie_gesamt
+                name: Waschmaschine
+              - entity: sensor.trockner_energie_gesamt
+                name: Trockner
