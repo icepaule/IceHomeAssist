@@ -366,21 +366,27 @@ tr:hover td {
    ============================================================================= */
 
 .screenshot {
-    margin: 20px 0;
-    text-align: center;
-}
-
-.screenshot img {
-    max-width: 100%;
+    margin: 1.5rem 0;
     border-radius: 8px;
+    overflow: hidden;
     border: 1px solid var(--border);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-.screenshot .caption {
-    margin-top: 8px;
+.screenshot img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.screenshot .caption,
+.screenshot .screenshot-caption {
+    padding: 0.5rem 1rem;
     font-size: 0.85rem;
     color: var(--text-muted);
+    background: var(--bg-card);
+    text-align: center;
+    margin: 0;
     font-style: italic;
 }
 
