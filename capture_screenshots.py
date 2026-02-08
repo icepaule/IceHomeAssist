@@ -14,11 +14,13 @@ Voraussetzungen:
 """
 
 import argparse
+import json
 import os
 import re
 import time
 import sys
 
+import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -78,6 +80,8 @@ def create_driver():
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--force-device-scale-factor=1")
     options.add_argument("--lang=de-DE")
+    # Windy-Iframe blockieren (WebGL-Alert blockiert sonst das Rendering)
+    options.add_argument("--host-resolver-rules=MAP embed.windy.com 127.0.0.1")
 
     # Chromium Pfade prüfen
     for path in ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]:
@@ -85,75 +89,87 @@ def create_driver():
             options.binary_location = path
             break
 
-    driver = webdriver.Chrome(options=options)
+    # ChromeDriver explizit angeben falls vorhanden
+    service = None
+    for driver_path in ["/usr/bin/chromedriver", "/usr/lib/chromium/chromedriver"]:
+        if os.path.exists(driver_path):
+            service = Service(executable_path=driver_path)
+            break
+
+    if service:
+        driver = webdriver.Chrome(service=service, options=options)
+    else:
+        driver = webdriver.Chrome(options=options)
     driver.set_page_load_timeout(30)
     return driver
 
 
 def login_ha(driver, base_url, username, password):
-    """Login bei Home Assistant."""
-    driver.get(f"{base_url}/auth/authorize?response_type=code&client_id={base_url}/")
-    time.sleep(3)
+    """Login bei Home Assistant via REST API Auth Flow.
+
+    HA nutzt Web Components mit tiefem Shadow DOM, was Selenium-basiertes
+    Login unzuverlässig macht. Stattdessen wird die HA REST API verwendet:
+    1. Login-Flow starten
+    2. Credentials übermitteln
+    3. Auth-Code gegen Token tauschen
+    4. Token in Browser-localStorage injizieren
+    """
+    print("  Authentifizierung via HA REST API...")
+    client_id = f"{base_url}/"
 
     try:
-        # Warte auf Login-Form
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='username'], ha-auth-flow"))
+        # Schritt 1: Login-Flow starten
+        resp = requests.post(
+            f"{base_url}/auth/login_flow",
+            json={"client_id": client_id, "handler": ["homeassistant", None], "redirect_uri": f"{base_url}/?auth_callback=1"},
         )
+        resp.raise_for_status()
+        flow = resp.json()
+        flow_id = flow["flow_id"]
 
-        # Shadow DOM Navigation für HA Login
-        # HA nutzt Web Components mit Shadow DOM
-        script = """
-        const haAuth = document.querySelector('ha-authorize');
-        if (!haAuth) return false;
-        const sr1 = haAuth.shadowRoot;
-        const flow = sr1.querySelector('ha-auth-flow');
-        if (!flow) return false;
-        const sr2 = flow.shadowRoot;
-        const form = sr2.querySelector('ha-local-auth-flow');
-        if (!form) return false;
-        const sr3 = form.shadowRoot;
-        const inputs = sr3.querySelectorAll('ha-textfield');
-        if (inputs.length < 2) return false;
+        # Schritt 2: Credentials senden
+        resp = requests.post(
+            f"{base_url}/auth/login_flow/{flow_id}",
+            json={"client_id": client_id, "username": username, "password": password},
+        )
+        resp.raise_for_status()
+        result = resp.json()
 
-        // Username
-        const userInput = inputs[0].shadowRoot.querySelector('input');
-        userInput.value = arguments[0];
-        userInput.dispatchEvent(new Event('input', {bubbles: true}));
+        if result.get("type") != "create_entry":
+            print(f"  Login fehlgeschlagen: {result}")
+            return False
 
-        // Password
-        const passInput = inputs[1].shadowRoot.querySelector('input');
-        passInput.value = arguments[1];
-        passInput.dispatchEvent(new Event('input', {bubbles: true}));
+        auth_code = result["result"]
 
-        // Submit
-        const btn = sr3.querySelector('ha-button, mwc-button');
-        if (btn) btn.click();
-        return true;
-        """
-        result = driver.execute_script(script, username, password)
-        if result:
-            time.sleep(5)
-            print(f"  Login erfolgreich")
-            return True
+        # Schritt 3: Auth-Code gegen Token tauschen
+        resp = requests.post(
+            f"{base_url}/auth/token",
+            data={"grant_type": "authorization_code", "code": auth_code, "client_id": client_id},
+        )
+        resp.raise_for_status()
+        tokens = resp.json()
 
-    except Exception as e:
-        print(f"  Login-Versuch 1 fehlgeschlagen: {e}")
+        # Schritt 4: Token in Browser-localStorage setzen
+        driver.get(base_url)
+        time.sleep(2)
 
-    # Fallback: Versuche direkt mit Long-Lived Access Token
-    try:
-        # Prüfe ob wir bereits eingeloggt sind
+        hass_tokens = json.dumps({
+            "hassUrl": base_url,
+            "clientId": client_id,
+            "access_token": tokens["access_token"],
+            "refresh_token": tokens["refresh_token"],
+            "token_type": "Bearer",
+        })
+        driver.execute_script(f"localStorage.setItem('hassTokens', '{hass_tokens}');")
         driver.get(base_url)
         time.sleep(3)
-        if "auth" not in driver.current_url:
-            print("  Bereits eingeloggt")
-            return True
-    except Exception:
-        pass
 
-    print("  WARNUNG: Automatischer Login fehlgeschlagen.")
-    print("  Bitte manuell einloggen und Script erneut starten.")
-    return False
+        print("  Login erfolgreich")
+        return True
+
+    except Exception as e:
+        print(f"  Login fehlgeschlagen: {e}")
+        return False
 
 
 # =============================================================================
@@ -185,8 +201,8 @@ def redact_screenshot(filepath):
         return
 
     img = Image.open(filepath)
-    draw = ImageDraw.Draw(img)
     width, height = img.size
+    name = os.path.basename(filepath)
 
     # ---- Feste Bereiche verwischen ----
 
@@ -194,8 +210,9 @@ def redact_screenshot(filepath):
     sidebar_region = (0, height - 60, 256, height)
     _blur_region(img, sidebar_region)
 
-    # 2. Falls Settings-Seite: obere Leiste kann URL/IP zeigen
-    # (In headless gibt es keine Browser-URL-Leiste, aber HA zeigt manchmal IPs)
+    # 2. Home-Dashboard: Anwesenheit-Karte (Benutzername + Status)
+    if "dashboard_home" in name:
+        _blur_region(img, (690, 140, 1080, 170))
 
     img.save(filepath, optimize=True)
 
@@ -221,8 +238,8 @@ def _blur_region(img, region):
 
 def main():
     parser = argparse.ArgumentParser(description="IceHomeAssist Screenshot Automation")
-    parser.add_argument("--ha-url", default="http://localhost:8123",
-                        help="Home Assistant URL (default: http://localhost:8123)")
+    parser.add_argument("--ha-url", default="http://127.0.0.1:8123",
+                        help="Home Assistant URL (default: http://127.0.0.1:8123)")
     parser.add_argument("--username", default="",
                         help="HA Benutzername")
     parser.add_argument("--password", default="",
