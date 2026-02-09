@@ -63,7 +63,9 @@
 
             <p>
                 Das Netzwerk-Monitoring umfasst die UniFi-Infrastruktur mit Radar-Visualisierung verbundener
-                Geräte, MikroTik Managed Switches mit SNMP-Überwachung sowie die Fritz!Box als Internet-Gateway.
+                Geräte, MikroTik und Cisco Managed Switches mit SNMP-Überwachung, die Fritz!Box als Internet-Gateway
+                sowie eine automatisch generierte <strong>Network Admin Page</strong>, die alle Netzwerkgeräte
+                (aus AdGuard-DNS-Daten) mit klickbaren Web/SSH/Telnet-Links anzeigt.
                 Über eigene Python-Skripte werden die Daten aufbereitet und als Sensoren in Home Assistant
                 bereitgestellt.
             </p>
@@ -401,6 +403,318 @@ template:
         device_class: connectivity</code></pre>
 
             <!-- ============================================================ -->
+            <h2>Cisco 3560C Switches</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Zusätzlich zu den MikroTik Switches sind zwei <strong>Cisco Catalyst 3560C</strong> Layer-3 Switches
+                im Einsatz. Diese verwalten die WiFi-Infrastruktur (Access Points, IoT-Geräte) und werden ebenfalls
+                per SNMP überwacht. Die Switches laufen auf IOS 15.2(2)E6 und bieten SSH, Telnet und Web-Management.
+            </p>
+
+            <h3>Switch-Übersicht</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hostname</th>
+                        <th>IP-Adresse</th>
+                        <th>Ports</th>
+                        <th>Funktion</th>
+                        <th>Zugang</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>WiFi-AZ</strong></td>
+                        <td><code>192.168.178.193</code></td>
+                        <td>10x 1GbE</td>
+                        <td>WiFi APs Arbeitszimmer</td>
+                        <td>SSH, Telnet, HTTP, HTTPS</td>
+                    </tr>
+                    <tr>
+                        <td><strong>WiFi-IoT</strong></td>
+                        <td><code>192.168.178.194</code></td>
+                        <td>10x 1GbE</td>
+                        <td>IoT-Geräte VLAN</td>
+                        <td>SSH, Telnet, HTTP, HTTPS</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>SSH auf Cisco IOS aktivieren (Step-by-Step)</h3>
+            <p>
+                Falls SSH auf einem Cisco Switch noch nicht aktiviert ist, kann dies über eine Telnet-Session
+                konfiguriert werden. Voraussetzung: ein lokaler Benutzer muss bereits existieren.
+            </p>
+            <pre><code># 1. Per Telnet verbinden
+telnet 192.168.178.193
+
+# 2. Login mit lokalem User
+Username: admin
+Password: ****
+
+# 3. Enable-Modus
+enable
+Password: ****
+
+# 4. Konfiguration
+configure terminal
+
+# 5. Hostname und Domain setzen (nötig für RSA Key)
+hostname WiFi-AZ
+ip domain-name paulis.lan
+
+# 6. RSA-Schlüssel generieren (2048 Bit)
+crypto key generate rsa modulus 2048
+# → Dauert ca. 10 Sekunden
+
+# 7. SSH Version 2 aktivieren
+ip ssh version 2
+
+# 8. VTY-Lines für SSH konfigurieren
+line vty 0 15
+ transport input ssh telnet
+ login local
+end
+
+# 9. Konfiguration speichern
+write memory
+
+# 10. Verifizieren
+show ip ssh
+# → Ausgabe: "SSH Enabled - version 2.0"</code></pre>
+
+            <div class="info-box">
+                <strong>Tipp:</strong> Für die Automatisierung kann ein <code>expect</code>-Script
+                verwendet werden, das die Telnet-Session skriptet. Beispiel unter
+                <code>/config/scripts/enable_ssh_cisco.exp</code>.
+            </div>
+
+            <h3>SNMP-Konfiguration auf Cisco IOS</h3>
+            <pre><code># Cisco IOS - SNMP aktivieren
+configure terminal
+snmp-server community s3cr3t ro
+snmp-server location "Arbeitszimmer"
+snmp-server contact "admin"
+end
+write memory
+
+# Verfügbare SNMP OIDs (Cisco-spezifisch):
+# Uptime:     .1.3.6.1.2.1.1.3.0        (sysUpTime, Timeticks)
+# CPU-Last:   .1.3.6.1.4.1.9.9.109.1.1.1.1.7.1  (cpmCPUTotal5minRev)
+# Interfaces: .1.3.6.1.2.1.2.2.1.2.101xx        (Cisco nutzt 10101+ für GigE-Ports)
+
+# Test von der Kommandozeile:
+snmpget -v2c -c s3cr3t 192.168.178.193 .1.3.6.1.2.1.1.1.0</code></pre>
+
+            <h3>Home Assistant Integration (packages/network_switches.yaml)</h3>
+            <pre><code># Cisco SNMP Sensoren
+sensor:
+  - platform: snmp
+    host: 192.168.178.193
+    community: !secret snmp_cisco
+    baseoid: .1.3.6.1.2.1.1.3.0
+    name: "SW Cisco AZ Uptime"
+    unique_id: cisco_az_uptime
+    value_template: &gt;
+      {&#37; set ticks = value | int(0) &#37;}
+      {&#37; set days = ticks // 8640000 &#37;}
+      {&#37; set hours = (ticks &#37; 8640000) // 360000 &#37;}
+      {{ days }}d {{ hours }}h
+    scan_interval: 300
+
+  - platform: snmp
+    host: 192.168.178.193
+    community: !secret snmp_cisco
+    baseoid: .1.3.6.1.4.1.9.9.109.1.1.1.1.7.1
+    name: "SW Cisco AZ CPU"
+    unique_id: cisco_az_cpu
+    unit_of_measurement: "%"
+    scan_interval: 300
+
+# Port-Monitoring (snmp_switch_ports.py erkennt Cisco automatisch)
+command_line:
+  - sensor:
+      name: "SW Cisco AZ Ports"
+      command: "python3 /config/scripts/snmp_switch_ports.py 192.168.178.193 s3cr3t 10"
+      value_template: "{{ value_json.count }}"
+      unit_of_measurement: "Ports"
+      json_attributes:
+        - ports
+      scan_interval: 120
+
+  - binary_sensor:
+      name: "SW Cisco AZ Online"
+      command: "ping -c 1 -W 2 192.168.178.193 &gt; /dev/null 2&gt;&amp;1 &amp;&amp; echo ON || echo OFF"
+      payload_on: "ON"
+      payload_off: "OFF"
+      device_class: connectivity</code></pre>
+
+            <h3>snmp_switch_ports.py (MikroTik + Cisco)</h3>
+            <p>
+                Das Port-Monitoring-Script wurde erweitert, um sowohl MikroTik als auch Cisco Switches
+                zu unterstützen. Es erkennt automatisch den Switch-Typ anhand der Interface-Indizes:
+            </p>
+            <pre><code># Aufruf:
+python3 snmp_switch_ports.py &lt;host&gt; [community] [num_ports]
+
+# MikroTik (Standard): sequentielle Indices 1..26, Community "public"
+python3 snmp_switch_ports.py 192.168.178.165
+
+# Cisco: Indices 10101..101xx für GigabitEthernet-Ports
+python3 snmp_switch_ports.py 192.168.178.193 s3cr3t 10
+
+# Auto-Erkennung: Das Script prüft Index 10101 auf "Ethernet"
+# → Cisco: GigabitEthernet0/1 bis GigabitEthernet0/10
+# → MikroTik: Port 1 bis Port 26
+
+# Ausgabe (JSON):
+{
+  "count": 7,
+  "ports": [
+    {"port": 10101, "name": "GigabitEthernet0/1", "speed": 1000,
+     "in": 1.2, "out": 0.8, "util": 0, "bar": "░░░░░░░░░░"}
+  ]
+}</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Network Admin Page</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Die <strong>Network Admin Page</strong> ist eine automatisch generierte HTML-Seite, die alle
+                Netzwerkgeräte mit ihren verfügbaren Diensten (HTTP, SSH, Telnet etc.) in einer übersichtlichen
+                Tabelle darstellt. Die Daten stammen aus der AdGuard Home DNS API und einem parallelen Port-Scan.
+            </p>
+
+            <div class="screenshot">
+                <img src="images/network-admin-page.png" alt="Network Admin Page" loading="lazy">
+                <p class="screenshot-caption">Die Network Admin Page mit Infrastruktur-Geräten und entdeckten Clients</p>
+            </div>
+
+            <h3>Architektur</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Komponente</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Script</strong></td>
+                        <td><code>/config/scripts/network_admin.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ausgabe</strong></td>
+                        <td><code>/config/www/network-admin.html</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>URL</strong></td>
+                        <td><code>http://&lt;HA-IP&gt;:8123/local/network-admin.html</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Datenquellen</strong></td>
+                        <td>AdGuard Home API + TCP Port-Scan</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Aktualisierung</strong></td>
+                        <td>Alle 5 Minuten via HA <code>command_line</code> Sensor</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Laufzeit</strong></td>
+                        <td>~5-10 Sekunden (parallelisierter Scan)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Setup Step-by-Step</h3>
+            <ol>
+                <li>
+                    <strong>AdGuard Home API-Zugang sicherstellen</strong>
+                    <p>Die API wird über Basic Auth angesprochen. Zugangsdaten in <code>network_admin.py</code> konfigurieren.</p>
+                    <pre><code># Test:
+curl -u user:pass http://&lt;adguard-ip&gt;/control/clients</code></pre>
+                </li>
+                <li>
+                    <strong>Script anlegen</strong>
+                    <pre><code># /config/scripts/network_admin.py
+# Konfigurierbare Parameter am Anfang des Scripts:
+ADGUARD_URL  = "http://&lt;adguard-ip&gt;"
+ADGUARD_USER = "user"
+ADGUARD_PASS = "pass"         # oder aus secrets.yaml
+OUTPUT_FILE  = "/config/www/network-admin.html"
+SCAN_PORTS   = [22, 23, 80, 443, 4444, 5000, 5001, 8080, 8123, 8291, 8443, ...]
+PORT_TIMEOUT = 0.5            # Sekunden pro Port
+MAX_SCAN_WORKERS = 50         # Parallele Threads</code></pre>
+                </li>
+                <li>
+                    <strong>Infrastruktur-Geräte definieren</strong>
+                    <p>
+                        Im Script werden bekannte Geräte mit festen Einträgen definiert (Name, IP, Gruppe,
+                        SSH-User). Diese erscheinen immer oben in eigenen Sektionen. Zusätzlich kann ein
+                        <code>KNOWN_SERVICES</code> Dict definiert werden, das bekannte Ports pro IP enthält
+                        &ndash; diese werden auch angezeigt, wenn der Port-Scan das Gerät nicht erreicht.
+                    </p>
+                </li>
+                <li>
+                    <strong>HA Sensor konfigurieren</strong>
+                    <pre><code># packages/network_switches.yaml
+command_line:
+  - sensor:
+      name: "Network Admin Update"
+      unique_id: network_admin_update
+      command: "python3 /config/scripts/network_admin.py"
+      value_template: "{{ value }}"
+      scan_interval: 300      # alle 5 Minuten
+      command_timeout: 120    # großzügiger Timeout für Scan
+      icon: mdi:web</code></pre>
+                </li>
+                <li>
+                    <strong>HA neu laden</strong>
+                    <p>Entwicklerwerkzeuge &rarr; YAML &rarr; <em>Alle YAML-Konfiguration neu laden</em></p>
+                </li>
+                <li>
+                    <strong>Seite testen</strong>
+                    <pre><code># Im Browser öffnen:
+http://&lt;HA-IP&gt;:8123/local/network-admin.html</code></pre>
+                </li>
+            </ol>
+
+            <h3>Features der Admin Page</h3>
+            <ul>
+                <li><strong>Infrastruktur-Sektionen:</strong> Router, Firewalls, MikroTik Switches, Cisco Switches, Access Points, Server &ndash; jeweils mit Status-Dot und Service-Badges</li>
+                <li><strong>Entdeckte Geräte:</strong> Automatisch aus AdGuard DNS (DHCP, ARP, rDNS) mit Suchfilter</li>
+                <li><strong>Klickbare Service-Links:</strong>
+                    <ul>
+                        <li>HTTP/HTTPS &rarr; öffnet im Browser</li>
+                        <li>SSH &rarr; <code>ssh://user@ip</code> (Chrome Secure Shell Extension oder OS-Handler)</li>
+                        <li>Telnet &rarr; <code>telnet://ip</code></li>
+                        <li>Spezial-Ports: HA (8123), Node-RED (8443), WinBox (8291), DSM (5000/5001), Homarr (7575), Admin (4444)</li>
+                    </ul>
+                </li>
+                <li><strong>Auto-Refresh:</strong> Seite aktualisiert sich alle 5 Minuten</li>
+                <li><strong>Dark Theme:</strong> Passt zu Homarr und HA Dark Mode</li>
+                <li><strong>Stats-Übersicht:</strong> Anzahl Infrastruktur-Geräte, entdeckte Geräte, Online-Geräte</li>
+            </ul>
+
+            <h3>Homarr-Einbettung</h3>
+            <ol>
+                <li>Homarr öffnen (z.B. <code>http://nas:7575</code>)</li>
+                <li>Board bearbeiten &rarr; Widget hinzufügen &rarr; <strong>iframe</strong></li>
+                <li>URL: <code>http://&lt;HA-IP&gt;:8123/local/network-admin.html</code></li>
+                <li>Scrolling erlauben, Höhe anpassen (empfohlen: 800px+)</li>
+            </ol>
+
+            <h3>Chrome Secure Shell Extension</h3>
+            <p>
+                Damit <code>ssh://</code>-Links direkt im Browser funktionieren, wird die
+                <a href="https://chromewebstore.google.com/detail/secure-shell/iodihamcpbpeioajjeobimgagajmlibd">Chrome Secure Shell Extension</a>
+                (von Google) empfohlen. Nach Installation öffnen SSH-Links direkt eine Terminal-Session im Browser.
+                Alternativ: PuTTY, Termius oder das System-Terminal als SSH-Handler registrieren.
+            </p>
+
+            <!-- ============================================================ -->
             <h2>Fritz!Box Integration</h2>
             <!-- ============================================================ -->
 
@@ -593,7 +907,7 @@ const searchIndex = [
     {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
     {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
     {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
-    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Cisco 3560C Network Admin AdGuard SSH"},
     {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive"},
     {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter"},
     {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh"},
