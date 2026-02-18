@@ -25,8 +25,8 @@ Die vollständige HTML-Dokumentation (deutsch) ist unter GitHub Pages verfügbar
 | **HA Image** | `ghcr.io/home-assistant/qemux86-64-homeassistant` |
 | **Config-Pfad** | `/var/lib/homeassistant/homeassistant/` (Host) = `/config` (Container) |
 | **Dashboards** | 11 YAML-Dashboards |
-| **Packages** | 11 Konfigurations-Pakete |
-| **Automationen** | 4 YAML-Automationen + Node-RED Flows |
+| **Packages** | 12 Konfigurations-Pakete |
+| **Automationen** | 4 YAML-Automationen + Node-RED Flows (10 Tabs, 188 Nodes) |
 | **Integrationen** | 40+ (davon 12 HACS Custom Components) |
 
 ## Integrationen
@@ -71,6 +71,7 @@ IceHomeAssist/
 │   ├── wifi_buttons.yaml
 │   ├── network_switches.yaml
 │   ├── notifications.yaml
+│   ├── matrix3_notifications.yaml
 │   ├── thw_divera.yaml
 │   ├── thw_nina.yaml
 │   ├── wetter.yaml
@@ -86,12 +87,21 @@ IceHomeAssist/
 │   └── snmp_switch_ports.py    # SNMP Switch Monitoring
 ├── nodered/                    # Node-RED
 │   └── flows.json
+├── projects/                   # Hardware-Projekte (Bauanleitungen)
+│   └── max7219-matrix/         # MAX7219 LED-Matrix Uhr & PV-Anzeige
 └── docs/                       # HTML Dokumentation
     ├── index.html
     ├── css/style.css
     ├── images/
     └── 01-16 HTML Seiten
 ```
+
+## Hardware-Projekte
+
+| Projekt | Beschreibung |
+|---|---|
+| [MAX7219 LED-Matrix](projects/max7219-matrix/) | 3x ESP8266 + MAX7219 (32x8 & 64x8) als Uhr, PV-Anzeige & HA-Benachrichtigungen (Tasmota + Node-RED) |
+| Tibber Strompreis-Ampel | 2x ESP8266 (Tasmota) mit je 3 LEDs (Rot/Gelb/Gruen) - zeigt Tibber Preisstatus, blinkt bei guenstigster Periode, Rot bei Peak-Preisen |
 
 ## Sicherheit
 

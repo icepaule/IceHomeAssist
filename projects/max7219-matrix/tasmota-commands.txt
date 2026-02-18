@@ -1,0 +1,83 @@
+# =============================================================================
+# Tasmota Konfigurationsbefehle für MAX7219 LED-Matrix Displays
+# =============================================================================
+# Diese Befehle via Serial (115200 Baud) oder Tasmota Web-Konsole eingeben.
+# Platzhalter (<...>) durch eigene Werte ersetzen!
+# =============================================================================
+
+# =============================================================================
+# Matrix1 (PV-Schuppen, 32x8, 4 Module)
+# =============================================================================
+# Pins: DIN=D7(GPIO13), CS=D3(GPIO0), CLK=D5(GPIO14)
+
+# --- WiFi ---
+Backlog SSID1 <WLAN_SSID>; Password1 <WLAN_PASSWORT>
+
+# --- MQTT ---
+Backlog MqttHost <BROKER_IP>; MqttPort 1883; MqttUser <MQTT_USER>; MqttPassword <MQTT_PASSWORT>
+
+# --- Gerätename ---
+Backlog Topic Matrix1; FriendlyName1 Matrix1
+
+# --- Display (MAX7219 32x8) ---
+Backlog DisplayModel 19; DisplayWidth 32; DisplayHeight 8; DisplayMode 0; DisplayDimmer 5
+
+# --- Zeitzone (Europa/Berlin, automatische Sommer-/Winterzeit) ---
+Backlog Timezone 99; TimeDST 0,0,3,1,2,120; TimeSTD 0,0,10,1,3,60
+
+# --- Home Assistant Discovery ---
+SetOption114 1
+
+# =============================================================================
+# Matrix2 (Innenraum, 32x8, 4 Module)
+# =============================================================================
+# Pins: DIN=D2(GPIO4), CS=D1(GPIO5), CLK=D0(GPIO16)
+
+Backlog SSID1 <WLAN_SSID>; Password1 <WLAN_PASSWORT>
+Backlog MqttHost <BROKER_IP>; MqttPort 1883; MqttUser <MQTT_USER>; MqttPassword <MQTT_PASSWORT>
+Backlog Topic Matrix2; FriendlyName1 Matrix2
+Backlog DisplayModel 19; DisplayWidth 32; DisplayHeight 8; DisplayMode 0; DisplayDimmer 5
+Backlog Timezone 99; TimeDST 0,0,3,1,2,120; TimeSTD 0,0,10,1,3,60
+SetOption114 1
+
+# =============================================================================
+# Matrix3 (Innenraum, 64x8, 8 Module) - Custom Tasmota Build erforderlich!
+# =============================================================================
+# Pins: DIN=D7(GPIO13), CS=D3(GPIO0), CLK=D5(GPIO14)
+# GPIO-Typ: MAX7219 DIN/CLK/CS (NICHT SSPI!)
+
+Backlog SSID1 <WLAN_SSID>; Password1 <WLAN_PASSWORT>
+Backlog MqttHost <BROKER_IP>; MqttPort 1883; MqttUser <MQTT_USER>; MqttPassword <MQTT_PASSWORT>
+Backlog Topic Matrix3; FriendlyName1 Matrix3
+
+# Template: MAX7219 DIN=GPIO13(Pos9=6944), CLK=GPIO14(Pos10=6912), CS=GPIO0(Pos0=6976)
+Template {"NAME":"Matrix3","GPIO":[6976,0,0,0,0,0,0,0,0,6944,6912,0,0,0],"FLAG":0,"BASE":18}
+Module 0
+
+# Display: 64px breit (8 Module à 8px)
+Backlog DisplayModel 19; DisplayWidth 64; DisplayHeight 8; DisplayMode 0; DisplayDimmer 5
+Backlog Timezone 99; TimeDST 0,0,3,1,2,120; TimeSTD 0,0,10,1,3,60
+SetOption114 1
+Restart 1
+
+# =============================================================================
+# Nützliche Test-Befehle
+# =============================================================================
+# DisplayText Hallo        → Zeigt "Hallo" auf dem Display
+# DisplayText 12:34        → Zeigt "12:34"
+# DisplayModel             → Aktuelles Display-Modell (muss 19 sein)
+# DisplayDimmer 1          → Minimale Helligkeit
+# DisplayDimmer 15         → Maximale Helligkeit
+# Status 0                 → Vollständiger Status
+# Status 5                 → Netzwerk-Info (IP etc.)
+# Status 6                 → MQTT-Verbindungsinfo
+
+# =============================================================================
+# Custom Build Kurzanleitung (für Matrix3 / DisplayModel 19)
+# =============================================================================
+# git clone --depth 1 https://github.com/arendst/Tasmota.git && cd Tasmota
+# In tasmota/include/tasmota_configurations.h im FIRMWARE_DISPLAYS Block:
+#   #define USE_DISPLAY_MAX7219_MATRIX  (nach USE_DISPLAY_MAX7219 einfügen)
+# pio run -e tasmota-display
+# esptool --port /dev/ttyUSB0 erase-flash
+# esptool --port /dev/ttyUSB0 write-flash -fs detect -fm dout 0x0 .pio/build/tasmota-display/firmware.bin

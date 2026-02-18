@@ -1,25 +1,25 @@
 title: Energie
 views:
   # ===========================================================================
-  # ÜBERSICHT
+  # UEBERSICHT
   # ===========================================================================
-  - title: Übersicht
+  - title: Uebersicht
     path: uebersicht
     icon: mdi:flash
     cards:
       - type: markdown
-        content: "## ⚡ Energie Übersicht"
+        content: "## Energie Uebersicht"
 
       # Aktuelle Leistung
       - type: horizontal-stack
         cards:
           - type: entity
             entity: sensor.pv_leistung
-            name: "☀️ PV"
+            name: PV
             icon: mdi:solar-power
           - type: entity
             entity: sensor.tibber_pulse_paule_power
-            name: "🏠 Netz"
+            name: Netz
             icon: mdi:transmission-tower
 
       # PV Gauge
@@ -38,9 +38,9 @@ views:
       - type: horizontal-stack
         cards:
           - type: entity
-            entity: sensor.tibber_prices
+            entity: sensor.paule_current_electricity_price
             name: Strompreis
-            unit: "€/kWh"
+            unit: "ct/kWh"
           - type: entity
             entity: sensor.tibber_preis_status
             name: Status
@@ -48,7 +48,7 @@ views:
       # Kosten heute
       - type: entity
         entity: sensor.tibber_pulse_paule_accumulated_cost
-        name: "💶 Kosten Heute"
+        name: Kosten Heute
         icon: mdi:cash-multiple
 
       # Verbraucher mit Kosten
@@ -63,7 +63,7 @@ views:
             name: Arbeitszimmer
             icon: mdi:desk
           - entity: sensor.kueche_leistung
-            name: Küche
+            name: Kueche
             icon: mdi:countertop
           - entity: sensor.waschmaschine_leistung
             name: Waschmaschine
@@ -83,53 +83,35 @@ views:
             name: Netzverbrauch
 
   # ===========================================================================
-  # STROMPREISE & KOSTEN (Tibber Dashboard)
+  # STROMPREISE (mit tibber_prices HACS Sensoren)
   # ===========================================================================
-  - title: Preise
+  - title: Strompreise
     path: preise
     icon: mdi:currency-eur
     cards:
-      # ----- Aktueller Preis & Tageskosten -----
+
+      # =====================================================================
+      # 1. HEADER ROW: Aktueller Preis, Status, Kosten Heute
+      # =====================================================================
       - type: horizontal-stack
         cards:
           - type: entity
-            entity: sensor.tibber_preis_aktuell
+            entity: sensor.paule_current_electricity_price
             name: Preis jetzt
             icon: mdi:currency-eur
+            unit: "ct/kWh"
           - type: entity
             entity: sensor.tibber_preis_status
             name: Status
+            icon: mdi:tag-outline
           - type: entity
             entity: sensor.tibber_pulse_paule_accumulated_cost
             name: Kosten heute
             icon: mdi:cash-multiple
 
-      # Preis-Analyse Heute
-      - type: horizontal-stack
-        cards:
-          - type: entity
-            entity: sensor.tibber_durchschnittspreis_heute
-            name: Schnitt
-          - type: entity
-            entity: sensor.tibber_gunstigster_preis_heute
-            name: Min
-          - type: entity
-            entity: sensor.tibber_teuerster_preis_heute
-            name: Max
-
-      - type: horizontal-stack
-        cards:
-          - type: entity
-            entity: sensor.tibber_gunstigste_stunde_heute
-            name: Billigste Std
-          - type: entity
-            entity: sensor.tibber_teuerste_stunde_heute
-            name: Teuerste Std
-          - type: entity
-            entity: sensor.tibber_gunstige_stunden_heute
-            name: Billige Std
-
-      # Empfehlung günstig
+      # =====================================================================
+      # 2. CONDITIONAL RECOMMENDATIONS
+      # =====================================================================
       - type: conditional
         conditions:
           - entity: sensor.tibber_preis_status
@@ -137,10 +119,21 @@ views:
         card:
           type: markdown
           content: |
-            ### JETZT GÜNSTIG
-            Guter Zeitpunkt für Waschmaschine, Trockner oder Spülmaschine!
+            ### JETZT GUENSTIG
+            Guter Zeitpunkt fuer Waschmaschine, Trockner oder Spuelmaschine!
+            Aktueller Preis liegt unter dem Tagesdurchschnitt.
 
-      # Empfehlung teuer
+      - type: conditional
+        conditions:
+          - entity: sensor.tibber_preis_status
+            state: "normal"
+        card:
+          type: markdown
+          content: |
+            ### NORMALER PREIS
+            Preis ist im durchschnittlichen Bereich. Grosse Verbraucher
+            besser auf guenstigere Zeiten verschieben, wenn moeglich.
+
       - type: conditional
         conditions:
           - entity: sensor.tibber_preis_status
@@ -149,63 +142,331 @@ views:
           type: markdown
           content: |
             ### AKTUELL TEUER
-            Besser auf günstigeren Zeitpunkt warten.
+            Besser auf guenstigeren Zeitpunkt warten.
+            Grosse Verbraucher moeglichst nicht jetzt einschalten!
 
-      # ----- Preischart Heute + Morgen -----
+      # =====================================================================
+      # 3. PREISANALYSE HEUTE - Glance
+      # =====================================================================
+      - type: glance
+        title: Preisanalyse Heute
+        show_state: true
+        entities:
+          - entity: sensor.paule_today_s_lowest_price
+            name: Min
+            icon: mdi:arrow-down-bold
+          - entity: sensor.tibber_durchschnittspreis_heute
+            name: Durchschnitt
+            icon: mdi:approximately-equal
+          - entity: sensor.paule_today_s_highest_price
+            name: Max
+            icon: mdi:arrow-up-bold
+          - entity: sensor.tibber_preis_ranking
+            name: Ranking
+            icon: mdi:percent-outline
+
+      # =====================================================================
+      # 4. BESTE & TEUERSTE ZEITEN - Entities Card
+      # =====================================================================
+      - type: entities
+        title: Beste & Teuerste Zeiten
+        show_header_toggle: false
+        entities:
+          - type: section
+            label: Guenstigste Periode
+          - entity: sensor.tibber_beste_zeit_start
+            name: Beginn
+            icon: mdi:clock-start
+          - entity: sensor.tibber_beste_zeit_ende
+            name: Ende
+            icon: mdi:clock-end
+          - entity: sensor.paule_best_price_starts_in
+            name: Beginnt in (h)
+            icon: mdi:timer-sand
+          - entity: sensor.paule_best_price_remaining_time
+            name: Restzeit (h)
+            icon: mdi:timer-outline
+          - type: section
+            label: Teuerste Periode
+          - entity: sensor.tibber_peak_zeit_start
+            name: Beginn
+            icon: mdi:clock-alert
+          - entity: sensor.tibber_peak_zeit_ende
+            name: Ende
+            icon: mdi:clock-alert-outline
+
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.paule_best_price_period
+            state: "on"
+        card:
+          type: markdown
+          content: |
+            ### BESTE PREISPERIODE AKTIV
+            Jetzt ist die guenstigste Zeit! Grosse Verbraucher einschalten.
+
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.paule_peak_price_period
+            state: "on"
+        card:
+          type: markdown
+          content: |
+            ### PEAK-PREISPERIODE AKTIV
+            Aktuell ist die teuerste Periode. Verbrauch minimieren!
+
+      # =====================================================================
+      # 5. HAUPTCHART: Strompreis Heute (ct/kWh) - ApexCharts
+      #    Historie: HACS tibber_prices Sensor (ct/kWh, 15min Intervalle)
+      #    Prognose: Einzelstundenpreise aus kumulativen Durchschnitten
+      # =====================================================================
       - type: custom:apexcharts-card
         header:
           show: true
-          title: Strompreise Heute & Morgen (ct/kWh)
-          show_states: false
-        graph_span: 48h
+          title: Strompreis Heute (ct/kWh)
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
         span:
           start: day
+        now:
+          show: true
+          label: Jetzt
+          color: '#ffffff'
+        yaxis:
+          - min: 0
+            apex_config:
+              tickAmount: 6
+              labels:
+                formatter: |
+                  EVAL:function(val) { return val.toFixed(1) + ' ct'; }
+        apex_config:
+          chart:
+            height: 300
+          tooltip:
+            x:
+              format: "HH:mm"
+          plotOptions:
+            bar:
+              columnWidth: "90%"
+              borderRadius: 2
+        series:
+          - entity: sensor.paule_current_electricity_price
+            type: column
+            name: Historie
+            unit: " ct/kWh"
+            float_precision: 1
+            statistics:
+              type: mean
+              period: hour
+            color_threshold:
+              - value: 0
+                color: '#4CAF50'
+              - value: 25
+                color: '#8BC34A'
+              - value: 28
+                color: '#CDDC39'
+              - value: 30
+                color: '#FFC107'
+              - value: 33
+                color: '#FF9800'
+              - value: 36
+                color: '#F44336'
+          - entity: sensor.paule_current_electricity_price
+            type: column
+            name: Prognose
+            unit: " ct/kWh"
+            float_precision: 1
+            data_generator: |
+              const now = new Date();
+              const h = now.getHours();
+              const avg = [];
+              for (let i = 1; i <= 5; i++) {
+                const s = 'sensor.paule_price_next_' + i + 'h';
+                avg.push(parseFloat(hass.states[s]?.state) || 0);
+              }
+              const hourly = [avg[0]];
+              for (let i = 1; i < avg.length; i++) {
+                hourly.push((i + 1) * avg[i] - i * avg[i - 1]);
+              }
+              return hourly.map((val, i) => {
+                const t = new Date(now);
+                t.setMinutes(0, 0, 0);
+                t.setHours(h + 1 + i);
+                return [t.getTime(), Math.round(val * 10) / 10];
+              });
+            color_threshold:
+              - value: 0
+                color: '#4CAF50'
+              - value: 25
+                color: '#8BC34A'
+              - value: 28
+                color: '#CDDC39'
+              - value: 30
+                color: '#FFC107'
+              - value: 33
+                color: '#FF9800'
+              - value: 36
+                color: '#F44336'
+
+      # =====================================================================
+      # 6. PREISPROGNOSE naechste 10 Stunden
+      #    Kombination: Historie (vergangene Stunden) + Prognose (Zukunft)
+      #    Einzelstundenpreise aus kumulativen price_next_Xh abgeleitet
+      # =====================================================================
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Preisprognose naechste 10 Stunden (ct/kWh)
+        graph_span: 10h
+        span:
+          start: hour
         now:
           show: true
           label: Jetzt
         yaxis:
           - min: 0
             apex_config:
-              tickAmount: 6
+              tickAmount: 4
+              labels:
+                formatter: |
+                  EVAL:function(val) { return val.toFixed(1) + ' ct'; }
+        apex_config:
+          chart:
+            height: 250
+          tooltip:
+            x:
+              format: "HH:mm"
+          plotOptions:
+            bar:
+              columnWidth: "70%"
+              borderRadius: 3
+              dataLabels:
+                position: top
+          dataLabels:
+            enabled: true
+            formatter: |
+              EVAL:function(val) { if (!val) return ''; return val.toFixed(1); }
+            offsetY: -20
+            style:
+              fontSize: "11px"
+              colors: ["#fff"]
+          xaxis:
+            labels:
+              format: "HH:mm"
+              datetimeUTC: false
         series:
-          - entity: sensor.tibber_prices
+          - entity: sensor.paule_current_electricity_price
             type: column
-            name: Strompreis
-            float_precision: 1
+            name: Vergangen
             unit: " ct/kWh"
+            float_precision: 1
+            statistics:
+              type: mean
+              period: hour
+            color_threshold:
+              - value: 0
+                color: '#4CAF50'
+              - value: 25
+                color: '#8BC34A'
+              - value: 28
+                color: '#CDDC39'
+              - value: 30
+                color: '#FFC107'
+              - value: 33
+                color: '#FF9800'
+              - value: 36
+                color: '#F44336'
+          - entity: sensor.paule_current_electricity_price
+            type: column
+            name: Prognose
+            unit: " ct/kWh"
+            float_precision: 1
             data_generator: |
-              const today = entity.attributes.today || [];
-              const tomorrow = entity.attributes.tomorrow || [];
-              const all = [...today, ...tomorrow];
-              return all.map((item) => {
-                const time = new Date(item.startsAt).getTime();
-                const price = item.total * 100;
-                return [time, price];
+              const now = new Date();
+              const h = now.getHours();
+              const cur = parseFloat(hass.states['sensor.paule_current_electricity_price']?.state) || 0;
+              const avg = [];
+              for (let i = 1; i <= 5; i++) {
+                avg.push(parseFloat(hass.states['sensor.paule_price_next_' + i + 'h']?.state) || 0);
+              }
+              const hourly = [cur, avg[0]];
+              for (let i = 1; i < avg.length; i++) {
+                hourly.push((i + 1) * avg[i] - i * avg[i - 1]);
+              }
+              return hourly.map((val, i) => {
+                const t = new Date(now);
+                t.setMinutes(0, 0, 0);
+                t.setHours(h + i);
+                return [t.getTime(), Math.round(val * 10) / 10];
               });
             color_threshold:
               - value: 0
                 color: '#4CAF50'
-              - value: 20
-                color: '#8BC34A'
               - value: 25
-                color: '#FFC107'
+                color: '#8BC34A'
+              - value: 28
+                color: '#CDDC39'
               - value: 30
+                color: '#FFC107'
+              - value: 33
                 color: '#FF9800'
-              - value: 35
+              - value: 36
                 color: '#F44336'
 
-      # Morgen Durchschnitt (falls verfügbar)
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.paule_current_price_trend
+            name: Preistrend
+            icon: mdi:trending-up
+          - type: entity
+            entity: sensor.paule_today_s_price_level
+            name: Bewertung Heute
+            icon: mdi:star-outline
+
+      # =====================================================================
+      # 7. MORGEN - Conditional (nur wenn Daten verfuegbar)
+      # =====================================================================
       - type: conditional
         conditions:
-          - entity: sensor.tibber_durchschnittspreis_morgen
-            state_not: "unavailable"
+          - entity: binary_sensor.paule_tomorrow_s_data_available
+            state: "on"
         card:
-          type: entity
-          entity: sensor.tibber_durchschnittspreis_morgen
-          name: Durchschnittspreis Morgen
-          icon: mdi:calendar-arrow-right
+          type: vertical-stack
+          cards:
+            - type: glance
+              title: Preisanalyse Morgen
+              show_state: true
+              entities:
+                - entity: sensor.paule_tomorrow_s_lowest_price
+                  name: Min
+                  icon: mdi:arrow-down-bold
+                - entity: sensor.paule_price_tomorrow
+                  name: Durchschnitt
+                  icon: mdi:approximately-equal
+                - entity: sensor.paule_tomorrow_s_highest_price
+                  name: Max
+                  icon: mdi:arrow-up-bold
+                - entity: sensor.paule_tomorrow_s_price_level
+                  name: Bewertung
+                  icon: mdi:star-outline
 
-      # ----- Netzverbrauch Heute (Stündlich) -----
+      # Fallback: Morgen noch nicht verfuegbar
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.paule_tomorrow_s_data_available
+            state: "off"
+        card:
+          type: markdown
+          content: |
+            ### Morgen
+            Preisdaten fuer morgen sind noch nicht verfuegbar.
+            Tibber veroeffentlicht die Preise taeglich gegen 13:00 Uhr.
+
+      # =====================================================================
+      # 8. NETZVERBRAUCH & PREIS HEUTE - Dual-Axis ApexChart
+      # =====================================================================
       - type: custom:apexcharts-card
         header:
           show: true
@@ -220,9 +481,23 @@ views:
         yaxis:
           - id: power
             min: 0
+            apex_config:
+              labels:
+                formatter: |
+                  EVAL:function(val) { return val.toFixed(0) + ' W'; }
           - id: price
             opposite: true
             min: 0
+            apex_config:
+              labels:
+                formatter: |
+                  EVAL:function(val) { return val.toFixed(1) + ' ct'; }
+        apex_config:
+          chart:
+            height: 280
+          tooltip:
+            x:
+              format: "HH:mm"
         series:
           - entity: sensor.tibber_pulse_paule_power
             type: area
@@ -230,12 +505,12 @@ views:
             yaxis_id: power
             color: '#2196F3'
             stroke_width: 2
-            opacity: 0.3
+            opacity: 0.25
             unit: " W"
             group_by:
               func: avg
-              duration: 1h
-          - entity: sensor.tibber_preis_aktuell
+              duration: 15min
+          - entity: sensor.paule_current_electricity_price
             type: line
             name: Preis
             yaxis_id: price
@@ -246,7 +521,9 @@ views:
               func: avg
               duration: 1h
 
-      # ----- Verbraucher Heute (Stacked) -----
+      # =====================================================================
+      # 9. VERBRAUCHER LEISTUNG HEUTE - Stacked Area
+      # =====================================================================
       - type: custom:apexcharts-card
         header:
           show: true
@@ -264,6 +541,10 @@ views:
         apex_config:
           chart:
             stacked: true
+            height: 280
+          tooltip:
+            x:
+              format: "HH:mm"
         series:
           - entity: sensor.server_leistung
             type: area
@@ -285,7 +566,7 @@ views:
             opacity: 0.7
           - entity: sensor.kueche_leistung
             type: area
-            name: Küche
+            name: Kueche
             color: '#FF9800'
             group_by:
               func: avg
@@ -311,234 +592,38 @@ views:
             stroke_width: 1
             opacity: 0.7
 
-      # ----- Verbraucher Detail Heute -----
+      # =====================================================================
+      # 10. KOSTEN & VERBRAUCH - Entities
+      # =====================================================================
       - type: entities
-        title: Verbraucher Heute
+        title: Kosten & Verbrauch
         show_header_toggle: false
         entities:
           - type: section
-            label: Verbrauch (kWh) / Kosten Heute (ct) / Kosten aktuell (ct/h)
-          - entity: sensor.server_energie_heute
-            name: Server (kWh)
-            icon: mdi:server
-          - entity: sensor.server_kosten_heute
-            name: Server Kosten heute
-            icon: mdi:cash
-          - entity: sensor.server_kosten_pro_stunde
-            name: Server aktuell ct/h
-            icon: mdi:cash-clock
-          - type: divider
-          - entity: sensor.arbeitszimmer_energie_heute
-            name: Arbeitszimmer (kWh)
-            icon: mdi:desk
-          - entity: sensor.arbeitszimmer_kosten_heute
-            name: Arbeitszimmer Kosten heute
-            icon: mdi:cash
-          - entity: sensor.arbeitszimmer_kosten_pro_stunde
-            name: Arbeitszimmer aktuell ct/h
-            icon: mdi:cash-clock
-          - type: divider
-          - entity: sensor.kueche_energie_heute
-            name: Küche (kWh)
-            icon: mdi:countertop
-          - entity: sensor.kuche_kosten_heute
-            name: Küche Kosten heute
-            icon: mdi:cash
-          - entity: sensor.kuche_kosten_pro_stunde
-            name: Küche aktuell ct/h
-            icon: mdi:cash-clock
-          - type: divider
-          - entity: sensor.waschmaschine_energie_heute
-            name: Waschmaschine (kWh)
-            icon: mdi:washing-machine
-          - entity: sensor.waschmaschine_kosten_heute
-            name: Waschmaschine Kosten heute
-            icon: mdi:cash
-          - entity: sensor.waschmaschine_kosten_pro_stunde
-            name: Waschmaschine aktuell ct/h
-            icon: mdi:cash-clock
-          - type: divider
-          - entity: sensor.trockner_energie_heute
-            name: Trockner (kWh)
-            icon: mdi:tumble-dryer
-          - entity: sensor.trockner_kosten_heute
-            name: Trockner Kosten heute
-            icon: mdi:cash
-          - entity: sensor.trockner_kosten_pro_stunde
-            name: Trockner aktuell ct/h
-            icon: mdi:cash-clock
-
-      # ----- PV Erzeugung (kein Verbraucher!) -----
-      - type: entities
-        title: PV Erzeugung (kein Verbraucher)
-        show_header_toggle: false
-        entities:
-          - entity: sensor.pv_leistung
-            name: Aktuelle Leistung
-            icon: mdi:solar-power
-          - entity: sensor.pv_ersparnis_pro_stunde
-            name: Aktuelle Ersparnis/h
-            icon: mdi:piggy-bank
-          - type: divider
-          - entity: sensor.pv_energie_heute
-            name: Erzeugt Heute
-            icon: mdi:solar-power
-          - entity: sensor.pv_erzeugung_monat
-            name: Erzeugt Monat
-            icon: mdi:calendar-month
-          - entity: sensor.pv_erzeugung_jahr
-            name: Erzeugt Jahr
-            icon: mdi:calendar
-          - entity: sensor.pv_energie_gesamt
-            name: Erzeugt Gesamt
-            icon: mdi:counter
-
-      # ----- Kosten Übersicht -----
-      - type: entities
-        title: Kosten & Verbrauch Netz
-        show_header_toggle: false
-        entities:
+            label: Heute
           - entity: sensor.tibber_pulse_paule_accumulated_cost
             name: Kosten Heute
             icon: mdi:cash-multiple
           - entity: sensor.tibber_pulse_paule_accumulated_consumption
             name: Verbrauch Heute (kWh)
             icon: mdi:flash
+          - entity: sensor.tibber_pulse_paule_average_power
+            name: Durchschnitt Leistung
+            icon: mdi:speedometer
+          - entity: sensor.tibber_pulse_paule_min_power
+            name: Min Leistung
+            icon: mdi:speedometer-slow
+          - entity: sensor.tibber_pulse_paule_max_power
+            name: Max Leistung
+            icon: mdi:speedometer
+          - type: section
+            label: Monat
           - entity: sensor.paule_monthly_cost
             name: Kosten Monat
-            icon: mdi:cash-multiple
+            icon: mdi:calendar-month
           - entity: sensor.paule_monthly_net_consumption
             name: Verbrauch Monat (kWh)
-            icon: mdi:flash
-
-      # ----- Historisch: Tagesverbrauch pro Verbraucher (7 Tage) -----
-      - type: statistics-graph
-        title: Verbrauch pro Tag - 7 Tage (kWh)
-        period: day
-        days_to_show: 7
-        stat_types:
-          - change
-        chart_type: bar
-        entities:
-          - entity: sensor.server_energie_gesamt
-            name: Server
-          - entity: sensor.arbeitszimmer_energie_gesamt
-            name: Arbeitszimmer
-          - entity: sensor.kueche_energie_gesamt
-            name: Küche
-          - entity: sensor.waschmaschine_energie_gesamt
-            name: Waschmaschine
-          - entity: sensor.trockner_energie_gesamt
-            name: Trockner
-
-      # ----- Historisch: Wochenverbrauch (4 Wochen) -----
-      - type: statistics-graph
-        title: Verbrauch pro Woche - 4 Wochen (kWh)
-        period: week
-        days_to_show: 28
-        stat_types:
-          - change
-        chart_type: bar
-        entities:
-          - entity: sensor.server_energie_gesamt
-            name: Server
-          - entity: sensor.arbeitszimmer_energie_gesamt
-            name: Arbeitszimmer
-          - entity: sensor.kueche_energie_gesamt
-            name: Küche
-          - entity: sensor.waschmaschine_energie_gesamt
-            name: Waschmaschine
-          - entity: sensor.trockner_energie_gesamt
-            name: Trockner
-
-      # ----- Historisch: Monatsverbrauch (12 Monate) -----
-      - type: statistics-graph
-        title: Verbrauch pro Monat - 12 Monate (kWh)
-        period: month
-        days_to_show: 365
-        stat_types:
-          - change
-        chart_type: bar
-        entities:
-          - entity: sensor.server_energie_gesamt
-            name: Server
-          - entity: sensor.arbeitszimmer_energie_gesamt
-            name: Arbeitszimmer
-          - entity: sensor.kueche_energie_gesamt
-            name: Küche
-          - entity: sensor.waschmaschine_energie_gesamt
-            name: Waschmaschine
-          - entity: sensor.trockner_energie_gesamt
-            name: Trockner
-
-      # ----- Historisch: Netz + PV (Stacked) -----
-      - type: custom:apexcharts-card
-        header:
-          show: true
-          title: Netz & PV - 7 Tage (kWh)
-        graph_span: 7d
-        span:
-          end: day
-        apex_config:
-          chart:
-            stacked: true
-        series:
-          - entity: sensor.tibber_pulse_paule_accumulated_consumption
-            type: column
-            name: Netzverbrauch
-            color: '#2196F3'
-            statistics:
-              type: change
-              period: day
-          - entity: sensor.pv_energie_gesamt
-            type: column
-            name: PV Erzeugung
-            color: '#4CAF50'
-            statistics:
-              type: change
-              period: day
-
-      - type: custom:apexcharts-card
-        header:
-          show: true
-          title: Netz & PV - 12 Monate (kWh)
-        graph_span: 365d
-        span:
-          end: month
-        apex_config:
-          chart:
-            stacked: true
-        series:
-          - entity: sensor.tibber_pulse_paule_accumulated_consumption
-            type: column
-            name: Netzverbrauch
-            color: '#2196F3'
-            statistics:
-              type: change
-              period: month
-          - entity: sensor.pv_energie_gesamt
-            type: column
-            name: PV Erzeugung
-            color: '#4CAF50'
-            statistics:
-              type: change
-              period: month
-
-      # ----- Einstellungen -----
-      - type: entities
-        title: Einstellungen
-        show_header_toggle: false
-        entities:
-          - entity: input_number.strompreis_schwelle
-            name: Schwelle günstiger Strom (ct/kWh)
-          - entity: input_boolean.guenstiger_strom_benachrichtigung
-            name: Preisbenachrichtigungen
-          - entity: input_boolean.waschmaschine_warten
-            name: Waschmaschine auf günstigen Strom
-          - entity: input_boolean.trockner_warten
-            name: Trockner auf günstigen Strom
-          - entity: input_boolean.spuelmaschine_warten
-            name: Spülmaschine auf günstigen Strom
+            icon: mdi:calendar-month
 
   # ===========================================================================
   # BESTE ZEITEN & SPAR-TIPPS
@@ -549,9 +634,9 @@ views:
     cards:
       - type: markdown
         content: |
-          ## Beste Zeiten für Großverbraucher
+          ## Beste Zeiten fuer Grossverbraucher
 
-      # Preisübersicht
+      # Preisuebersicht
       - type: glance
         title: Preisbereich Heute
         entities:
@@ -608,10 +693,10 @@ views:
         content: |
           ### Spar-Tipps
 
-          1. **PV-Strom nutzen**: Tagsüber (10-15 Uhr) bei Sonne
-          2. **Günstige Nachtzeiten**: Oft 22:00 - 06:00
+          1. **PV-Strom nutzen**: Tagsueber (10-15 Uhr) bei Sonne
+          2. **Guenstige Nachtzeiten**: Oft 22:00 - 06:00
           3. **Wochenende**: Preise oft niedriger als werktags
-          4. **Timer nutzen**: Verzögerten Start programmieren
+          4. **Timer nutzen**: Verzoegerten Start programmieren
 
       # Steuerung
       - type: entities
@@ -619,11 +704,11 @@ views:
         show_header_toggle: false
         entities:
           - entity: input_boolean.waschmaschine_warten
-            name: Waschmaschine auf günstigen Strom warten
+            name: Waschmaschine auf guenstigen Strom warten
           - entity: input_boolean.trockner_warten
-            name: Trockner auf günstigen Strom warten
+            name: Trockner auf guenstigen Strom warten
           - entity: input_boolean.spuelmaschine_warten
-            name: Spülmaschine auf günstigen Strom warten
+            name: Spuelmaschine auf guenstigen Strom warten
 
   # ===========================================================================
   # PV ANLAGE
@@ -633,7 +718,7 @@ views:
     icon: mdi:solar-power
     cards:
       - type: markdown
-        content: "## ☀️ Photovoltaik"
+        content: "## Photovoltaik"
 
       - type: gauge
         entity: sensor.pv_leistung
@@ -669,7 +754,7 @@ views:
 
       - type: entity
         entity: sensor.pv_ersparnis_pro_stunde
-        name: "💰 Ersparnis pro Stunde"
+        name: Ersparnis pro Stunde
 
       - type: history-graph
         title: Leistungsverlauf (48h)
@@ -685,13 +770,13 @@ views:
     icon: mdi:power-plug
     cards:
       - type: markdown
-        content: "## 🔌 Stromverbraucher"
+        content: "## Stromverbraucher"
 
       # Server
       - type: vertical-stack
         cards:
           - type: markdown
-            content: "### 🖥️ Server"
+            content: "### Server"
           - type: horizontal-stack
             cards:
               - type: entity
@@ -708,7 +793,7 @@ views:
       - type: vertical-stack
         cards:
           - type: markdown
-            content: "### 🖥️ Arbeitszimmer"
+            content: "### Arbeitszimmer"
           - type: horizontal-stack
             cards:
               - type: entity
@@ -728,7 +813,7 @@ views:
       - type: vertical-stack
         cards:
           - type: markdown
-            content: "### 🧺 Waschmaschine"
+            content: "### Waschmaschine"
           - type: horizontal-stack
             cards:
               - type: entity
@@ -745,7 +830,7 @@ views:
       - type: vertical-stack
         cards:
           - type: markdown
-            content: "### 🌀 Trockner"
+            content: "### Trockner"
           - type: horizontal-stack
             cards:
               - type: entity
@@ -758,11 +843,11 @@ views:
             entity: sensor.trockner_kosten_pro_stunde
             name: Kosten/h
 
-      # Küche
+      # Kueche
       - type: vertical-stack
         cards:
           - type: markdown
-            content: "### 🍳 Küche"
+            content: "### Kueche"
           - type: horizontal-stack
             cards:
               - type: entity
@@ -793,45 +878,45 @@ views:
     icon: mdi:chart-line
     cards:
       - type: markdown
-        content: "## 📊 Energie Statistik"
+        content: "## Energie Statistik"
 
       # Energie Heute
       - type: entities
         title: Energie Heute (kWh)
         entities:
           - entity: sensor.pv_energie_heute
-            name: "☀️ PV Erzeugt"
+            name: PV Erzeugt
           - entity: sensor.tibber_pulse_paule_accumulated_consumption
-            name: "🏠 Netz Bezug"
+            name: Netz Bezug
           - entity: sensor.server_energie_heute
-            name: "🖥️ Server"
+            name: Server
           - entity: sensor.arbeitszimmer_energie_heute
-            name: "🖥️ Arbeitszimmer"
+            name: Arbeitszimmer
           - entity: sensor.waschmaschine_energie_heute
-            name: "🧺 Waschmaschine"
+            name: Waschmaschine
           - entity: sensor.trockner_energie_heute
-            name: "🌀 Trockner"
+            name: Trockner
 
       # Kosten
       - type: entities
         title: Kosten
         entities:
           - entity: sensor.tibber_pulse_paule_accumulated_cost
-            name: "💶 Heute"
+            name: Heute
           - entity: sensor.paule_monthly_cost
-            name: "💶 Diesen Monat"
+            name: Diesen Monat
 
       # Energie Gesamt
       - type: entities
         title: Energie Gesamt (kWh)
         entities:
           - entity: sensor.pv_energie_gesamt
-            name: "☀️ PV Erzeugt"
+            name: PV Erzeugt
           - entity: sensor.server_energie_gesamt
-            name: "🖥️ Server"
+            name: Server
           - entity: sensor.arbeitszimmer_energie_gesamt
-            name: "🖥️ Arbeitszimmer"
+            name: Arbeitszimmer
           - entity: sensor.waschmaschine_energie_gesamt
-            name: "🧺 Waschmaschine"
+            name: Waschmaschine
           - entity: sensor.trockner_energie_gesamt
-            name: "🌀 Trockner"
+            name: Trockner
