@@ -1,0 +1,215 @@
+# =============================================================================
+# HEIZUNG PAKET - BSB-LAN Sensoren (LMU7 Controller)
+# =============================================================================
+# BSB-LAN auf 10.10.12.15 (ESP32, IoT VLAN)
+# REST API: /JQ=param1,param2,... liefert JSON
+# WICHTIG: ESP32 ist langsam (~1s pro Parameter ueber BSB-Bus).
+#   Requests in kleine Batches aufteilen und timeout erhoehen!
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REST Sensoren - BSB-LAN API (3 Requests, aufgeteilt wg. ESP32 Timeout)
+# -----------------------------------------------------------------------------
+rest:
+  # --- Batch 1: Temperaturen (alle 60s) ---
+  - resource: "http://10.10.12.15/JQ=8743,8744,8314,8310,8311,8830,8831"
+    scan_interval: 60
+    timeout: 30
+    sensor:
+      - name: "Heizung Vorlauf"
+        unique_id: heizung_vorlauf
+        value_template: "{{ value_json['8743'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:thermometer-chevron-up
+
+      - name: "Heizung Vorlauf Soll"
+        unique_id: heizung_vorlauf_soll
+        value_template: "{{ value_json['8744'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:thermometer-check
+
+      - name: "Heizung Ruecklauf"
+        unique_id: heizung_ruecklauf
+        value_template: "{{ value_json['8314'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:thermometer-chevron-down
+
+      - name: "Heizung Kessel"
+        unique_id: heizung_kessel
+        value_template: "{{ value_json['8310'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:fire
+
+      - name: "Heizung Kessel Soll"
+        unique_id: heizung_kessel_soll
+        value_template: "{{ value_json['8311'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:fire-circle
+
+      - name: "Heizung TWW Ist"
+        unique_id: heizung_tww_ist
+        value_template: "{{ value_json['8830'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:water-thermometer
+
+      - name: "Heizung TWW Soll"
+        unique_id: heizung_tww_soll
+        value_template: "{{ value_json['8831'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:water-thermometer-outline
+
+  # --- Batch 2: Betrieb & Status (alle 60s) ---
+  - resource: "http://10.10.12.15/JQ=8750,8326,8324,8000,8003,8005,700"
+    scan_interval: 60
+    timeout: 30
+    sensor:
+      - name: "Heizung Pumpe"
+        unique_id: heizung_pumpe
+        value_template: "{{ value_json['8750'].value }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:pump
+
+      - name: "Heizung Leistung"
+        unique_id: heizung_leistung
+        value_template: "{{ value_json['8326'].value }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:fire
+
+      - name: "Heizung Geblaese"
+        unique_id: heizung_geblaese
+        value_template: "{{ value_json['8324'].value }}"
+        unit_of_measurement: "U/min"
+        state_class: measurement
+        icon: mdi:fan
+
+      - name: "Heizung Status HK1"
+        unique_id: heizung_status_hk1
+        value_template: "{{ value_json['8000'].desc }}"
+        icon: mdi:radiator
+
+      - name: "Heizung Status TWW"
+        unique_id: heizung_status_tww
+        value_template: "{{ value_json['8003'].desc }}"
+        icon: mdi:water-boiler
+
+      - name: "Heizung Status Kessel"
+        unique_id: heizung_status_kessel
+        value_template: "{{ value_json['8005'].desc }}"
+        icon: mdi:fire-circle
+
+      - name: "Heizung Betriebsart"
+        unique_id: heizung_betriebsart
+        value_template: "{{ value_json['700'].desc }}"
+        icon: mdi:cog
+
+  # --- Batch 3: Konfiguration (alle 300s, aendert sich selten) ---
+  - resource: "http://10.10.12.15/JQ=720,730,710,712,714,1610,1612,1640,1645"
+    scan_interval: 300
+    timeout: 30
+    sensor:
+      - name: "Heizung Kennlinie"
+        unique_id: heizung_kennlinie
+        value_template: "{{ value_json['720'].value }}"
+        icon: mdi:chart-line
+
+      - name: "Heizung Sommer Winter"
+        unique_id: heizung_sommer_winter
+        value_template: "{{ value_json['730'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:sun-snowflake-variant
+
+      - name: "Heizung Komfortsollwert"
+        unique_id: heizung_komfortsollwert
+        value_template: "{{ value_json['710'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:sofa
+
+      - name: "Heizung Reduziertsollwert"
+        unique_id: heizung_reduziertsollwert
+        value_template: "{{ value_json['712'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:weather-night
+
+      - name: "Heizung Frostschutzsollwert"
+        unique_id: heizung_frostschutzsollwert
+        value_template: "{{ value_json['714'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:snowflake
+
+      - name: "Heizung TWW Nennsollwert"
+        unique_id: heizung_tww_nennsollwert
+        value_template: "{{ value_json['1610'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:water-boiler
+
+      - name: "Heizung TWW Reduziertsollwert"
+        unique_id: heizung_tww_reduziertsollwert
+        value_template: "{{ value_json['1612'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:water-boiler-off
+
+      - name: "Heizung Legionellenfunktion"
+        unique_id: heizung_legionellenfunktion
+        value_template: "{{ value_json['1640'].desc }}"
+        icon: mdi:shield-bug
+
+      - name: "Heizung Legionellen Sollwert"
+        unique_id: heizung_legionellen_sollwert
+        value_template: "{{ value_json['1645'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:shield-bug
+
+# -----------------------------------------------------------------------------
+# Template Sensoren
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      # Spreizung (Vorlauf minus Ruecklauf)
+      - name: "Heizung Spreizung"
+        unique_id: heizung_spreizung
+        state: >
+          {% set vl = states('sensor.heizung_vorlauf') | float(0) %}
+          {% set rl = states('sensor.heizung_ruecklauf') | float(0) %}
+          {% if vl > 0 and rl > 0 %}
+            {{ (vl - rl) | round(1) }}
+          {% else %}
+            0
+          {% endif %}
+        availability: >
+          {{ states('sensor.heizung_vorlauf') not in ['unknown', 'unavailable']
+             and states('sensor.heizung_ruecklauf') not in ['unknown', 'unavailable'] }}
+        unit_of_measurement: "K"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:thermometer-lines
+
+  - binary_sensor:
+      # Brenner aktiv (Leistung > 0)
+      - name: "Heizung Brenner"
+        unique_id: heizung_brenner
+        state: >
+          {{ states('sensor.heizung_leistung') | float(0) > 0 }}
+        availability: >
+          {{ states('sensor.heizung_leistung') not in ['unknown', 'unavailable'] }}
+        device_class: running
+        icon: mdi:fire

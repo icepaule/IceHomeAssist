@@ -166,14 +166,14 @@ script:
         description: "Announcement text"
       target:
         description: "Target device(s)"
-        example: "media_player.echo_wohnzimmer"
+        example: "media_player.marcus_echo_show_8_2nd_gen"
     sequence:
       - condition: state
         entity_id: input_boolean.notifications_night_mode
         state: "off"
       - service: notify.alexa_media
         data:
-          target: "{{ target | default('media_player.echo_wohnzimmer') }}"
+          target: "{{ target | default('media_player.marcus_echo_show_8_2nd_gen') }}"
           message: "{{ message }}"
           data:
             type: announce
@@ -190,7 +190,7 @@ script:
             🌡️ Temperatur: {{ states('sensor.temperature_wohnzimmer') }}°C
             💡 Lichter an: {{ states.light | selectattr('state', 'eq', 'on') | list | count }}
             🚪 Türen offen: {{ states.binary_sensor | selectattr('attributes.device_class', 'eq', 'door') | selectattr('state', 'eq', 'on') | list | count }}
-            ☀️ PV Leistung: {{ states('sensor.pv_total_power') }}W
+            ☀️ PV Leistung: {{ states('sensor.pv_leistung') }}W
             💰 Tibber Preis: {{ states('sensor.tibber_current_price') }}€/kWh
           data:
             parse_mode: markdown
@@ -204,15 +204,13 @@ script:
           message: |
             ☀️ *PV-Anlage Status*
 
-            Aktuelle Leistung: {{ states('sensor.pv_total_power') }}W
-            Heute erzeugt: {{ states('sensor.pv_energy_today') }}kWh
-            Monat erzeugt: {{ states('sensor.pv_energy_monthly') }}kWh
+            Aktuelle Leistung: {{ states('sensor.pv_leistung') }}W
+            Heute erzeugt: {{ states('sensor.pv_energie_heute') }}kWh
+            Gesamt erzeugt: {{ states('sensor.pv_energie_gesamt') }}kWh
 
-            💰 Ersparnis heute: {{ states('sensor.pv_daily_savings') }}€
-            💰 Ersparnis Monat: {{ states('sensor.pv_monthly_savings') }}€
-
-            Panel-Winkel: {{ states('number.pv_panel_angle') }}°
-            Optimal: {{ states('sensor.optimal_panel_angle') }}°
+            💰 Ersparnis heute: {{ states('sensor.pv_savings_daily') }}€
+            💰 Ersparnis Monat: {{ states('sensor.pv_savings_monthly') }}€
+            💰 Ersparnis Jahr: {{ states('sensor.pv_savings_yearly') }}€
           data:
             parse_mode: markdown
     mode: single

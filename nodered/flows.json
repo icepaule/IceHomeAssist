@@ -11,7 +11,27 @@
     "type": "tab",
     "label": "LED Matrix 2 (Bad)",
     "disabled": false,
-    "info": "ESP8266 + MAX7219 8x64 LED Matrix im Bad\n\nRote Haelfte (8x32): Uhrzeit\nBlaue Haelfte (8x32): PV-Leistung\n\nESPHome empfaengt Text per MQTT:\n- led-matrix2/display/time -> Rote LEDs\n- led-matrix2/display/pv -> Blaue LEDs\n\nESP IP: 10.10.12.XX (Bad:IoT VLAN 12)"
+    "info": "ESP8266 + MAX7219 8x64 LED Matrix im Bad\n\nRote Haelfte (8x32): Uhrzeit\nBlaue Haelfte (8x32): PV-Leistung\n\nESPHome empfaengt Text per MQTT:\n- led-matrix2/display/time -> Rote LEDs\n- led-matrix2/display/pv -> Blaue LEDs\n\nESP IP: 10.10.12.20 (Bad:IoT VLAN 12)"
+  },
+  {
+    "id": "80ef547.fe1b7a8",
+    "type": "server",
+    "name": "Home Assistant",
+    "addon": true
+  },
+  {
+    "id": "mqtt_nuc",
+    "type": "mqtt-broker",
+    "name": "Mosquitto NUC-HA",
+    "broker": "localhost",
+    "port": "1883",
+    "clientid": "nodered-wifibuttons",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true
   },
   {
     "id": "comment_title",
@@ -31,7 +51,7 @@
     "topic": "stat/wifibutton1/RESULT",
     "qos": "1",
     "datatype": "json",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "nl": false,
     "rap": true,
     "rh": 0,
@@ -87,7 +107,7 @@
     "type": "api-current-state",
     "z": "tab_wifi",
     "name": "Aktion lesen (input_select)",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 3,
     "outputs": 1,
     "halt_if": "",
@@ -152,7 +172,7 @@
     "type": "api-call-service",
     "z": "tab_wifi",
     "name": "Script ausfuehren",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -420,7 +440,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 590,
     "y": 120,
     "wires": []
@@ -457,7 +477,7 @@
     "type": "server-state-changed",
     "z": "tab_led_matrix2",
     "name": "sensor.pv_leistung",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -538,7 +558,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 590,
     "y": 360,
     "wires": []
@@ -575,7 +595,7 @@
     "type": "tab",
     "label": "Tibber Ampel",
     "disabled": false,
-    "info": "Strompreis-Ampel: ESP8266 mit Tasmota\n3 LEDs (Rot/Gelb/Gruen) zeigen den aktuellen Tibber Preis-Status.\n\nSensor: sensor.tibber_preis_status (guenstig/normal/teuer)\nMQTT Topic: cmnd/tibber-ampel/POWER1 (Rot), POWER2 (Gelb), POWER3 (Gruen)\n\nESP IP: 10.10.12.XX (Bad:IoT VLAN 12)"
+    "info": "Strompreis-Ampel: ESP8266 mit Tasmota\n3 LEDs (Rot/Gelb/Gruen) zeigen den aktuellen Tibber Preis-Status.\n\nSensor: sensor.tibber_preis_status (guenstig/normal/teuer)\nMQTT Topic: cmnd/tibber-ampel/POWER1 (Rot), POWER2 (Gelb), POWER3 (Gruen)\n\nESP IP: 10.10.12.16 (Bad:IoT VLAN 12)"
   },
   {
     "id": "ampel_comment_title",
@@ -592,7 +612,7 @@
     "type": "server-state-changed",
     "z": "tab_tibber_ampel",
     "name": "Tibber Preis Status",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -692,7 +712,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 650,
     "y": 120,
     "wires": []
@@ -710,7 +730,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 650,
     "y": 160,
     "wires": []
@@ -728,7 +748,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 660,
     "y": 200,
     "wires": []
@@ -840,7 +860,7 @@
     "type": "comment",
     "z": "tab_tibber_ampel",
     "name": "MQTT Topics (Tasmota)",
-    "info": "cmnd/tibber-ampel/POWER1 -> Rote LED (GPIO12)\ncmnd/tibber-ampel/POWER2 -> Gelbe LED (GPIO13)\ncmnd/tibber-ampel/POWER3 -> Gruene LED (GPIO15)\n\nstat/tibber-ampel/POWER1 -> Status Rot\nstat/tibber-ampel/POWER2 -> Status Gelb\nstat/tibber-ampel/POWER3 -> Status Gruen\n\nTasmota Web-UI: http://10.10.12.XX",
+    "info": "cmnd/tibber-ampel/POWER1 -> Rote LED (GPIO12)\ncmnd/tibber-ampel/POWER2 -> Gelbe LED (GPIO13)\ncmnd/tibber-ampel/POWER3 -> Gruene LED (GPIO15)\n\nstat/tibber-ampel/POWER1 -> Status Rot\nstat/tibber-ampel/POWER2 -> Status Gelb\nstat/tibber-ampel/POWER3 -> Status Gruen\n\nTasmota Web-UI: http://10.10.12.16",
     "x": 180,
     "y": 540,
     "wires": []
@@ -850,7 +870,7 @@
     "type": "tab",
     "label": "Tibber Ampel 2",
     "disabled": false,
-    "info": "Strompreis-Ampel 2: ESP8266 mit Tasmota\n3 LEDs (Rot/Gelb/Gruen) zeigen den aktuellen Tibber Preis-Status.\n\nSensor: sensor.tibber_preis_status\nMQTT Topic: cmnd/tibber-ampel-2/POWER1-3\n\nESP IP: 10.10.12.XX"
+    "info": "Strompreis-Ampel 2: ESP8266 mit Tasmota\n3 LEDs (Rot/Gelb/Gruen) zeigen den aktuellen Tibber Preis-Status.\n\nSensor: sensor.tibber_preis_status\nMQTT Topic: cmnd/tibber-ampel-2/POWER1-3\n\nESP IP: 10.10.12.17"
   },
   {
     "id": "ampel2_comment_title",
@@ -867,7 +887,7 @@
     "type": "server-state-changed",
     "z": "tab_tibber_ampel_2",
     "name": "Tibber Preis Status",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -967,7 +987,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 650,
     "y": 120,
     "wires": []
@@ -985,7 +1005,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 650,
     "y": 160,
     "wires": []
@@ -1003,7 +1023,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 660,
     "y": 200,
     "wires": []
@@ -1165,7 +1185,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 450,
     "y": 80,
     "wires": []
@@ -1208,7 +1228,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 450,
     "y": 120,
     "wires": []
@@ -1251,7 +1271,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 450,
     "y": 160,
     "wires": []
@@ -1294,7 +1314,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 450,
     "y": 200,
     "wires": []
@@ -1337,7 +1357,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 450,
     "y": 240,
     "wires": []
@@ -1380,7 +1400,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 450,
     "y": 280,
     "wires": []
@@ -1423,7 +1443,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 450,
     "y": 320,
     "wires": []
@@ -1466,7 +1486,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 450,
     "y": 360,
     "wires": []
@@ -1511,7 +1531,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Toggle Spüle",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -1566,7 +1586,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Toggle Dimmer WZ",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -1621,7 +1641,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Toggle Licht WZ (Meross)",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -1686,7 +1706,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Open Rollo WZ",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -1741,7 +1761,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Close Rollo WZ",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -1796,7 +1816,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Open Rollo SZ",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -1851,7 +1871,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Close Rollo SZ",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -1906,7 +1926,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Open Rollo AZ",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -1961,7 +1981,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Close Rollo AZ",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -2016,7 +2036,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Open Rollo GZ",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -2071,7 +2091,7 @@
     "type": "api-call-service",
     "z": "tab_geraete",
     "name": "Close Rollo GZ",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -2135,7 +2155,7 @@
     "type": "server-state-changed",
     "z": "tab_sz_heizung",
     "name": "SZ Fenster",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -2218,7 +2238,7 @@
     "type": "api-call-service",
     "z": "tab_sz_heizung",
     "name": "TRV SZ Links",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -2246,7 +2266,7 @@
     "type": "api-call-service",
     "z": "tab_sz_heizung",
     "name": "TRV SZ Rechts",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 7,
     "debugenabled": false,
     "floorId": [],
@@ -2388,7 +2408,7 @@
     "type": "server-state-changed",
     "z": "tab_matrix2",
     "name": "sensor.pv_leistung",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -2450,7 +2470,7 @@
     "type": "server-state-changed",
     "z": "tab_matrix2",
     "name": "sensor.pv_energy_today",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -2512,7 +2532,7 @@
     "type": "server-state-changed",
     "z": "tab_matrix2",
     "name": "sensor.pv_energy_daily",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -2820,7 +2840,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 490,
     "y": 740,
     "wires": []
@@ -2838,7 +2858,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 810,
     "y": 420,
     "wires": []
@@ -2863,15 +2883,15 @@
   {
     "id": "tab_matrix1",
     "type": "tab",
-    "label": "Matrix1 (PV + Uhr)",
+    "label": "Matrix1 (PV-Matrix)",
     "disabled": false,
-    "info": "ESP8266 + MAX7219 32x8 LED Matrix am Schuppen\n\nImmer: PV-Leistungsdaten (50s)\nAlle 60s fuer 10s: Uhrzeit HH:MM\n\nModi PV-Anzeige:\n- PV >= 15W: aktuelle Leistung in W\n- PV < 15W tags: Tagesertrag in kWh\n- PV < 15W nach Mitternacht: Vortagsertrag in kWh\n\n22:00-07:00: Helligkeit 10%\n07:00-22:00: Helligkeit 33%"
+    "info": "ESP-12F + MAX7219 32x8 LED Matrix (Schuppen)\n\nSunrise-30min: Display ON, Vortags-Ertrag\nPV >= 50W: aktuelle Leistung in W\nPV < 50W: Tagesertrag in kWh\nSonnenuntergang: Dimmer auf 10\n21:00-22:00: PV Lebensleistung (MWh)\n22:00: Display OFF"
   },
   {
     "id": "m1_title",
     "type": "comment",
     "z": "tab_matrix1",
-    "name": "Matrix1: PV + Uhrzeit (32x8 MAX7219, Schuppen)",
+    "name": "Matrix1: PV-Matrix (32x8 MAX7219, Schuppen)",
     "info": "",
     "x": 300,
     "y": 40,
@@ -2892,7 +2912,7 @@
     "type": "server-state-changed",
     "z": "tab_matrix1",
     "name": "sensor.pv_leistung",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -2954,7 +2974,7 @@
     "type": "server-state-changed",
     "z": "tab_matrix1",
     "name": "sensor.pv_energy_today",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -3015,20 +3035,20 @@
     "id": "m1_daily_meter_watch",
     "type": "server-state-changed",
     "z": "tab_matrix1",
-    "name": "sensor.pv_energy_daily",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "name": "sensor.pv_energie_gestern",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
     "entities": {
       "entity": [
-        "sensor.pv_energy_daily"
+        "sensor.pv_energie_gestern"
       ],
       "substring": [],
       "regex": []
     },
     "outputInitially": true,
-    "stateType": "str",
+    "stateType": "num",
     "ifState": "",
     "ifStateType": "str",
     "ifStateOperator": "is",
@@ -3047,12 +3067,6 @@
         "propertyType": "msg",
         "value": "",
         "valueType": "entityState"
-      },
-      {
-        "property": "attributes",
-        "propertyType": "msg",
-        "value": "",
-        "valueType": "eventData"
       }
     ],
     "x": 170,
@@ -3067,8 +3081,8 @@
     "id": "m1_store_yesterday",
     "type": "function",
     "z": "tab_matrix1",
-    "name": "Speichere Vortag",
-    "func": "var attrs = msg.attributes;\nif (attrs && attrs.new_state && attrs.new_state.attributes) {\n    var lp = parseFloat(attrs.new_state.attributes.last_period);\n    if (!isNaN(lp)) {\n        flow.set('m1_yesterday_kwh', lp);\n    }\n}",
+    "name": "Speichere Gestern",
+    "func": "flow.set('m1_yesterday_kwh', parseFloat(msg.payload) || 0);",
     "outputs": 0,
     "timeout": "",
     "noerr": 0,
@@ -3083,7 +3097,7 @@
     "id": "m1_comment_display",
     "type": "comment",
     "z": "tab_matrix1",
-    "name": "--- ANZEIGE: 50s PV / 10s Uhrzeit ---",
+    "name": "--- ANZEIGE-LOGIK (Sonnenstand + PV) ---",
     "info": "",
     "x": 240,
     "y": 380,
@@ -3118,196 +3132,26 @@
     "id": "m1_display_logic",
     "type": "function",
     "z": "tab_matrix1",
-    "name": "Anzeige-Logik (PV default)",
-    "func": "var watts = flow.get('m1_pv_watts') || 0;\nvar dailyKwh = flow.get('m1_daily_kwh') || 0;\nvar yesterdayKwh = flow.get('m1_yesterday_kwh') || 0;\nvar flashUntil = flow.get('m1_show_time_until') || 0;\nvar now = Date.now();\n\n// Uhrzeit-Phase (10s von 60s Zyklus)\nif (now < flashUntil) {\n    var d = new Date();\n    var h = String(d.getHours()).padStart(2, '0');\n    var m = String(d.getMinutes()).padStart(2, '0');\n    var sep = (d.getSeconds() % 2 === 0) ? ':' : ' ';\n    msg.payload = h + sep + m;\n    return msg;\n}\n\n// Standard: PV-Daten\nif (watts >= 15) {\n    msg.payload = Math.round(watts) + 'W';\n} else {\n    var kwh;\n    if (dailyKwh < 0.05 && yesterdayKwh > 0.05) {\n        kwh = yesterdayKwh;\n    } else {\n        kwh = dailyKwh;\n    }\n    msg.payload = kwh.toFixed(1) + 'kW';\n}\nreturn msg;",
-    "outputs": 1,
+    "name": "PV Anzeige-Logik",
+    "func": "var watts = flow.get('m1_pv_watts') || 0;\nvar dailyKwh = flow.get('m1_daily_kwh') || 0;\nvar yesterdayKwh = flow.get('m1_yesterday_kwh') || 0;\nvar nextRisingStr = flow.get('m1_next_rising') || '';\nvar sunState = flow.get('m1_sun_state') || '';\n\nvar now = new Date();\nvar nowMs = now.getTime();\nvar hour = now.getHours();\n\nvar phase = flow.get('m1_phase') || 'init';\nvar prevPhase = phase;\n\n// Sunrise - 30 min\nvar sunrise30Ms = 0;\nif (nextRisingStr) {\n    sunrise30Ms = new Date(nextRisingStr).getTime() - 30 * 60000;\n}\n\n// Skip logic until sun data is available\nif (!sunState) {\n    return [null, null, null];\n}\n\n// --- Phase transitions ---\n\n// 22:00+ -> OFF\nif (hour >= 22) {\n    phase = 'off';\n}\n// 21:00-22:00 -> LIFETIME (Lebensleistung)\nelse if (hour >= 21) {\n    phase = 'lifetime';\n}\n// Night, before sunrise-30min -> OFF\nelse if (sunState === 'below_horizon' && hour < 12 && sunrise30Ms > 0 && nowMs < sunrise30Ms) {\n    phase = 'off';\n}\n// Sunrise-30min reached, sun not up yet, no production -> MORNING\nelse if (phase === 'off' || phase === 'init') {\n    if (sunState === 'below_horizon' && sunrise30Ms > 0 && nowMs >= sunrise30Ms) {\n        phase = 'morning';\n    } else if (sunState === 'above_horizon') {\n        phase = (watts >= 30) ? 'producing' : 'idle';\n    } else if (sunState === 'below_horizon' && hour >= 12) {\n        // Restart during evening (after sunset, before 22:00)\n        phase = 'idle';\n    }\n}\n\n// PV >= 50W -> PRODUCING (from morning or idle)\nif (watts >= 30 && (phase === 'morning' || phase === 'idle')) {\n    phase = 'producing';\n}\n// PV < 50W after producing -> IDLE\nelse if (watts < 30 && phase === 'producing') {\n    phase = 'idle';\n}\n\n// --- Power / Dimmer ---\nvar powerMsg = null;\nvar dimmerMsg = null;\n\nif (phase !== prevPhase) {\n    if (phase === 'off' && prevPhase !== 'off') {\n        powerMsg = {payload: 'OFF'};\n    }\n    if ((prevPhase === 'off' || prevPhase === 'init') && phase !== 'off') {\n        powerMsg = {payload: 'ON'};\n        dimmerMsg = {payload: 20};\n        flow.set('m1_evening_dimmed', false);\n    }\n}\n\n// After sunset -> dim to 10 (once)\nif (sunState === 'below_horizon' && hour >= 12 && hour < 22 &&\n    !flow.get('m1_evening_dimmed') && phase !== 'off') {\n    dimmerMsg = {payload: 10};\n    flow.set('m1_evening_dimmed', true);\n}\n\n// --- Display text ---\nvar displayText = null;\nswitch (phase) {\n    case 'morning':\n        if (yesterdayKwh < 10) {\n            displayText = yesterdayKwh.toFixed(1) + 'kW';\n        } else if (yesterdayKwh < 100) {\n            displayText = yesterdayKwh.toFixed(1) + 'k';\n        } else {\n            displayText = Math.round(yesterdayKwh) + 'k';\n        }\n        break;\n    case 'producing':\n        if (watts < 10000) {\n            displayText = Math.round(watts) + 'W';\n        } else {\n            displayText = Math.round(watts / 1000) + 'kW';\n        }\n        break;\n    case 'idle':\n        if (dailyKwh < 10) {\n            displayText = dailyKwh.toFixed(1) + 'kW';\n        } else if (dailyKwh < 100) {\n            displayText = dailyKwh.toFixed(1) + 'k';\n        } else {\n            displayText = Math.round(dailyKwh) + 'k';\n        }\n        break;\n    case 'lifetime':\n        var totalKwh = flow.get('m1_lifetime_kwh') || 0;\n        if (totalKwh < 10) {\n            displayText = totalKwh.toFixed(1) + 'kW';\n        } else if (totalKwh < 1000) {\n            displayText = Math.round(totalKwh) + 'kW';\n        } else {\n            var mwh = totalKwh / 1000;\n            if (mwh < 10) {\n                displayText = mwh.toFixed(2) + 'M';\n            } else if (mwh < 100) {\n                displayText = mwh.toFixed(1) + 'M';\n            } else {\n                displayText = Math.round(mwh) + 'M';\n            }\n        }\n        break;\n}\n\n// Dedup\nvar lastText = flow.get('m1_last_text') || '';\nvar textMsg = null;\nif (displayText && displayText !== lastText) {\n    textMsg = {payload: displayText};\n    flow.set('m1_last_text', displayText);\n}\n\nflow.set('m1_phase', phase);\n\nvar fills = {producing:'green', morning:'yellow', idle:'blue', lifetime:'purple'};\nnode.status({\n    fill: fills[phase] || 'grey',\n    shape: 'dot',\n    text: phase + ': ' + (displayText || 'aus') + ' (' + watts + 'W)'\n});\n\nreturn [textMsg, dimmerMsg, powerMsg];",
+    "outputs": 3,
     "timeout": "",
     "noerr": 0,
-    "initialize": "flow.set('m1_pv_watts', 0);\nflow.set('m1_daily_kwh', 0);\nflow.set('m1_yesterday_kwh', 0);\nflow.set('m1_show_time_until', 0);",
+    "initialize": "flow.set('m1_phase', 'init');\nflow.set('m1_last_text', '');\nflow.set('m1_evening_dimmed', false);\nflow.set('m1_pv_watts', 0);\nflow.set('m1_daily_kwh', 0);\nflow.set('m1_yesterday_kwh', 0);\nflow.set('m1_lifetime_kwh', 0);",
     "finalize": "",
     "libs": [],
     "x": 370,
     "y": 440,
     "wires": [
       [
-        "m1_passthrough"
-      ]
-    ]
-  },
-  {
-    "id": "m1_passthrough",
-    "type": "function",
-    "z": "tab_matrix1",
-    "name": "Durchleiten",
-    "func": "return msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 570,
-    "y": 440,
-    "wires": [
-      [
         "m1_mqtt_display",
         "m1_debug"
-      ]
-    ]
-  },
-  {
-    "id": "m1_comment_flash",
-    "type": "comment",
-    "z": "tab_matrix1",
-    "name": "--- UHRZEIT-FLASH (alle 60s fuer 10s) ---",
-    "info": "",
-    "x": 250,
-    "y": 540,
-    "wires": []
-  },
-  {
-    "id": "m1_inject_flash",
-    "type": "inject",
-    "z": "tab_matrix1",
-    "name": "Alle 60 Sekunden",
-    "props": [
-      {
-        "p": "payload"
-      }
-    ],
-    "repeat": "60",
-    "crontab": "",
-    "once": true,
-    "onceDelay": "15",
-    "topic": "",
-    "payload": "",
-    "payloadType": "date",
-    "x": 150,
-    "y": 600,
-    "wires": [
-      [
-        "m1_set_flash"
-      ]
-    ]
-  },
-  {
-    "id": "m1_set_flash",
-    "type": "function",
-    "z": "tab_matrix1",
-    "name": "Uhrzeit 10s aktivieren",
-    "func": "flow.set('m1_show_time_until', Date.now() + 10000);",
-    "outputs": 0,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 390,
-    "y": 600,
-    "wires": []
-  },
-  {
-    "id": "m1_comment_dim",
-    "type": "comment",
-    "z": "tab_matrix1",
-    "name": "--- HELLIGKEIT (22-07 Uhr gedimmt) ---",
-    "info": "",
-    "x": 240,
-    "y": 680,
-    "wires": []
-  },
-  {
-    "id": "m1_dim_night",
-    "type": "inject",
-    "z": "tab_matrix1",
-    "name": "22:00 -> Dimmen",
-    "props": [
-      {
-        "p": "payload"
-      }
-    ],
-    "repeat": "",
-    "crontab": "00 22 * * *",
-    "once": false,
-    "onceDelay": "",
-    "topic": "",
-    "payload": "1",
-    "payloadType": "num",
-    "x": 160,
-    "y": 740,
-    "wires": [
+      ],
       [
         "m1_mqtt_dimmer"
-      ]
-    ]
-  },
-  {
-    "id": "m1_dim_day",
-    "type": "inject",
-    "z": "tab_matrix1",
-    "name": "07:00 -> Hell",
-    "props": [
-      {
-        "p": "payload"
-      }
-    ],
-    "repeat": "",
-    "crontab": "00 07 * * *",
-    "once": false,
-    "onceDelay": "",
-    "topic": "",
-    "payload": "5",
-    "payloadType": "num",
-    "x": 150,
-    "y": 800,
-    "wires": [
+      ],
       [
-        "m1_mqtt_dimmer"
-      ]
-    ]
-  },
-  {
-    "id": "m1_dim_startup",
-    "type": "inject",
-    "z": "tab_matrix1",
-    "name": "Startup -> Helligkeit",
-    "props": [
-      {
-        "p": "payload"
-      }
-    ],
-    "repeat": "",
-    "crontab": "",
-    "once": true,
-    "onceDelay": "10",
-    "topic": "",
-    "payload": "",
-    "payloadType": "date",
-    "x": 170,
-    "y": 860,
-    "wires": [
-      [
-        "m1_dim_check"
-      ]
-    ]
-  },
-  {
-    "id": "m1_dim_check",
-    "type": "function",
-    "z": "tab_matrix1",
-    "name": "Tag oder Nacht?",
-    "func": "var hour = new Date().getHours();\nif (hour >= 22 || hour < 7) {\n    msg.payload = 1;\n} else {\n    msg.payload = 5;\n}\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 400,
-    "y": 860,
-    "wires": [
-      [
-        "m1_mqtt_dimmer"
+        "m1_mqtt_power"
       ]
     ]
   },
@@ -3324,7 +3168,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 490,
     "y": 740,
     "wires": []
@@ -3342,7 +3186,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 810,
     "y": 420,
     "wires": []
@@ -3396,7 +3240,7 @@
     "type": "server-state-changed",
     "z": "tab_matrix3",
     "name": "sensor.pv_leistung",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -3458,7 +3302,7 @@
     "type": "server-state-changed",
     "z": "tab_matrix3",
     "name": "sensor.pv_energy_today",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -3520,7 +3364,7 @@
     "type": "server-state-changed",
     "z": "tab_matrix3",
     "name": "sensor.pv_energy_daily",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -3623,7 +3467,7 @@
     "type": "function",
     "z": "tab_matrix3",
     "name": "Alerts nach Prioritaet sammeln",
-    "func": "// Sammle alle aktiven Alerts nach Prioritaet\n// Max 4 Zeichen pro Alert (64px = 10 Zeichen total)\nvar alerts = [];\nvar ha = global.get('homeassistant');\nif (!ha || !ha.homeAssistant || !ha.homeAssistant.states) {\n    flow.set('m3_alerts', alerts);\n    return null;\n}\nvar states = ha.homeAssistant.states;\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\nfunction isOn(id) {\n    return getState(id) === 'on';\n}\nfunction isEnabled(id) {\n    return isOn('input_boolean.' + id);\n}\n\n// PRIO 1: KRITISCH\nif (isEnabled('matrix3_thw_alarm') && isOn('binary_sensor.divera_alarm_aktiv')) {\n    alerts.push('ALM!');\n}\nif (isEnabled('matrix3_internet_offline')) {\n    var inet = getState('binary_sensor.fritz_box_6591_cable_vodafone_connection');\n    if (inet === 'off') alerts.push('NNET');\n}\n\n// PRIO 2: HOCH\nif (isEnabled('matrix3_nina_warnung')) {\n    var nina = parseInt(getState('sensor.nina_munchen_warnungen_anzahl')) || 0;\n    if (nina > 0) {\n        var txt = getState('sensor.nina_munchen_warnung_aktuell') || 'NINA';\n        alerts.push(txt.substring(0, 4));\n    }\n}\nif (isEnabled('matrix3_dwd_wetter')) {\n    var dwd = parseInt(getState('sensor.dwd_munchen_warnungen')) || 0;\n    if (dwd > 0) alerts.push('UNWT');\n}\nif (isEnabled('matrix3_hochwasser')) {\n    var pegel = parseFloat(getState('sensor.pegel_isar_muenchen')) || 0;\n    if (pegel > 600) alerts.push('HCHW');\n}\nif (isEnabled('matrix3_thw_rueckmeldung') && isOn('binary_sensor.divera_ruckmeldung_fallig')) {\n    alerts.push('THW!');\n}\nif (isEnabled('matrix3_netzwerk')) {\n    var netz = getState('sensor.netzwerk_status');\n    if (netz && netz !== 'Alles OK' && netz !== 'unknown' && netz !== 'unavailable') {\n        alerts.push('NETZ');\n    }\n}\n\n// PRIO 3: MITTEL\nif (isEnabled('matrix3_petkit')) {\n    var petkit = getState('sensor.petkit_status');\n    if (petkit && petkit !== 'ok' && petkit !== 'unknown' && petkit !== 'unavailable') {\n        alerts.push('KATZ');\n    }\n}\nif (isEnabled('matrix3_meshtastic')) {\n    var lastMsg = getState('sensor.mesh_letzte_nachricht');\n    var lastTime = getState('sensor.mesh_letzte_nachricht_zeit');\n    if (lastMsg && lastTime) {\n        var msgAge = (Date.now() - new Date(lastTime).getTime()) / 60000;\n        if (msgAge < 30 && msgAge >= 0) {\n            alerts.push('MESH');\n        }\n    }\n}\nif (isEnabled('matrix3_mesh_batterie')) {\n    var bats = ['mesh_gw_battery','mesh_supreme_battery','mesh_deck_battery','mesh_otn_battery'];\n    for (var i = 0; i < bats.length; i++) {\n        var bat = parseFloat(getState('sensor.' + bats[i])) || 100;\n        if (bat < 20 && bat > 0) {\n            alerts.push('B' + Math.round(bat));\n            break;\n        }\n    }\n}\nif (isEnabled('matrix3_waschmaschine') && isOn('input_boolean.waschmaschine_warten')) {\n    alerts.push('WSCH');\n}\nif (isEnabled('matrix3_trockner') && isOn('input_boolean.trockner_warten')) {\n    alerts.push('TRCK');\n}\n\n// PRIO 4: NIEDRIG\nif (isEnabled('matrix3_tibber_teuer')) {\n    var price = getState('sensor.tibber_price_level');\n    if (price === 'VERY_EXPENSIVE') alerts.push('TEUR');\n}\nif (isEnabled('matrix3_tibber_guenstig')) {\n    var price2 = getState('sensor.tibber_price_level');\n    if (price2 === 'VERY_CHEAP') alerts.push('BIL!');\n}\n\nflow.set('m3_alerts', alerts);\nreturn msg;",
+    "func": "// Sammle alle aktiven Alerts nach Prioritaet\n// Max 4 Zeichen pro Alert (64px = 10 Zeichen total)\nvar alerts = [];\nvar ha = global.get('homeassistant');\nif (!ha || !ha.homeAssistant || !ha.homeAssistant.states) {\n    flow.set('m3_alerts', alerts);\n    return null;\n}\nvar states = ha.homeAssistant.states;\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\nfunction isOn(id) {\n    return getState(id) === 'on';\n}\nfunction isEnabled(id) {\n    return isOn('input_boolean.' + id);\n}\n\n// PRIO 1: KRITISCH\nif (isEnabled('matrix3_thw_alarm') && isOn('binary_sensor.divera_alarm_aktiv')) {\n    alerts.push('ALM!');\n}\nif (isEnabled('matrix3_internet_offline')) {\n    var inet = getState('binary_sensor.fritz_box_6591_cable_vodafone_connection');\n    if (inet === 'off') alerts.push('NNET');\n}\n\n// PRIO 2: HOCH\nif (isEnabled('matrix3_nina_warnung')) {\n    var nina = parseInt(getState('sensor.nina_munchen_warnungen_anzahl')) || 0;\n    if (nina > 0) {\n        var txt = getState('sensor.nina_munchen_warnung_aktuell') || 'NINA';\n        alerts.push(txt.substring(0, 4));\n    }\n}\nif (isEnabled('matrix3_dwd_wetter')) {\n    var dwd = parseInt(getState('sensor.dwd_munchen_warnungen')) || 0;\n    if (dwd > 0) alerts.push('UNWT');\n}\nif (isEnabled('matrix3_hochwasser')) {\n    var pegel = parseFloat(getState('sensor.pegel_isar_muenchen')) || 0;\n    if (pegel > 600) alerts.push('HCHW');\n}\nif (isEnabled('matrix3_thw_rueckmeldung') && isOn('binary_sensor.divera_ruckmeldung_fallig')) {\n    alerts.push('THW!');\n}\nif (isEnabled('matrix3_netzwerk')) {\n    var netz = getState('sensor.netzwerk_status');\n    if (netz && netz !== 'Alles OK' && netz !== 'unknown' && netz !== 'unavailable') {\n        alerts.push('NETZ');\n    }\n}\n\n// PRIO 3: MITTEL\nif (isEnabled('matrix3_petkit')) {\n    var wastebin = getState('binary_sensor.freddy_shitkit_wastebin');\n    var litter = getState('binary_sensor.freddy_shitkit_litter');\n    var water = getState('binary_sensor.trinkbrunnen_water_level');\n    var pkError = getState('sensor.freddy_shitkit_error');\n    var pkState = getState('sensor.freddy_shitkit_state');\n    if (wastebin === 'on' || litter === 'on' || water === 'on' ||\n        (pkError && pkError !== 'no_error' && pkError !== 'unknown' && pkError !== 'unavailable') ||\n        (pkState && pkState.indexOf('system_error') >= 0)) {\n        alerts.push('KATZ');\n    }\n}\nif (isEnabled('matrix3_meshtastic')) {\n    var lastMsg = getState('sensor.mesh_letzte_nachricht');\n    var lastTime = getState('sensor.mesh_letzte_nachricht_zeit');\n    if (lastMsg && lastTime) {\n        var msgAge = (Date.now() - new Date(lastTime).getTime()) / 60000;\n        if (msgAge < 30 && msgAge >= 0) {\n            alerts.push('MESH');\n        }\n    }\n}\nif (isEnabled('matrix3_mesh_batterie')) {\n    var bats = ['mesh_gw_battery','mesh_supreme_battery','mesh_deck_battery','mesh_otn_battery'];\n    for (var i = 0; i < bats.length; i++) {\n        var bat = parseFloat(getState('sensor.' + bats[i])) || 100;\n        if (bat < 20 && bat > 0) {\n            alerts.push('B' + Math.round(bat));\n            break;\n        }\n    }\n}\nif (isEnabled('matrix3_waschmaschine') && isOn('input_boolean.waschmaschine_warten')) {\n    alerts.push('WSCH');\n}\nif (isEnabled('matrix3_trockner') && isOn('input_boolean.trockner_warten')) {\n    alerts.push('TRCK');\n}\n\n// PRIO 4: NIEDRIG\nif (isEnabled('matrix3_tibber_teuer')) {\n    var price = getState('sensor.tibber_price_level');\n    if (price === 'VERY_EXPENSIVE') alerts.push('TEUR');\n}\nif (isEnabled('matrix3_tibber_guenstig')) {\n    var price2 = getState('sensor.tibber_price_level');\n    if (price2 === 'VERY_CHEAP') alerts.push('BIL!');\n}\n\nflow.set('m3_alerts', alerts);\nreturn msg;",
     "outputs": 1,
     "timeout": "",
     "noerr": 0,
@@ -3880,7 +3724,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 430,
     "y": 790,
     "wires": []
@@ -3898,7 +3742,7 @@
     "userProps": "",
     "correl": "",
     "expiry": "",
-    "broker": "YOUR_MQTT_BROKER_NODE_ID",
+    "broker": "mqtt_nuc",
     "x": 700,
     "y": 500,
     "wires": []
@@ -3925,7 +3769,7 @@
     "type": "server-state-changed",
     "z": "tab_tibber_ampel",
     "name": "Günstigste Periode",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -3983,7 +3827,7 @@
     "type": "server-state-changed",
     "z": "tab_tibber_ampel_2",
     "name": "Günstigste Periode",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -4041,7 +3885,7 @@
     "type": "server-state-changed",
     "z": "tab_tibber_ampel",
     "name": "Peak-Preisperiode",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -4099,7 +3943,7 @@
     "type": "server-state-changed",
     "z": "tab_tibber_ampel_2",
     "name": "Peak-Preisperiode",
-    "server": "YOUR_HA_SERVER_NODE_ID",
+    "server": "80ef547.fe1b7a8",
     "version": 6,
     "outputs": 1,
     "exposeAsEntityConfig": "",
@@ -4151,5 +3995,615 @@
         "ampel2_logic"
       ]
     ]
+  },
+  {
+    "id": "tab_matrix4",
+    "type": "tab",
+    "label": "Matrix4 (Strompreis)",
+    "disabled": false,
+    "info": "Strompreis-Display: ESP8266 mit Tasmota + 4x MAX7219\nZeigt aktuellen Tibber-Preis in ct, Trend-Pfeil, Min/Max-Markierung\n\nESP IP: 10.10.12.30 (Bad!IoT VLAN 12)\nMQTT Topic: cmnd/Matrix4/DisplayText"
+  },
+  {
+    "id": "503236eeb9e14547",
+    "type": "comment",
+    "z": "tab_matrix4",
+    "name": "Matrix4: Strompreis (32x8 MAX7219, 4 Module)",
+    "info": "",
+    "x": 300,
+    "y": 40
+  },
+  {
+    "id": "36832fc9efbb42a3",
+    "type": "comment",
+    "z": "tab_matrix4",
+    "name": "--- DATEN SAMMELN ---",
+    "info": "",
+    "x": 160,
+    "y": 80
+  },
+  {
+    "id": "b9819695c26d46ab",
+    "type": "server-state-changed",
+    "z": "tab_matrix4",
+    "name": "Strompreis",
+    "server": "80ef547.fe1b7a8",
+    "version": 6,
+    "entities": {
+      "entity": [
+        "sensor.paule_current_electricity_price"
+      ],
+      "substring": [],
+      "regex": []
+    },
+    "outputInitially": true,
+    "stateType": "str",
+    "ifState": "",
+    "ifStateType": "str",
+    "ifStateOperator": "is",
+    "outputOnlyOnStateChange": false,
+    "for": "0",
+    "forType": "num",
+    "forUnits": "seconds",
+    "ignorePrevStateNull": false,
+    "ignorePrevStateUnknown": false,
+    "ignorePrevStateUnavailable": false,
+    "ignoreCurrentStateUnknown": false,
+    "ignoreCurrentStateUnavailable": false,
+    "outputProperties": [
+      {
+        "property": "payload",
+        "propertyType": "msg",
+        "value": "",
+        "valueType": "entityState"
+      }
+    ],
+    "x": 140,
+    "y": 120,
+    "wires": [
+      [
+        "7af4d1a1c4954033"
+      ]
+    ],
+    "outputs": 1,
+    "exposeAsEntityConfig": ""
+  },
+  {
+    "id": "7af4d1a1c4954033",
+    "type": "function",
+    "z": "tab_matrix4",
+    "name": "Speichere Preis",
+    "func": "flow.set('m4_price_eur', parseFloat(msg.payload) || 0);",
+    "outputs": 1,
+    "x": 360,
+    "y": 120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "6d902ac85f6942a6",
+    "type": "server-state-changed",
+    "z": "tab_matrix4",
+    "name": "Preis-Trend",
+    "server": "80ef547.fe1b7a8",
+    "version": 6,
+    "entities": {
+      "entity": [
+        "sensor.paule_price_trend_1h"
+      ],
+      "substring": [],
+      "regex": []
+    },
+    "outputInitially": true,
+    "stateType": "str",
+    "ifState": "",
+    "ifStateType": "str",
+    "ifStateOperator": "is",
+    "outputOnlyOnStateChange": false,
+    "for": "0",
+    "forType": "num",
+    "forUnits": "seconds",
+    "ignorePrevStateNull": false,
+    "ignorePrevStateUnknown": false,
+    "ignorePrevStateUnavailable": false,
+    "ignoreCurrentStateUnknown": false,
+    "ignoreCurrentStateUnavailable": false,
+    "outputProperties": [
+      {
+        "property": "payload",
+        "propertyType": "msg",
+        "value": "",
+        "valueType": "entityState"
+      }
+    ],
+    "x": 140,
+    "y": 170,
+    "wires": [
+      [
+        "7c643bf2633a43ce"
+      ]
+    ],
+    "outputs": 1,
+    "exposeAsEntityConfig": ""
+  },
+  {
+    "id": "7c643bf2633a43ce",
+    "type": "function",
+    "z": "tab_matrix4",
+    "name": "Speichere Trend",
+    "func": "flow.set('m4_trend', parseFloat(msg.payload) || 0);",
+    "outputs": 1,
+    "x": 360,
+    "y": 170,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "7c937986cb234286",
+    "type": "server-state-changed",
+    "z": "tab_matrix4",
+    "name": "Guenstigste Periode",
+    "server": "80ef547.fe1b7a8",
+    "version": 6,
+    "entities": {
+      "entity": [
+        "binary_sensor.paule_best_price_period"
+      ],
+      "substring": [],
+      "regex": []
+    },
+    "outputInitially": true,
+    "stateType": "str",
+    "ifState": "",
+    "ifStateType": "str",
+    "ifStateOperator": "is",
+    "outputOnlyOnStateChange": false,
+    "for": "0",
+    "forType": "num",
+    "forUnits": "seconds",
+    "ignorePrevStateNull": false,
+    "ignorePrevStateUnknown": false,
+    "ignorePrevStateUnavailable": false,
+    "ignoreCurrentStateUnknown": false,
+    "ignoreCurrentStateUnavailable": false,
+    "outputProperties": [
+      {
+        "property": "payload",
+        "propertyType": "msg",
+        "value": "",
+        "valueType": "entityState"
+      }
+    ],
+    "x": 140,
+    "y": 220,
+    "wires": [
+      [
+        "8e0d8c40d7284535"
+      ]
+    ],
+    "outputs": 1,
+    "exposeAsEntityConfig": ""
+  },
+  {
+    "id": "8e0d8c40d7284535",
+    "type": "function",
+    "z": "tab_matrix4",
+    "name": "Speichere Best",
+    "func": "flow.set('m4_best_period', msg.payload === 'on');",
+    "outputs": 1,
+    "x": 360,
+    "y": 220,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "130deac38a1246a6",
+    "type": "server-state-changed",
+    "z": "tab_matrix4",
+    "name": "Peak-Preisperiode",
+    "server": "80ef547.fe1b7a8",
+    "version": 6,
+    "entities": {
+      "entity": [
+        "binary_sensor.paule_peak_price_period"
+      ],
+      "substring": [],
+      "regex": []
+    },
+    "outputInitially": true,
+    "stateType": "str",
+    "ifState": "",
+    "ifStateType": "str",
+    "ifStateOperator": "is",
+    "outputOnlyOnStateChange": false,
+    "for": "0",
+    "forType": "num",
+    "forUnits": "seconds",
+    "ignorePrevStateNull": false,
+    "ignorePrevStateUnknown": false,
+    "ignorePrevStateUnavailable": false,
+    "ignoreCurrentStateUnknown": false,
+    "ignoreCurrentStateUnavailable": false,
+    "outputProperties": [
+      {
+        "property": "payload",
+        "propertyType": "msg",
+        "value": "",
+        "valueType": "entityState"
+      }
+    ],
+    "x": 140,
+    "y": 270,
+    "wires": [
+      [
+        "e5a827b042a44b37"
+      ]
+    ],
+    "outputs": 1,
+    "exposeAsEntityConfig": ""
+  },
+  {
+    "id": "e5a827b042a44b37",
+    "type": "function",
+    "z": "tab_matrix4",
+    "name": "Speichere Peak",
+    "func": "flow.set('m4_peak_period', msg.payload === 'on');",
+    "outputs": 1,
+    "x": 360,
+    "y": 270,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "dda4e199743144b2",
+    "type": "comment",
+    "z": "tab_matrix4",
+    "name": "--- ANZEIGE (jede Sekunde) ---",
+    "info": "",
+    "x": 180,
+    "y": 320
+  },
+  {
+    "id": "ea947735633244a2",
+    "type": "inject",
+    "z": "tab_matrix4",
+    "name": "Jede Sekunde",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "1",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "5",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 140,
+    "y": 360,
+    "wires": [
+      [
+        "37375509294946d8"
+      ]
+    ]
+  },
+  {
+    "id": "37375509294946d8",
+    "type": "function",
+    "z": "tab_matrix4",
+    "name": "Strompreis-Anzeige",
+    "func": "// Strompreis in ct mit Trend-Pfeil und Min/Max-Markierung\nvar priceRaw = flow.get('m4_price_eur') || 0;\nvar trend = flow.get('m4_trend') || 0;\nvar isBest = flow.get('m4_best_period') || false;\nvar isPeak = flow.get('m4_peak_period') || false;\n\n// Preis - Sensor liefert ct/kWh direkt\nvar priceCt = Math.round(priceRaw);\n\n// Trend-Pfeil\nvar arrow;\nif (trend > 0.1) {\n    arrow = '^';\n} else if (trend < -0.1) {\n    arrow = 'v';\n} else {\n    arrow = '-';\n}\n\n// Status-Zeichen\nvar status = ' ';\nif (isPeak) {\n    status = '!';\n} else if (isBest) {\n    status = '*';\n}\n\nvar display = priceCt + arrow + status;\n\n// Sende jede Sekunde (Display aktualisiert sich eh nur bei Aenderung)\nnode.status({fill: isPeak ? \"red\" : isBest ? \"green\" : \"grey\", shape: \"dot\", text: display + \" (\" + priceRaw + \" raw)\"});\nmsg.payload = display;\nreturn msg;",
+    "outputs": 1,
+    "x": 380,
+    "y": 360,
+    "wires": [
+      [
+        "5eeaaf9109404b1c",
+        "2e4cf9db9321443e"
+      ]
+    ]
+  },
+  {
+    "id": "5eeaaf9109404b1c",
+    "type": "mqtt out",
+    "z": "tab_matrix4",
+    "name": "",
+    "topic": "cmnd/Matrix4/DisplayText",
+    "qos": "1",
+    "retain": "",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt_nuc",
+    "x": 620,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "id": "2e4cf9db9321443e",
+    "type": "debug",
+    "z": "tab_matrix4",
+    "name": "Matrix4 Debug",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 620,
+    "y": 390,
+    "wires": []
+  },
+  {
+    "id": "c3b56d95ba204e28",
+    "type": "comment",
+    "z": "tab_matrix4",
+    "name": "--- HELLIGKEIT ---",
+    "info": "",
+    "x": 150,
+    "y": 440
+  },
+  {
+    "id": "cca1779b31cf414f",
+    "type": "inject",
+    "z": "tab_matrix4",
+    "name": "22:00 Dimmen",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "00 22 * * *",
+    "once": false,
+    "payload": "",
+    "payloadType": "date",
+    "x": 150,
+    "y": 480,
+    "wires": [
+      [
+        "0ff932b9efaa4432"
+      ]
+    ]
+  },
+  {
+    "id": "02e90fceebe14453",
+    "type": "inject",
+    "z": "tab_matrix4",
+    "name": "07:00 Hell",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "00 07 * * *",
+    "once": false,
+    "payload": "",
+    "payloadType": "date",
+    "x": 150,
+    "y": 520,
+    "wires": [
+      [
+        "0ff932b9efaa4432"
+      ]
+    ]
+  },
+  {
+    "id": "5b26d61c4eef4f9b",
+    "type": "inject",
+    "z": "tab_matrix4",
+    "name": "Startup",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "10",
+    "payload": "",
+    "payloadType": "date",
+    "x": 150,
+    "y": 560,
+    "wires": [
+      [
+        "0ff932b9efaa4432"
+      ]
+    ]
+  },
+  {
+    "id": "0ff932b9efaa4432",
+    "type": "function",
+    "z": "tab_matrix4",
+    "name": "Tag/Nacht",
+    "func": "var h = new Date().getHours();\nmsg.payload = (h >= 22 || h < 7) ? 1 : 5;\nreturn msg;",
+    "outputs": 1,
+    "x": 360,
+    "y": 520,
+    "wires": [
+      [
+        "1fa6d9fd5ae04b16"
+      ]
+    ]
+  },
+  {
+    "id": "1fa6d9fd5ae04b16",
+    "type": "mqtt out",
+    "z": "tab_matrix4",
+    "name": "",
+    "topic": "cmnd/Matrix4/DisplayDimmer",
+    "qos": "1",
+    "retain": "",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt_nuc",
+    "x": 610,
+    "y": 520,
+    "wires": []
+  },
+  {
+    "id": "m1_sun_watch",
+    "type": "server-state-changed",
+    "z": "tab_matrix1",
+    "name": "sun.sun",
+    "server": "80ef547.fe1b7a8",
+    "version": 6,
+    "outputs": 1,
+    "exposeAsEntityConfig": "",
+    "entities": {
+      "entity": [
+        "sun.sun"
+      ],
+      "substring": [],
+      "regex": []
+    },
+    "outputInitially": true,
+    "stateType": "str",
+    "ifState": "",
+    "ifStateType": "str",
+    "ifStateOperator": "is",
+    "outputOnlyOnStateChange": false,
+    "for": "0",
+    "forType": "num",
+    "forUnits": "seconds",
+    "ignorePrevStateNull": false,
+    "ignorePrevStateUnknown": false,
+    "ignorePrevStateUnavailable": false,
+    "ignoreCurrentStateUnknown": false,
+    "ignoreCurrentStateUnavailable": false,
+    "outputProperties": [
+      {
+        "property": "payload",
+        "propertyType": "msg",
+        "value": "",
+        "valueType": "entityState"
+      },
+      {
+        "property": "attributes",
+        "propertyType": "msg",
+        "value": "",
+        "valueType": "eventData"
+      }
+    ],
+    "x": 170,
+    "y": 340,
+    "wires": [
+      [
+        "m1_store_sun"
+      ]
+    ]
+  },
+  {
+    "id": "m1_store_sun",
+    "type": "function",
+    "z": "tab_matrix1",
+    "name": "Speichere Sonnenstand",
+    "func": "// Sun state\nflow.set('m1_sun_state', msg.payload);\n\n// Extract sunrise/sunset from attributes\nvar attrs;\nif (msg.attributes && msg.attributes.new_state && msg.attributes.new_state.attributes) {\n    attrs = msg.attributes.new_state.attributes;\n} else if (msg.data && msg.data.new_state && msg.data.new_state.attributes) {\n    attrs = msg.data.new_state.attributes;\n}\n\nif (attrs) {\n    if (attrs.next_rising) {\n        flow.set('m1_next_rising', attrs.next_rising);\n    }\n    if (attrs.next_setting) {\n        flow.set('m1_next_setting', attrs.next_setting);\n    }\n    var sr = attrs.next_rising ? new Date(attrs.next_rising) : null;\n    var ss = attrs.next_setting ? new Date(attrs.next_setting) : null;\n    var srStr = sr ? String(sr.getHours()).padStart(2,'0') + ':' + String(sr.getMinutes()).padStart(2,'0') : '?';\n    var ssStr = ss ? String(ss.getHours()).padStart(2,'0') + ':' + String(ss.getMinutes()).padStart(2,'0') : '?';\n    node.status({text: msg.payload + ' | rise:' + srStr + ' set:' + ssStr});\n}",
+    "outputs": 0,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 420,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "id": "m1_mqtt_power",
+    "type": "mqtt out",
+    "z": "tab_matrix1",
+    "name": "cmnd/Matrix1/Power",
+    "topic": "cmnd/Matrix1/Power",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt_nuc",
+    "x": 800,
+    "y": 500,
+    "wires": []
+  },
+  {
+    "id": "m1_total_watch",
+    "type": "server-state-changed",
+    "z": "tab_matrix1",
+    "name": "sensor.pv_energie_gesamt",
+    "server": "80ef547.fe1b7a8",
+    "version": 6,
+    "outputs": 1,
+    "exposeAsEntityConfig": "",
+    "entities": {
+      "entity": [
+        "sensor.pv_energie_gesamt"
+      ],
+      "substring": [],
+      "regex": []
+    },
+    "outputInitially": true,
+    "stateType": "num",
+    "ifState": "",
+    "ifStateType": "str",
+    "ifStateOperator": "is",
+    "outputOnlyOnStateChange": false,
+    "for": "0",
+    "forType": "num",
+    "forUnits": "seconds",
+    "ignorePrevStateNull": false,
+    "ignorePrevStateUnknown": false,
+    "ignorePrevStateUnavailable": false,
+    "ignoreCurrentStateUnknown": false,
+    "ignoreCurrentStateUnavailable": false,
+    "outputProperties": [
+      {
+        "property": "payload",
+        "propertyType": "msg",
+        "value": "",
+        "valueType": "entityState"
+      }
+    ],
+    "x": 190,
+    "y": 320,
+    "wires": [
+      [
+        "m1_store_total"
+      ]
+    ]
+  },
+  {
+    "id": "m1_store_total",
+    "type": "function",
+    "z": "tab_matrix1",
+    "name": "Speichere Lebensleistung",
+    "func": "flow.set('m1_lifetime_kwh', parseFloat(msg.payload) || 0);",
+    "outputs": 0,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 440,
+    "y": 320,
+    "wires": []
   }
 ]

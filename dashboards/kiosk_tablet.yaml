@@ -54,6 +54,121 @@ views:
           icon_color: green
 
       # =============================================
+      # PETKIT WARNUNGEN (nur wenn Handlung nötig)
+      # =============================================
+      # Integration offline
+      - type: conditional
+        conditions:
+          - entity: sensor.freddy_shitkit_state
+            state: "unavailable"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Petkit offline!"
+          secondary: "Katzenklo & Trinkbrunnen nicht erreichbar"
+          icon: mdi:cat
+          icon_color: red
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 165, 0, 0.15) !important;
+                border: 2px solid orange !important;
+              }
+
+      # Katzenklo: Abfallbehälter voll
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.freddy_shitkit_wastebin
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Katzenklo leeren!"
+          secondary: "Abfallbehälter von Freddy ShitKit ist voll"
+          icon: mdi:delete-alert
+          icon_color: red
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 0, 0, 0.15) !important;
+                border: 2px solid red !important;
+                animation: pulse 2s infinite;
+              }
+              @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+              }
+
+      # Katzenklo: Streu niedrig
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.freddy_shitkit_litter
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Katzenstreu nachfüllen!"
+          secondary: >
+            Streu in Freddy ShitKit ist niedrig
+            {% if states('sensor.freddy_shitkit_litter_level') != 'unavailable' %}
+            ({{ states('sensor.freddy_shitkit_litter_level') }}%)
+            {% endif %}
+          icon: mdi:grain
+          icon_color: orange
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 165, 0, 0.15) !important;
+                border: 2px solid orange !important;
+              }
+
+      # Katzenklo: Fehler / steckengeblieben
+      - type: custom:mushroom-template-card
+        primary: "Katzenklo Störung!"
+        secondary: >
+          {% set err = states('sensor.freddy_shitkit_error') %}
+          {% set st = states('sensor.freddy_shitkit_state') %}
+          {% if 'system_error' in st %}Reinigung gestoppt - Systemfehler
+          {% elif 'paused' in st and 'pet' not in st %}Reinigung blockiert ({{ st | replace('_', ' ') }})
+          {% elif err != 'no_error' and err != 'unavailable' %}Fehler: {{ err }}
+          {% else %}Katzenklo prüfen!
+          {% endif %}
+        icon: mdi:alert-octagon
+        icon_color: red
+        card_mod:
+          style: |
+            ha-card {
+              {% set err = states('sensor.freddy_shitkit_error') %}
+              {% set st = states('sensor.freddy_shitkit_state') %}
+              {% if ('system_error' in st) or ('paused' in st and 'pet' not in st and st != 'idle') or (err not in ['no_error', 'unavailable', 'unknown', 'No error']) %}
+              background-color: rgba(255, 0, 0, 0.15) !important;
+              border: 2px solid red !important;
+              animation: pulse 2s infinite;
+              {% else %}
+              display: none !important;
+              {% endif %}
+            }
+            @keyframes pulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.7; }
+            }
+
+      # Trinkbrunnen: Wasser niedrig
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.trinkbrunnen_water_level
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Trinkbrunnen nachfüllen!"
+          secondary: "Wasserstand im Trinkbrunnen ist niedrig"
+          icon: mdi:water-alert
+          icon_color: orange
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 165, 0, 0.15) !important;
+                border: 2px solid orange !important;
+              }
+
+      # =============================================
       # ENERGIE ÜBERSICHT
       # =============================================
       - type: horizontal-stack
@@ -180,6 +295,57 @@ views:
                   service: vacuum.return_to_base
                   target:
                     entity_id: vacuum.willi_robby
+
+      # =============================================
+      # PETKIT STATUS (Katzenklo & Trinkbrunnen)
+      # =============================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Katzenklo
+            secondary: >
+              {% set state = states('sensor.freddy_shitkit_state') %}
+              {% set wastebin = states('binary_sensor.freddy_shitkit_wastebin') %}
+              {% set litter_lvl = states('sensor.freddy_shitkit_litter_level') %}
+              {% set last_event = states('sensor.freddy_shitkit_last_event') %}
+              {% if state == 'unavailable' %}Offline
+              {% elif wastebin == 'on' %}Bitte leeren!
+              {% else %}{{ state }}{% endif %}
+              {% if litter_lvl != 'unavailable' %} — {{ litter_lvl }}% Streu{% endif %}
+            icon: mdi:cat
+            icon_color: >
+              {% set wastebin = states('binary_sensor.freddy_shitkit_wastebin') %}
+              {% set litter = states('binary_sensor.freddy_shitkit_litter') %}
+              {% set state = states('sensor.freddy_shitkit_state') %}
+              {% if wastebin == 'on' %}red
+              {% elif litter == 'on' %}orange
+              {% elif state == 'unavailable' %}grey
+              {% else %}green{% endif %}
+          - type: custom:mushroom-template-card
+            primary: Trinkbrunnen
+            secondary: >
+              {% set water = states('binary_sensor.trinkbrunnen_water_level') %}
+              {% set filter = states('sensor.trinkbrunnen_filter') %}
+              {% if water == 'unavailable' %}Offline
+              {% elif water == 'on' %}Wasser niedrig!
+              {% else %}OK{% endif %}
+              {% if filter != 'unavailable' %} — Filter {{ filter }}%{% endif %}
+            icon: mdi:cup-water
+            icon_color: >
+              {% set water = states('binary_sensor.trinkbrunnen_water_level') %}
+              {% if water == 'on' %}orange
+              {% elif water == 'unavailable' %}grey
+              {% else %}cyan{% endif %}
+          - type: custom:mushroom-template-card
+            primary: Freddy
+            secondary: >
+              {% set weight = states('sensor.freddy_latest_weight') %}
+              {% set duration = states('sensor.freddy_last_use_duration') %}
+              {% if weight != 'unavailable' %}{{ weight }} kg{% else %}—{% endif %}
+              {% if duration != 'unavailable' %} / {{ duration }}s{% endif %}
+            icon: mdi:paw
+            icon_color: >
+              {% if states('sensor.freddy_latest_weight') == 'unavailable' %}grey{% else %}teal{% endif %}
 
       # =============================================
       # WASCHRAUM & KÜCHE

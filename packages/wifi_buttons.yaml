@@ -227,6 +227,7 @@ input_select:
   wifibutton1_funk1_action:
     name: "Funk-Taste 1"
     options:
+      - "Licht WZ Toggle"
       - "Bad Licht An"
       - "Bad Licht Aus"
       - "WLED An"
@@ -235,13 +236,14 @@ input_select:
       - "Alexa Bad Radio Aus"
       - "Szene Alles Aus"
       - "Nichts"
-    initial: "Bad Licht An"
+    initial: "Licht WZ Toggle"
     icon: mdi:access-point
 
   # --- Funk-Taste 2 (RF 0xDD21A8 → Button5) ---
   wifibutton1_funk2_action:
     name: "Funk-Taste 2"
     options:
+      - "Licht WZ Toggle"
       - "Bad Licht An"
       - "Bad Licht Aus"
       - "WLED An"
@@ -250,7 +252,7 @@ input_select:
       - "Alexa Bad Radio Aus"
       - "Szene Alles Aus"
       - "Nichts"
-    initial: "Bad Licht Aus"
+    initial: "Licht WZ Toggle"
     icon: mdi:access-point
 
 # -----------------------------------------------------------------------------
@@ -282,6 +284,15 @@ script:
       - service: light.turn_off
         target:
           entity_id: light.wled2
+
+  # Wohnzimmer-Licht (Meross MSS210 Steckdose)
+  wifibtn_licht_wz_toggle:
+    alias: "Licht WZ Toggle"
+    icon: mdi:lightbulb
+    sequence:
+      - service: switch.toggle
+        target:
+          entity_id: switch.licht_wz_mss210_main_channel
 
   wifibtn_wled_an:
     alias: "WLED An"
@@ -316,7 +327,7 @@ script:
         target:
           entity_id: media_player.marcus_echo_show_8_2nd_gen
         data:
-          media_content_id: "Radio Bayern 1"
+          media_content_id: "Bayern 1"
           media_content_type: "TUNEIN"
         continue_on_error: true
 
@@ -423,7 +434,7 @@ script:
         target:
           entity_id: media_player.marcus_echo_show_8_2nd_gen
         data:
-          media_content_id: "Movie Radio"
+          media_content_id: "Klassik Radio Movie"
           media_content_type: "TUNEIN"
         continue_on_error: true
 
@@ -800,6 +811,11 @@ automation:
           - conditions:
               - condition: state
                 entity_id: input_select.wifibutton1_funk1_action
+                state: "Licht WZ Toggle"
+            sequence: [service: script.wifibtn_licht_wz_toggle]
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk1_action
                 state: "Bad Licht An"
             sequence: [service: script.wifibtn_bad_licht_an]
           - conditions:
@@ -844,6 +860,11 @@ automation:
         payload: '{"Button5":{"Action":"SINGLE"}}'
     action:
       - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.wifibutton1_funk2_action
+                state: "Licht WZ Toggle"
+            sequence: [service: script.wifibtn_licht_wz_toggle]
           - conditions:
               - condition: state
                 entity_id: input_select.wifibutton1_funk2_action

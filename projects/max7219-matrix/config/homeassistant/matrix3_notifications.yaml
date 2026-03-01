@@ -1,0 +1,82 @@
+# =============================================================================
+# Matrix3 Benachrichtigungen - LED Matrix Rechte Hälfte
+# =============================================================================
+# Jeder input_boolean aktiviert/deaktiviert eine Benachrichtigungsquelle
+# für die rechte Hälfte der Matrix3 (32x8 Pixel).
+# Steuerung: Einstellungen → Geräte & Dienste → Helfer
+# =============================================================================
+
+input_boolean:
+  # --- KRITISCH (Prio 1) ---
+  matrix3_thw_alarm:
+    name: "Matrix3: THW Alarm"
+    icon: mdi:fire-truck
+    initial: true
+
+  matrix3_internet_offline:
+    name: "Matrix3: Internet Offline"
+    icon: mdi:web-off
+    initial: true
+
+  # --- HOCH (Prio 2) ---
+  matrix3_nina_warnung:
+    name: "Matrix3: NINA Warnung"
+    icon: mdi:alert-octagon
+    initial: true
+
+  matrix3_dwd_wetter:
+    name: "Matrix3: DWD Unwetter"
+    icon: mdi:weather-lightning-rainy
+    initial: true
+
+  matrix3_hochwasser:
+    name: "Matrix3: Hochwasser"
+    icon: mdi:waves
+    initial: true
+
+  matrix3_thw_rueckmeldung:
+    name: "Matrix3: THW Rückmeldung"
+    icon: mdi:calendar-alert
+    initial: true
+
+  matrix3_netzwerk:
+    name: "Matrix3: Netzwerk-Fehler"
+    icon: mdi:lan-disconnect
+    initial: true
+
+  # --- MITTEL (Prio 3) ---
+  matrix3_petkit:
+    name: "Matrix3: Petkit Fehler"
+    icon: mdi:cat
+    initial: true
+
+  matrix3_meshtastic:
+    name: "Matrix3: Meshtastic Nachricht"
+    icon: mdi:radio-tower
+    initial: true
+
+  matrix3_mesh_batterie:
+    name: "Matrix3: Mesh Batterie niedrig"
+    icon: mdi:battery-alert
+    initial: true
+
+  matrix3_waschmaschine:
+    name: "Matrix3: Waschmaschine wartet"
+    icon: mdi:washing-machine
+    initial: false
+
+  matrix3_trockner:
+    name: "Matrix3: Trockner wartet"
+    icon: mdi:tumble-dryer
+    initial: false
+
+  # --- NIEDRIG (Prio 4) ---
+  matrix3_tibber_guenstig:
+    name: "Matrix3: Tibber günstig"
+    icon: mdi:cash-check
+    initial: false
+
+  matrix3_tibber_teuer:
+    name: "Matrix3: Tibber teuer"
+    icon: mdi:cash-remove
+    initial: false

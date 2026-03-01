@@ -1,0 +1,721 @@
+# =============================================================================
+# Meshtastic MQTT Integration Package
+# =============================================================================
+# Pure MQTT sensor integration for Meshtastic mesh network
+# Devices publish JSON via MQTT Gateways (T-Beam GW + Supreme)
+#
+# Topic structure: msh/EU_868/2/json/<channel>/<gwNodeId>
+# Subscribe to +/+ to receive from either gateway, filter by value_json.from
+#
+# Node IDs:
+#   T-Beam SX1276 (GW):  !1c5079a0 / 475036064
+#   T-Beam Supreme:       !435a5594 / 1129993620
+#   T-Deck Plus:          !4ed377c8 / 1322481608
+#   OTN TDeck:            !33468b74 / 860261236
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Input Helpers
+# -----------------------------------------------------------------------------
+input_text:
+  meshtastic_message:
+    name: "Meshtastic Nachricht"
+    initial: ""
+    max: 228
+    icon: mdi:message-text-outline
+  meshtastic_last_msg_id:
+    name: "Letzte Mesh Message ID (Dedup)"
+    initial: "0"
+    max: 20
+
+input_select:
+  meshtastic_channel:
+    name: "Meshtastic Kanal"
+    options:
+      - "LongFast"
+      - "IceMesh"
+      - "THW-OMUO"
+    initial: "IceMesh"
+    icon: mdi:radio-tower
+
+# -----------------------------------------------------------------------------
+# MQTT Sensors
+# -----------------------------------------------------------------------------
+mqtt:
+  sensor:
+    # =========================================================================
+    # T-Beam SX1276 Gateway (!1c5079a0 / 475036064)
+    # =========================================================================
+    - name: "Mesh GW Battery"
+      unique_id: meshtastic_gw_battery
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 475036064
+           and value_json.payload.battery_level is defined %}
+          {{ value_json.payload.battery_level }}
+        {% endif %}
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      icon: mdi:battery
+
+    - name: "Mesh GW Voltage"
+      unique_id: meshtastic_gw_voltage
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 475036064
+           and value_json.payload.voltage is defined %}
+          {{ value_json.payload.voltage | round(2) }}
+        {% endif %}
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "Mesh GW Channel Util"
+      unique_id: meshtastic_gw_channel_util
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 475036064
+           and value_json.payload.channel_utilization is defined %}
+          {{ value_json.payload.channel_utilization | round(1) }}
+        {% endif %}
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:signal
+
+    - name: "Mesh GW Air Util TX"
+      unique_id: meshtastic_gw_air_util_tx
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 475036064
+           and value_json.payload.air_util_tx is defined %}
+          {{ value_json.payload.air_util_tx | round(1) }}
+        {% endif %}
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:broadcast
+
+    - name: "Mesh GW Uptime"
+      unique_id: meshtastic_gw_uptime
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 475036064
+           and value_json.payload.uptime_seconds is defined %}
+          {{ value_json.payload.uptime_seconds }}
+        {% endif %}
+      unit_of_measurement: "s"
+      device_class: duration
+      state_class: total_increasing
+      icon: mdi:clock-outline
+
+    # =========================================================================
+    # T-Beam Supreme (!435a5594 / 1129993620)
+    # =========================================================================
+    - name: "Mesh Supreme Battery"
+      unique_id: meshtastic_supreme_battery
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1129993620
+           and value_json.payload.battery_level is defined %}
+          {{ value_json.payload.battery_level }}
+        {% endif %}
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      icon: mdi:battery
+
+    - name: "Mesh Supreme Voltage"
+      unique_id: meshtastic_supreme_voltage
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1129993620
+           and value_json.payload.voltage is defined %}
+          {{ value_json.payload.voltage | round(2) }}
+        {% endif %}
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "Mesh Supreme Channel Util"
+      unique_id: meshtastic_supreme_channel_util
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1129993620
+           and value_json.payload.channel_utilization is defined %}
+          {{ value_json.payload.channel_utilization | round(1) }}
+        {% endif %}
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:signal
+
+    - name: "Mesh Supreme Air Util TX"
+      unique_id: meshtastic_supreme_air_util_tx
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1129993620
+           and value_json.payload.air_util_tx is defined %}
+          {{ value_json.payload.air_util_tx | round(1) }}
+        {% endif %}
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:broadcast
+
+    - name: "Mesh Supreme Uptime"
+      unique_id: meshtastic_supreme_uptime
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1129993620
+           and value_json.payload.uptime_seconds is defined %}
+          {{ value_json.payload.uptime_seconds }}
+        {% endif %}
+      unit_of_measurement: "s"
+      device_class: duration
+      state_class: total_increasing
+      icon: mdi:clock-outline
+
+    # =========================================================================
+    # T-Deck Plus (!4ed377c8 / 1322481608)
+    # =========================================================================
+    - name: "Mesh Deck Battery"
+      unique_id: meshtastic_deck_battery
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1322481608
+           and value_json.payload.battery_level is defined %}
+          {{ value_json.payload.battery_level }}
+        {% endif %}
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      icon: mdi:battery
+
+    - name: "Mesh Deck Voltage"
+      unique_id: meshtastic_deck_voltage
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1322481608
+           and value_json.payload.voltage is defined %}
+          {{ value_json.payload.voltage | round(2) }}
+        {% endif %}
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "Mesh Deck Channel Util"
+      unique_id: meshtastic_deck_channel_util
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1322481608
+           and value_json.payload.channel_utilization is defined %}
+          {{ value_json.payload.channel_utilization | round(1) }}
+        {% endif %}
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:signal
+
+    - name: "Mesh Deck Air Util TX"
+      unique_id: meshtastic_deck_air_util_tx
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1322481608
+           and value_json.payload.air_util_tx is defined %}
+          {{ value_json.payload.air_util_tx | round(1) }}
+        {% endif %}
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:broadcast
+
+    - name: "Mesh Deck Uptime"
+      unique_id: meshtastic_deck_uptime
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 1322481608
+           and value_json.payload.uptime_seconds is defined %}
+          {{ value_json.payload.uptime_seconds }}
+        {% endif %}
+      unit_of_measurement: "s"
+      device_class: duration
+      state_class: total_increasing
+      icon: mdi:clock-outline
+
+    # =========================================================================
+    # OTN TDeck (!33468b74 / 860261236)
+    # =========================================================================
+    - name: "Mesh OTN Battery"
+      unique_id: meshtastic_otn_battery
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 860261236
+           and value_json.payload.battery_level is defined %}
+          {{ value_json.payload.battery_level }}
+        {% endif %}
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      icon: mdi:battery
+
+    - name: "Mesh OTN Voltage"
+      unique_id: meshtastic_otn_voltage
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 860261236
+           and value_json.payload.voltage is defined %}
+          {{ value_json.payload.voltage | round(2) }}
+        {% endif %}
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "Mesh OTN Channel Util"
+      unique_id: meshtastic_otn_channel_util
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 860261236
+           and value_json.payload.channel_utilization is defined %}
+          {{ value_json.payload.channel_utilization | round(1) }}
+        {% endif %}
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:signal
+
+    - name: "Mesh OTN Air Util TX"
+      unique_id: meshtastic_otn_air_util_tx
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 860261236
+           and value_json.payload.air_util_tx is defined %}
+          {{ value_json.payload.air_util_tx | round(1) }}
+        {% endif %}
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:broadcast
+
+    - name: "Mesh OTN Uptime"
+      unique_id: meshtastic_otn_uptime
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'telemetry' and value_json.from == 860261236
+           and value_json.payload.uptime_seconds is defined %}
+          {{ value_json.payload.uptime_seconds }}
+        {% endif %}
+      unit_of_measurement: "s"
+      device_class: duration
+      state_class: total_increasing
+      icon: mdi:clock-outline
+
+    - name: "Mesh OTN Latitude"
+      unique_id: meshtastic_otn_latitude
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'position' and value_json.from == 860261236
+           and value_json.payload.latitude_i is defined %}
+          {{ (value_json.payload.latitude_i / 10000000) | round(6) }}
+        {% endif %}
+      icon: mdi:crosshairs-gps
+
+    - name: "Mesh OTN Longitude"
+      unique_id: meshtastic_otn_longitude
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'position' and value_json.from == 860261236
+           and value_json.payload.longitude_i is defined %}
+          {{ (value_json.payload.longitude_i / 10000000) | round(6) }}
+        {% endif %}
+      icon: mdi:crosshairs-gps
+
+    - name: "Mesh OTN RSSI"
+      unique_id: meshtastic_otn_rssi
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.from == 860261236 and value_json.rssi is defined %}
+          {{ value_json.rssi }}
+        {% endif %}
+      unit_of_measurement: "dBm"
+      device_class: signal_strength
+      state_class: measurement
+      icon: mdi:signal-variant
+
+    - name: "Mesh OTN SNR"
+      unique_id: meshtastic_otn_snr
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.from == 860261236 and value_json.snr is defined %}
+          {{ value_json.snr }}
+        {% endif %}
+      unit_of_measurement: "dB"
+      state_class: measurement
+      icon: mdi:signal
+
+    # =========================================================================
+    # Letzte Nachricht (alle Channels)
+    # =========================================================================
+    - name: "Mesh Letzte Nachricht"
+      unique_id: meshtastic_last_message
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'text' and value_json.payload.text is defined %}
+          {{ value_json.payload.text[:255] }}
+        {% endif %}
+      icon: mdi:message-text
+
+    - name: "Mesh Letzte Nachricht Sender"
+      unique_id: meshtastic_last_message_sender
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'text' %}
+          {{ value_json.sender }}
+        {% endif %}
+      icon: mdi:account
+
+    - name: "Mesh Letzte Nachricht Kanal"
+      unique_id: meshtastic_last_message_channel
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'text' %}
+          {% set channels = {0: 'LongFast', 1: 'IceMesh', 2: 'THW-OMUO'} %}
+          {{ channels.get(value_json.channel, 'Kanal ' ~ value_json.channel) }}
+        {% endif %}
+      icon: mdi:radio-tower
+
+    - name: "Mesh Letzte Nachricht Zeit"
+      unique_id: meshtastic_last_message_time
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'text' %}
+          {{ value_json.timestamp | int | timestamp_local }}
+        {% endif %}
+      icon: mdi:clock
+
+    # =========================================================================
+    # Position Sensoren
+    # =========================================================================
+    - name: "Mesh GW Latitude"
+      unique_id: meshtastic_gw_latitude
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'position' and value_json.from == 475036064
+           and value_json.payload.latitude_i is defined %}
+          {{ (value_json.payload.latitude_i / 10000000) | round(6) }}
+        {% endif %}
+      icon: mdi:crosshairs-gps
+
+    - name: "Mesh GW Longitude"
+      unique_id: meshtastic_gw_longitude
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'position' and value_json.from == 475036064
+           and value_json.payload.longitude_i is defined %}
+          {{ (value_json.payload.longitude_i / 10000000) | round(6) }}
+        {% endif %}
+      icon: mdi:crosshairs-gps
+
+    - name: "Mesh GW Altitude"
+      unique_id: meshtastic_gw_altitude
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'position' and value_json.from == 475036064
+           and value_json.payload.altitude is defined %}
+          {{ value_json.payload.altitude }}
+        {% endif %}
+      unit_of_measurement: "m"
+      icon: mdi:altimeter
+
+    - name: "Mesh Deck Latitude"
+      unique_id: meshtastic_deck_latitude
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'position' and value_json.from == 1322481608
+           and value_json.payload.latitude_i is defined %}
+          {{ (value_json.payload.latitude_i / 10000000) | round(6) }}
+        {% endif %}
+      icon: mdi:crosshairs-gps
+
+    - name: "Mesh Deck Longitude"
+      unique_id: meshtastic_deck_longitude
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'position' and value_json.from == 1322481608
+           and value_json.payload.longitude_i is defined %}
+          {{ (value_json.payload.longitude_i / 10000000) | round(6) }}
+        {% endif %}
+      icon: mdi:crosshairs-gps
+
+    - name: "Mesh Supreme Latitude"
+      unique_id: meshtastic_supreme_latitude
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'position' and value_json.from == 1129993620
+           and value_json.payload.latitude_i is defined %}
+          {{ (value_json.payload.latitude_i / 10000000) | round(6) }}
+        {% endif %}
+      icon: mdi:crosshairs-gps
+
+    - name: "Mesh Supreme Longitude"
+      unique_id: meshtastic_supreme_longitude
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.type == 'position' and value_json.from == 1129993620
+           and value_json.payload.longitude_i is defined %}
+          {{ (value_json.payload.longitude_i / 10000000) | round(6) }}
+        {% endif %}
+      icon: mdi:crosshairs-gps
+
+    # =========================================================================
+    # RSSI / SNR (letzte empfangene Werte pro Geraet)
+    # =========================================================================
+    - name: "Mesh Supreme RSSI"
+      unique_id: meshtastic_supreme_rssi
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.from == 1129993620 and value_json.rssi is defined %}
+          {{ value_json.rssi }}
+        {% endif %}
+      unit_of_measurement: "dBm"
+      device_class: signal_strength
+      state_class: measurement
+      icon: mdi:signal-variant
+
+    - name: "Mesh Supreme SNR"
+      unique_id: meshtastic_supreme_snr
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.from == 1129993620 and value_json.snr is defined %}
+          {{ value_json.snr }}
+        {% endif %}
+      unit_of_measurement: "dB"
+      state_class: measurement
+      icon: mdi:signal
+
+    - name: "Mesh Deck RSSI"
+      unique_id: meshtastic_deck_rssi
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.from == 1322481608 and value_json.rssi is defined %}
+          {{ value_json.rssi }}
+        {% endif %}
+      unit_of_measurement: "dBm"
+      device_class: signal_strength
+      state_class: measurement
+      icon: mdi:signal-variant
+
+    - name: "Mesh Deck SNR"
+      unique_id: meshtastic_deck_snr
+      state_topic: "msh/EU_868/2/json/+/+"
+      value_template: >-
+        {% if value_json.from == 1322481608 and value_json.snr is defined %}
+          {{ value_json.snr }}
+        {% endif %}
+      unit_of_measurement: "dB"
+      state_class: measurement
+      icon: mdi:signal
+
+    # =========================================================================
+    # Mesh Network Info (retained topic from bridge)
+    # =========================================================================
+    - name: "Mesh Info"
+      unique_id: meshtastic_mesh_info
+      state_topic: "meshtastic/mesh_info"
+      value_template: "{{ value_json.total_nodes }}"
+      json_attributes_topic: "meshtastic/mesh_info"
+      json_attributes_template: "{{ value_json | tojson }}"
+      icon: mdi:information-outline
+
+# -----------------------------------------------------------------------------
+# Template Sensors
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      - name: "Mesh GW Uptime Text"
+        unique_id: meshtastic_gw_uptime_text
+        state: >-
+          {% set s = states('sensor.mesh_gw_uptime') | int(0) %}
+          {% set d = (s / 86400) | int %}
+          {% set h = ((s % 86400) / 3600) | int %}
+          {% set m = ((s % 3600) / 60) | int %}
+          {% if d > 0 %}{{ d }}d {{ h }}h {{ m }}m
+          {% elif h > 0 %}{{ h }}h {{ m }}m
+          {% else %}{{ m }}m{% endif %}
+        icon: mdi:clock-outline
+
+      - name: "Mesh Supreme Uptime Text"
+        unique_id: meshtastic_supreme_uptime_text
+        state: >-
+          {% set s = states('sensor.mesh_supreme_uptime') | int(0) %}
+          {% set d = (s / 86400) | int %}
+          {% set h = ((s % 86400) / 3600) | int %}
+          {% set m = ((s % 3600) / 60) | int %}
+          {% if d > 0 %}{{ d }}d {{ h }}h {{ m }}m
+          {% elif h > 0 %}{{ h }}h {{ m }}m
+          {% else %}{{ m }}m{% endif %}
+        icon: mdi:clock-outline
+
+      - name: "Mesh Deck Uptime Text"
+        unique_id: meshtastic_deck_uptime_text
+        state: >-
+          {% set s = states('sensor.mesh_deck_uptime') | int(0) %}
+          {% set d = (s / 86400) | int %}
+          {% set h = ((s % 86400) / 3600) | int %}
+          {% set m = ((s % 3600) / 60) | int %}
+          {% if d > 0 %}{{ d }}d {{ h }}h {{ m }}m
+          {% elif h > 0 %}{{ h }}h {{ m }}m
+          {% else %}{{ m }}m{% endif %}
+        icon: mdi:clock-outline
+
+      - name: "Mesh OTN Uptime Text"
+        unique_id: meshtastic_otn_uptime_text
+        state: >-
+          {% set s = states('sensor.mesh_otn_uptime') | int(0) %}
+          {% set d = (s / 86400) | int %}
+          {% set h = ((s % 86400) / 3600) | int %}
+          {% set m = ((s % 3600) / 60) | int %}
+          {% if d > 0 %}{{ d }}d {{ h }}h {{ m }}m
+          {% elif h > 0 %}{{ h }}h {{ m }}m
+          {% else %}{{ m }}m{% endif %}
+        icon: mdi:clock-outline
+
+      - name: "Mesh Aktive Nodes"
+        unique_id: meshtastic_active_nodes
+        state: >-
+          {% set gw = states('sensor.mesh_gw_battery') not in ['unknown', 'unavailable'] %}
+          {% set sup = states('sensor.mesh_supreme_battery') not in ['unknown', 'unavailable'] %}
+          {% set deck = states('sensor.mesh_deck_battery') not in ['unknown', 'unavailable'] %}
+          {% set otn = states('sensor.mesh_otn_battery') not in ['unknown', 'unavailable'] %}
+          {{ [gw, sup, deck, otn] | select('true') | list | count }}/4
+        icon: mdi:radio-tower
+
+      - name: "Mesh Total Nodes"
+        unique_id: meshtastic_total_nodes
+        state: >-
+          {{ state_attr('sensor.mesh_info', 'total_nodes') | default(0) }}
+        icon: mdi:account-group
+
+      - name: "Mesh LoRa Region"
+        unique_id: meshtastic_lora_region
+        state: >-
+          {% set r = state_attr('sensor.mesh_info', 'lora') %}
+          {{ r.region | default('?') if r else '?' }}
+        icon: mdi:earth
+
+      - name: "Mesh LoRa Preset"
+        unique_id: meshtastic_lora_preset
+        state: >-
+          {% set r = state_attr('sensor.mesh_info', 'lora') %}
+          {{ r.modem_preset | default('?') if r else '?' }}
+        icon: mdi:tune
+
+      - name: "Mesh LoRa Hop Limit"
+        unique_id: meshtastic_lora_hop_limit
+        state: >-
+          {% set r = state_attr('sensor.mesh_info', 'lora') %}
+          {{ r.hop_limit | default(3) if r else 3 }}
+        icon: mdi:transit-connection-horizontal
+
+      - name: "Mesh LoRa TX Power"
+        unique_id: meshtastic_lora_tx_power
+        state: >-
+          {% set r = state_attr('sensor.mesh_info', 'lora') %}
+          {{ r.tx_power | default(0) if r else 0 }}
+        unit_of_measurement: "dBm"
+        icon: mdi:flash
+
+      - name: "Mesh GW Last Heard"
+        unique_id: meshtastic_gw_last_heard
+        state: >-
+          {% set info = state_attr('sensor.mesh_info', 'own_nodes') %}
+          {% if info and info.GW and info.GW.last_heard %}
+            {{ info.GW.last_heard | int | timestamp_local }}
+          {% else %}unbekannt{% endif %}
+        icon: mdi:clock-check-outline
+
+      - name: "Mesh Supreme Last Heard"
+        unique_id: meshtastic_supreme_last_heard
+        state: >-
+          {% set info = state_attr('sensor.mesh_info', 'own_nodes') %}
+          {% if info and info.Supreme and info.Supreme.last_heard %}
+            {{ info.Supreme.last_heard | int | timestamp_local }}
+          {% else %}unbekannt{% endif %}
+        icon: mdi:clock-check-outline
+
+      - name: "Mesh Deck Last Heard"
+        unique_id: meshtastic_deck_last_heard
+        state: >-
+          {% set info = state_attr('sensor.mesh_info', 'own_nodes') %}
+          {% if info and info.IceDeck and info.IceDeck.last_heard %}
+            {{ info.IceDeck.last_heard | int | timestamp_local }}
+          {% else %}unbekannt{% endif %}
+        icon: mdi:clock-check-outline
+
+      - name: "Mesh OTN Last Heard"
+        unique_id: meshtastic_otn_last_heard
+        state: >-
+          {% set info = state_attr('sensor.mesh_info', 'own_nodes') %}
+          {% if info and info.OTN and info.OTN.last_heard %}
+            {{ info.OTN.last_heard | int | timestamp_local }}
+          {% else %}unbekannt{% endif %}
+        icon: mdi:clock-check-outline
+
+  # Trigger-based sensor: Chat History (last 30 messages)
+  - trigger:
+      - trigger: event
+        event_type: meshtastic_chat_message
+    sensor:
+      - name: "Mesh Chat History"
+        unique_id: meshtastic_chat_history
+        state: >-
+          {{ now().strftime('%H:%M:%S') }}
+        attributes:
+          messages: >-
+            {% set current = this.attributes.get('messages', []) %}
+            {% if current is string or current is not iterable %}{% set current = [] %}{% endif %}
+            {% set new_msg = {
+              'text': trigger.event.data.text | default(''),
+              'sender': trigger.event.data.sender | default('?'),
+              'channel': trigger.event.data.channel | default('?'),
+              'time': trigger.event.data.time | default(now().strftime('%H:%M')),
+              'dir': trigger.event.data.dir | default('in')
+            } %}
+            {{ (current + [new_msg])[-30:] }}
+        icon: mdi:chat
+
+# -----------------------------------------------------------------------------
+# Zone: Ottobrunn (Karten-Standardansicht)
+# -----------------------------------------------------------------------------
+zone:
+  - name: "Ottobrunn"
+    latitude: 48.064
+    longitude: 11.665
+    radius: 2000
+    icon: mdi:map-marker
+
+# -----------------------------------------------------------------------------
+# Script: Nachricht senden
+# -----------------------------------------------------------------------------
+script:
+  meshtastic_send:
+    alias: "Meshtastic Nachricht senden"
+    description: "Sendet eine Textnachricht ueber das Meshtastic Mesh-Netzwerk"
+    icon: mdi:send
+    sequence:
+      - variables:
+          selected_channel: "{{ states('input_select.meshtastic_channel') }}"
+          message_text: "{{ states('input_text.meshtastic_message') }}"
+      - condition: template
+        value_template: "{{ message_text | length > 0 }}"
+      # Send via bridge -> HTTP API (meshtastic/send topic)
+      - action: mqtt.publish
+        data:
+          topic: "meshtastic/send"
+          payload: >-
+            {"text": "{{ message_text }}", "channel": "{{ selected_channel }}"}
+      - event: meshtastic_chat_message
+        event_data:
+          text: "{{ message_text }}"
+          sender: "Ich"
+          channel: "{{ selected_channel }}"
+          time: "{{ now().strftime('%H:%M') }}"
+          dir: "out"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.meshtastic_message
+        data:
+          value: ""
