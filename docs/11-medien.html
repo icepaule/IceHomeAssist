@@ -102,6 +102,18 @@
                         <td>Audio, Video, Display, TTS</td>
                     </tr>
                     <tr>
+                        <td><code>media_player.marcus_echo_dot</code></td>
+                        <td>Echo Dot</td>
+                        <td>Bad</td>
+                        <td>Audio, TTS</td>
+                    </tr>
+                    <tr>
+                        <td><code>media_player.marcus_echo_plus</code></td>
+                        <td>Echo Plus</td>
+                        <td>K&uuml;che</td>
+                        <td>Audio, TTS</td>
+                    </tr>
+                    <tr>
                         <td><code>media_player.uberall</code></td>
                         <td>Gruppe "Überall"</td>
                         <td>Alle Räume</td>
@@ -246,6 +258,121 @@ target:
 service: media_player.media_stop
 target:
   entity_id: media_player.marcus_echo_show_8_2nd_gen</code></pre>
+
+            <!-- ============================================================ -->
+            <h2>Song-Info mit Erscheinungsjahr (Hitster-Training)</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Beim Radioh&ouml;ren &uuml;ber Alexa (TuneIn) werden automatisch <strong>Interpret, Titel und
+                Erscheinungsjahr</strong> des aktuellen Songs ermittelt und angezeigt. Die Jahreszahl wird &uuml;ber
+                die <strong>MusicBrainz API</strong> (kostenlos, kein API-Key) abgefragt. Das Feature
+                dient als &bdquo;Hitster-Training&ldquo; &ndash; man kann raten, aus welchem Jahr ein Song stammt.
+            </p>
+
+            <h3>Funktionsweise</h3>
+            <p>
+                Ein <strong>Node-RED Flow</strong> &uuml;berwacht alle drei Alexa-Ger&auml;te auf Song-Wechsel.
+                Alexa liefert bei TuneIn-Radiosendern den Song im Format <code>media_title = "Artist: Titel"</code>
+                und den Sendernamen in <code>media_artist</code>. Der Flow:
+            </p>
+            <ol>
+                <li>Erkennt Song-Wechsel und filtert Sendernamen, Werbung, Duplikate</li>
+                <li>Fragt die <strong>MusicBrainz API</strong> nach dem Erscheinungsjahr</li>
+                <li>Publiziert das Ergebnis per <strong>MQTT</strong> (Topic: <code>song-info/current</code>)</li>
+                <li>Zeigt optional eine <strong>Announce</strong> auf aktiven Alexas (Text + Sprache)</li>
+            </ol>
+
+            <h3>Steuerung per Toggle</h3>
+            <p>
+                Jede Alexa hat einen eigenen <code>input_boolean</code> Toggle im Dashboard.
+                Ist der Toggle aktiv, erh&auml;lt dieses Ger&auml;t die Song-Announce. MQTT l&auml;uft immer.
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Toggle</th>
+                        <th>Alexa</th>
+                        <th>Standard</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>input_boolean.song_info_echo_show</code></td>
+                        <td>Echo Show 8 (Wohnzimmer)</td>
+                        <td>An</td>
+                    </tr>
+                    <tr>
+                        <td><code>input_boolean.song_info_echo_dot</code></td>
+                        <td>Echo Dot</td>
+                        <td>Aus</td>
+                    </tr>
+                    <tr>
+                        <td><code>input_boolean.song_info_echo_plus</code></td>
+                        <td>Echo Plus</td>
+                        <td>Aus</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>HA Package</h3>
+            <pre><code><span class="cmt"># packages/song_info.yaml</span>
+
+<span class="kw">mqtt:</span>
+  <span class="kw">sensor:</span>
+    - <span class="kw">name:</span> <span class="str">"Aktueller Song"</span>
+      <span class="kw">unique_id:</span> aktueller_song
+      <span class="kw">state_topic:</span> <span class="str">"song-info/current"</span>
+      <span class="kw">value_template:</span> <span class="str">"{{ value_json.artist }} - {{ value_json.title }} ({{ value_json.year }})"</span>
+      <span class="kw">json_attributes_topic:</span> <span class="str">"song-info/current"</span>
+      <span class="kw">icon:</span> mdi:music-note
+
+    - <span class="kw">name:</span> <span class="str">"Aktueller Sender"</span>
+      <span class="kw">unique_id:</span> aktueller_sender
+      <span class="kw">state_topic:</span> <span class="str">"song-info/current"</span>
+      <span class="kw">value_template:</span> <span class="str">"{{ value_json.source }}"</span>
+      <span class="kw">icon:</span> mdi:radio
+
+<span class="kw">input_boolean:</span>
+  <span class="kw">song_info_echo_show:</span>
+    <span class="kw">name:</span> <span class="str">"Song-Info Echo Show"</span>
+    <span class="kw">initial:</span> true
+  <span class="kw">song_info_echo_dot:</span>
+    <span class="kw">name:</span> <span class="str">"Song-Info Echo Dot"</span>
+    <span class="kw">initial:</span> false
+  <span class="kw">song_info_echo_plus:</span>
+    <span class="kw">name:</span> <span class="str">"Song-Info Echo Plus"</span>
+    <span class="kw">initial:</span> false</code></pre>
+
+            <h3>Announce-Methoden</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Methode</th>
+                        <th>Verhalten</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>method: "all"</code></td>
+                        <td>Text anzeigen + Sprachausgabe, Musik wird kurz stummgeschaltet</td>
+                    </tr>
+                    <tr>
+                        <td><code>method: "show"</code></td>
+                        <td>Nur Text-Anzeige (lautlos), Musik l&auml;uft weiter</td>
+                    </tr>
+                    <tr>
+                        <td><code>method: "speak"</code></td>
+                        <td>Nur Sprachausgabe, kein Text</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="info-box">
+                <strong>Einschr&auml;nkung:</strong> Song-Metadaten werden nur von <strong>TuneIn</strong>
+                geliefert (z.B. &bdquo;Alexa, spiel Bayern 1&ldquo;). Die <strong>ARD Audiothek</strong>
+                liefert keine Titelinformationen &uuml;ber die Alexa-API.
+            </div>
 
             <!-- ============================================================ -->
             <h2>Android TV - Sony Bravia</h2>
@@ -465,7 +592,7 @@ const searchIndex = [
     {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT"},
     {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
     {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
-    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Song-Info Hitster MusicBrainz"},
     {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},
     {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive"},
     {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter"},

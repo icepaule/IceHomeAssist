@@ -659,6 +659,51 @@ mqtt:
       unique_id: "strom_az_switch"</code></pre>
 
             <!-- ============================================================ -->
+            <h2>Song-Info MQTT Topic</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Der Node-RED Song-Info Flow (siehe <a href="08-nodered.html">Node-RED</a> und
+                <a href="11-medien.html">Medien</a>) publiziert das aktuell auf einer Alexa laufende
+                Lied auf ein retained MQTT Topic. Dies kann von beliebigen Clients gelesen werden
+                (LED-Matrix, Tablet-Dashboard, MQTT Explorer, etc.).
+            </p>
+
+            <h3>Topic und Payload</h3>
+            <pre><code><span class="cmt"># Topic (retained)</span>
+<span class="val">song-info/current</span>
+
+<span class="cmt"># Beispiel-Payload</span>
+{
+  <span class="str">"artist"</span>: <span class="str">"Nena"</span>,
+  <span class="str">"title"</span>: <span class="str">"99 Luftballons"</span>,
+  <span class="str">"year"</span>: <span class="str">"1983"</span>,
+  <span class="str">"source"</span>: <span class="str">"Bayern 3"</span>,
+  <span class="str">"entity_id"</span>: <span class="str">"media_player.marcus_echo_show_8_2nd_gen"</span>,
+  <span class="str">"timestamp"</span>: <span class="str">"2026-03-05T17:30:00.000Z"</span>
+}</code></pre>
+
+            <h3>HA Sensoren</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Sensor</th>
+                        <th>Wert</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>sensor.aktueller_song</code></td>
+                        <td>Artist - Titel (Jahr), z.B. &bdquo;Nena - 99 Luftballons (1983)&ldquo;</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.aktueller_sender</code></td>
+                        <td>Sendername, z.B. &bdquo;Bayern 3&ldquo;</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================ -->
             <h2>MQTT Debugging und Monitoring</h2>
             <!-- ============================================================ -->
 
@@ -807,7 +852,7 @@ const searchIndex = [
     {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten"},
     {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts"},
     {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT"},
-    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Song-Info"},
     {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis"},
     {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV"},
     {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik"},

@@ -361,6 +361,90 @@
 }
 <span class="kw">return null</span>;</code></pre>
 
+            <!-- Song-Info Flow -->
+            <h2>Song-Info Flow (Hitster-Training)</h2>
+            <p>
+                Ein zweiter Flow erkennt automatisch Song-Wechsel auf allen drei Alexa-Ger&auml;ten und
+                ermittelt das Erscheinungsjahr &uuml;ber die MusicBrainz API. Das Ergebnis wird per MQTT
+                publiziert und optional als Announce auf aktiven Alexas angezeigt.
+            </p>
+
+            <h3>Flow-Diagramm</h3>
+            <pre><code>┌──────────────┐   ┌───────────────┐   ┌────────────┐   ┌────────────────┐
+│ State Changed│──▶│ Song-Wechsel  │──▶│ Rate-Limit │──▶│ MusicBrainz    │
+│ (3 Alexas)   │   │ pruefen &amp;     │   │ 1/s        │   │ URL bauen      │
+│ Regex-Match  │   │ parsen        │   │            │   │                │
+└──────────────┘   └───────────────┘   └────────────┘   └───────┬────────┘
+                          │                                      │
+                   ┌──────▼──────┐                      ┌───────▼────────┐
+                   │ Debug:      │                      │ HTTP Request   │
+                   │ Song erkannt│                      │ MusicBrainz API│
+                   └─────────────┘                      └───────┬────────┘
+                                                                │
+                                                       ┌───────▼────────┐
+                                                       │ Jahr           │
+                                                       │ extrahieren    │
+                                                       └──┬─────┬────┬─┘
+                                                          │     │    │
+                                                ┌─────────▼┐ ┌─▼────▼──────────┐
+                                                │ MQTT Out  │ │ Announce-Targets │
+                                                │ song-info/│ │ bestimmen        │
+                                                │ current   │ │ (Toggle pruefen) │
+                                                └──────────┘ └────────┬─────────┘
+                                                                      │
+                                                              ┌───────▼────────┐
+                                                              │ Alexa Announce │
+                                                              │ (Text+Sprache) │
+                                                              └────────────────┘</code></pre>
+
+            <h3>Alexa Attribut-Mapping (TuneIn)</h3>
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Attribut</th>
+                            <th>Inhalt</th>
+                            <th>Beispiel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>media_title</code></td>
+                            <td>Artist: Titel</td>
+                            <td>Rolling Stones: Angie</td>
+                        </tr>
+                        <tr>
+                            <td><code>media_artist</code></td>
+                            <td>Sendername</td>
+                            <td>Bayern 1</td>
+                        </tr>
+                        <tr>
+                            <td><code>media_album_name</code></td>
+                            <td>Senderbeschreibung</td>
+                            <td>BAYERN 1 Die beste Musik f&uuml;r Bayern!</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Song-Filter</h3>
+            <p>
+                Die Function Node filtert Nicht-Songs heraus:
+            </p>
+            <ul>
+                <li>Kein Doppelpunkt im <code>media_title</code> &rarr; kein Song-Format</li>
+                <li>E-Mail-Adressen, URLs, Telefonnummern (Regex-Filter)</li>
+                <li>Sendernamen als Titel (Bayern 1, Klassik Radio, etc.)</li>
+                <li>Artist == Title (Werbung/Jingles)</li>
+                <li>Duplikate (pro Alexa getrennt via <code>flow.set</code>)</li>
+            </ul>
+
+            <div class="info-box">
+                <strong>Import:</strong> Der Flow kann &uuml;ber Node-RED UI &rarr; Men&uuml; &rarr; Import
+                aus der Datei <code>nodered/flow-song-info.json</code> importiert werden. Die Server- und
+                Broker-Referenzen m&uuml;ssen ggf. angepasst werden.
+            </div>
+
             <!-- Flows-Datei -->
             <h2>Flows-Datei</h2>
             <div class="card">
@@ -472,7 +556,7 @@ const searchIndex = [
     {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
     {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
     {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
-    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota Song-Info Hitster MusicBrainz"},
     {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
     {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
     {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},

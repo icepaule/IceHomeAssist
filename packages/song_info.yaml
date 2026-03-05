@@ -1,0 +1,39 @@
+# =============================================================================
+# Song-Info mit Erscheinungsjahr (Hitster-Training)
+# =============================================================================
+# Zeigt Interpret, Titel und Erscheinungsjahr des aktuell auf einer Alexa
+# laufenden Songs an. Daten kommen per MQTT von Node-RED.
+# Je Alexa ein eigener Toggle fuer die Announce-Anzeige.
+# =============================================================================
+
+mqtt:
+  sensor:
+    - name: "Aktueller Song"
+      unique_id: aktueller_song
+      state_topic: "song-info/current"
+      value_template: "{{ value_json.artist }} - {{ value_json.title }} ({{ value_json.year }})"
+      json_attributes_topic: "song-info/current"
+      json_attributes_template: "{{ value_json | tojson }}"
+      icon: mdi:music-note
+
+    - name: "Aktueller Sender"
+      unique_id: aktueller_sender
+      state_topic: "song-info/current"
+      value_template: "{{ value_json.source }}"
+      icon: mdi:radio
+
+input_boolean:
+  song_info_echo_show:
+    name: "Song-Info Echo Show"
+    icon: mdi:tablet
+    initial: true
+
+  song_info_echo_dot:
+    name: "Song-Info Echo Dot"
+    icon: mdi:circle-small
+    initial: false
+
+  song_info_echo_plus:
+    name: "Song-Info Echo Plus"
+    icon: mdi:speaker
+    initial: false
