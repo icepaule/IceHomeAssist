@@ -72,15 +72,114 @@ views:
             name: Trockner
             icon: mdi:tumble-dryer
 
-      # PV Graph
-      - type: history-graph
-        title: Energie 24h
-        hours_to_show: 24
-        entities:
-          - entity: sensor.pv_leistung
-            name: PV Erzeugung
+      # =====================================================================
+      # Energie 24h: Gesamtverbrauch & PV-Anteil
+      # =====================================================================
+      - type: custom:mushroom-template-card
+        primary: "Energiebilanz Heute"
+        secondary: >-
+          Gesamt {{ states('sensor.gesamtverbrauch_heute') }} kWh —
+          {{ states('sensor.pv_anteil_heute') }}% aus PV
+        icon: mdi:home-lightning-bolt
+        icon_color: >-
+          {% set p = states('sensor.pv_anteil_heute') | float(0) %}
+          {% if p >= 50 %}green{% elif p >= 25 %}lime{% elif p >= 10 %}amber{% else %}grey{% endif %}
+        fill_container: true
+
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: "{{ states('sensor.gesamtverbrauch_heute') }} kWh"
+            secondary: Gesamtverbrauch
+            icon: mdi:home-lightning-bolt
+            icon_color: blue-grey
+          - type: custom:mushroom-template-card
+            primary: "{{ states('sensor.pv_eigenverbrauch_heute') }} kWh"
+            secondary: "PV-Eigenverbrauch ({{ states('sensor.pv_anteil_heute') }}%)"
+            icon: mdi:solar-power-variant
+            icon_color: green
+          - type: custom:mushroom-template-card
+            primary: "{{ states('sensor.tibber_pulse_paule_accumulated_consumption') }} kWh"
+            secondary: aus Netz gekauft
+            icon: mdi:transmission-tower
+            icon_color: red
+
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Energie 24h (Leistung — gestapelt = Gesamtverbrauch)
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        span:
+          end: minute
+        stacked: true
+        yaxis:
+          - min: 0
+            apex_config:
+              forceNiceScale: true
+              title:
+                text: W
+        series:
           - entity: sensor.tibber_pulse_paule_power
-            name: Netzverbrauch
+            name: Netzbezug
+            type: area
+            color: "#ef5350"
+            opacity: 0.55
+            stroke_width: 2
+            group_by:
+              func: avg
+              duration: 5min
+          - entity: sensor.pv_eigenverbrauch_aktuell
+            name: PV Eigenverbrauch
+            type: area
+            color: "#43a047"
+            opacity: 0.6
+            stroke_width: 2
+            group_by:
+              func: avg
+              duration: 5min
+          - entity: sensor.gesamtverbrauch_aktuell
+            name: Gesamt (Linie)
+            type: line
+            color: "#37474f"
+            stroke_width: 1
+            show:
+              in_chart: false
+              legend_value: true
+
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Energie 24h (kWh Tagessumme)
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        span:
+          end: day
+        yaxis:
+          - min: 0
+            apex_config:
+              title:
+                text: kWh
+        series:
+          - entity: sensor.tibber_pulse_paule_accumulated_consumption
+            name: Netzbezug
+            type: area
+            color: "#ef5350"
+            stroke_width: 2
+            opacity: 0.4
+          - entity: sensor.pv_eigenverbrauch_heute
+            name: PV Eigenverbrauch
+            type: area
+            color: "#43a047"
+            stroke_width: 2
+            opacity: 0.5
+          - entity: sensor.gesamtverbrauch_heute
+            name: Gesamt
+            type: line
+            color: "#37474f"
+            stroke_width: 3
 
   # ===========================================================================
   # STROMPREISE (mit tibber_prices HACS Sensoren)
@@ -452,6 +551,62 @@ views:
                   name: Bewertung
                   icon: mdi:star-outline
 
+      # Morgen Stundenchart (nur wenn Daten verfuegbar)
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.paule_tomorrow_s_data_available
+            state: "on"
+        card:
+          type: custom:apexcharts-card
+          header:
+            show: true
+            title: Strompreise Morgen (ct/kWh)
+          graph_span: 24h
+          span:
+            start: day
+            offset: "+1d"
+          yaxis:
+            - min: 0
+              apex_config:
+                tickAmount: 6
+                labels:
+                  formatter: |
+                    EVAL:function(val) { return val.toFixed(1) + ' ct'; }
+          apex_config:
+            chart:
+              height: 250
+            plotOptions:
+              bar:
+                columnWidth: "80%"
+                borderRadius: 2
+            xaxis:
+              labels:
+                format: "HH:mm"
+          series:
+            - entity: sensor.paule_price_tomorrow
+              type: column
+              name: Morgen
+              unit: " ct/kWh"
+              float_precision: 1
+              data_generator: |
+                const prices = hass.states['sensor.paule_price_tomorrow']?.attributes?.prices || [];
+                return prices.map(function(p) {
+                  return [new Date(p.start).getTime(), p.price];
+                });
+              color_threshold:
+                - value: 0
+                  color: '#4CAF50'
+                - value: 25
+                  color: '#8BC34A'
+                - value: 28
+                  color: '#CDDC39'
+                - value: 30
+                  color: '#FFC107'
+                - value: 33
+                  color: '#FF9800'
+                - value: 36
+                  color: '#F44336'
+
       # Fallback: Morgen noch nicht verfuegbar
       - type: conditional
         conditions:
@@ -762,6 +917,266 @@ views:
         entities:
           - entity: sensor.pv_leistung
 
+      - type: button
+        name: Solartracker (Neigung)
+        icon: mdi:angle-acute
+        icon_height: 40px
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace-energie/solartracker
+        entity: sensor.solartracker_aktueller_winkel
+        show_state: true
+
+  # ===========================================================================
+  # PV ANLAGE → SUBVIEW: Solartracker (Single-Axis Neigung)
+  # ===========================================================================
+  - title: Solartracker
+    path: solartracker
+    icon: mdi:angle-acute
+    subview: true
+    back_path: /lovelace-energie/pv
+    cards:
+      - type: markdown
+        content: |
+          ## Solar-Tracker (Neigung)
+          Single-Axis-Steuerung *esp_solar* @ `192.168.178.92`.
+          Bedienung folgt, sobald die Firmware cmnd-Topics unterstützt.
+
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.solartracker_aktueller_winkel
+            name: Aktuell
+            min: 0
+            max: 90
+            needle: true
+            severity:
+              green: 30
+              yellow: 60
+              red: 80
+          - type: gauge
+            entity: sensor.solartracker_ziel_winkel
+            name: Ziel
+            min: 0
+            max: 90
+            needle: true
+          - type: gauge
+            entity: sensor.solartracker_sonnen_winkel
+            name: Sonne (optimal)
+            min: 0
+            max: 90
+            needle: true
+
+      - type: entities
+        title: Winkel
+        state_color: true
+        entities:
+          - entity: sensor.solartracker_aktueller_winkel
+            name: Ist
+          - entity: sensor.solartracker_ziel_winkel
+            name: Soll
+          - entity: sensor.solartracker_sonnen_winkel
+            name: Sonne (berechnet)
+          - entity: sensor.solartracker_abweichung
+            name: Ist − Soll
+          - type: divider
+          - entity: sensor.solartracker_min_winkel
+            name: Min (mechanisch)
+          - entity: sensor.solartracker_max_winkel
+            name: Max (mechanisch)
+
+      - type: entities
+        title: Zustand
+        state_color: true
+        entities:
+          - entity: sensor.solartracker_motor
+            name: Motor
+            icon: mdi:engine-outline
+          - entity: binary_sensor.solartracker_manual_override
+            name: Manual-Override
+          - entity: binary_sensor.solartracker_nacht
+            name: Nacht
+          - entity: binary_sensor.solartracker_online
+            name: Online
+
+      - type: entities
+        title: Notfall-Modus (Unwetter)
+        state_color: true
+        entities:
+          - entity: binary_sensor.pv_emergency_trigger
+            name: Auslöser (DWD/NINA/Force)
+            secondary_info: last-changed
+          - type: attribute
+            entity: binary_sensor.pv_emergency_trigger
+            attribute: reason
+            name: Grund
+            icon: mdi:information-outline
+          - entity: binary_sensor.solartracker_emergency_echo
+            name: ESP-Echo (Emergency aktiv)
+          - entity: input_boolean.pv_emergency_force
+            name: Manuell erzwingen (Override)
+          - type: divider
+          - entity: sensor.gemeinde_ottobrunn_current_warning_level
+            name: DWD Level (Ottobrunn)
+            secondary_info: last-changed
+          - entity: sensor.nina_munchen_warnung_schwere
+            name: NINA Schwere
+          - entity: sensor.nina_munchen_warnung_aktuell
+            name: NINA Headline
+
+      - type: history-graph
+        title: Winkelverlauf (24h)
+        hours_to_show: 24
+        entities:
+          - entity: sensor.solartracker_aktueller_winkel
+          - entity: sensor.solartracker_ziel_winkel
+          - entity: sensor.solartracker_sonnen_winkel
+
+      - type: entities
+        title: Boot-Diagnose (tele/solar/BOOT, retained)
+        state_color: true
+        entities:
+          - entity: sensor.solartracker_boot_grund
+            name: Reset-Grund (letzter Boot)
+            icon: mdi:restart-alert
+          - entity: sensor.solartracker_letzter_boot
+            name: Boot-Info (roh)
+            secondary_info: last-changed
+          - type: attribute
+            entity: sensor.solartracker_letzter_boot
+            attribute: time
+            name: Zeitpunkt (ESP-Uhr)
+            icon: mdi:clock-outline
+          - type: attribute
+            entity: sensor.solartracker_letzter_boot
+            attribute: rc
+            name: rc (Kurzcode)
+          - type: attribute
+            entity: sensor.solartracker_letzter_boot
+            attribute: code
+            name: reset_cause-Code
+          - type: attribute
+            entity: sensor.solartracker_letzter_boot
+            attribute: heap
+            name: Heap free (Bytes)
+            icon: mdi:memory
+          - type: attribute
+            entity: sensor.solartracker_letzter_boot
+            attribute: t_ms
+            name: t (ms seit Boot bis Publish)
+
+      - type: entities
+        title: Diagnose
+        entities:
+          - entity: sensor.solartracker_roh_winkel_mpu
+            name: Roh-Winkel (MPU)
+          - entity: sensor.solartracker_wlan_rssi
+          - entity: sensor.solartracker_uptime
+          - entity: sensor.solartracker_heap_frei
+          - entity: sensor.solartracker_letzter_fehler
+
+      # WLAN-RSSI 24h: zeigt Stuerze + Online/Offline-Phasen.
+      # Online-Status zusaetzlich als zweite Card (history-graph), weil
+      # apexcharts ueber unavailable-Phasen interpoliert -> Online-Sensor
+      # macht Abrisse explizit sichtbar.
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: WLAN-RSSI 24h (esp_solar)
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        span:
+          end: minute
+        yaxis:
+          - min: -95
+            max: -40
+            decimals: 0
+            apex_config:
+              title:
+                text: dBm
+              tickAmount: 5
+        apex_config:
+          chart:
+            height: 240
+          stroke:
+            curve: smooth
+            width: 2
+          annotations:
+            yaxis:
+              - y: -70
+                borderColor: '#fbc02d'
+                label:
+                  text: '-70 (Grenzbereich)'
+                  style:
+                    color: '#000000'
+                    background: '#fbc02d'
+              - y: -80
+                borderColor: '#e53935'
+                label:
+                  text: '-80 (kritisch)'
+                  style:
+                    color: '#ffffff'
+                    background: '#e53935'
+        series:
+          - entity: sensor.solartracker_wlan_rssi
+            name: RSSI esp_solar
+            type: line
+            stroke_width: 2
+            float_precision: 0
+            group_by:
+              func: avg
+              duration: 2min
+            color_threshold:
+              - value: -85
+                color: '#b71c1c'
+              - value: -75
+                color: '#e53935'
+              - value: -65
+                color: '#fb8c00'
+              - value: -55
+                color: '#43a047'
+
+      # Online-Status 24h: macht "wifi abgerissen" als rote Phase sichtbar
+      - type: history-graph
+        title: Online-Status 24h (rot = ESP offline)
+        hours_to_show: 24
+        entities:
+          - entity: binary_sensor.solartracker_online
+
+      # Bedienung (Webserver-Ersatz seit 05.06.2026, alles ueber cmnd/solar/*)
+      - type: entities
+        title: Bedienung
+        show_header_toggle: false
+        entities:
+          - entity: input_number.solartracker_min_angle_setpoint
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Hoch
+            icon: mdi:arrow-up-bold
+            tap_action:
+              action: call-service
+              service: script.solartracker_manual_up
+          - type: button
+            name: Runter
+            icon: mdi:arrow-down-bold
+            tap_action:
+              action: call-service
+              service: script.solartracker_manual_down
+          - type: button
+            name: Auto
+            icon: mdi:autorenew
+            tap_action:
+              action: call-service
+              service: script.solartracker_manual_auto
+          - type: button
+            name: Recalc
+            icon: mdi:calculator
+            tap_action:
+              action: call-service
+              service: script.solartracker_recalc
+
   # ===========================================================================
   # VERBRAUCHER
   # ===========================================================================
@@ -920,3 +1335,410 @@ views:
             name: Waschmaschine
           - entity: sensor.trockner_energie_gesamt
             name: Trockner
+
+  # ===========================================================================
+  # KOSTENANALYSE
+  # ===========================================================================
+  - title: Kostenanalyse
+    path: kostenanalyse
+    icon: mdi:chart-pie
+    cards:
+
+      # =====================================================================
+      # Prognose-Karten
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.stromkosten_heute
+            name: Kosten Heute
+            icon: mdi:cash
+          - type: entity
+            entity: sensor.stromkosten_hochrechnung_monat
+            name: Prognose Monat
+            icon: mdi:calendar-month
+          - type: entity
+            entity: sensor.stromkosten_hochrechnung_jahr
+            name: Prognose Jahr
+            icon: mdi:calendar
+
+      # =====================================================================
+      # Donut-Chart: Kostenverteilung nach Geraet (ct/h)
+      # =====================================================================
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Kostenverteilung aktuell (ct/h)
+        chart_type: donut
+        apex_config:
+          chart:
+            height: 300
+          legend:
+            show: true
+            position: bottom
+          plotOptions:
+            pie:
+              donut:
+                labels:
+                  show: true
+                  total:
+                    show: true
+                    label: Gesamt
+                    formatter: |
+                      EVAL:function(w) {
+                        var t = w.globals.seriesTotals.reduce(function(a,b){return a+b},0);
+                        return t.toFixed(1) + ' ct/h';
+                      }
+        series:
+          - entity: sensor.server_kosten_pro_stunde
+            name: Server
+            color: '#2196F3'
+          - entity: sensor.kueche_kosten_pro_stunde
+            name: Kueche
+            color: '#FF9800'
+          - entity: sensor.waschmaschine_kosten_pro_stunde
+            name: Waschmaschine
+            color: '#9C27B0'
+          - entity: sensor.trockner_kosten_pro_stunde
+            name: Trockner
+            color: '#F44336'
+          - entity: sensor.arbeitszimmer_kosten_pro_stunde
+            name: Arbeitszimmer
+            color: '#4CAF50'
+
+      # =====================================================================
+      # Balkendiagramm: Tageskosten letzte 7 Tage
+      # =====================================================================
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Tageskosten letzte 7 Tage (EUR)
+        graph_span: 7d
+        span:
+          end: day
+        apex_config:
+          chart:
+            height: 250
+          plotOptions:
+            bar:
+              columnWidth: "60%"
+              borderRadius: 4
+          xaxis:
+            labels:
+              format: "dd.MM"
+        series:
+          - entity: sensor.tibber_pulse_paule_accumulated_cost
+            type: column
+            name: Tageskosten
+            unit: " EUR"
+            float_precision: 2
+            statistics:
+              type: max
+              period: day
+            color_threshold:
+              - value: 0
+                color: '#4CAF50'
+              - value: 3
+                color: '#8BC34A'
+              - value: 5
+                color: '#FFC107'
+              - value: 7
+                color: '#FF9800'
+              - value: 10
+                color: '#F44336'
+
+      # =====================================================================
+      # Stacked Area: Ueberwachter vs. sonstiger Verbrauch (24h)
+      # =====================================================================
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Ueberwachter vs. sonstiger Verbrauch (24h)
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        span:
+          start: day
+        now:
+          show: true
+        apex_config:
+          chart:
+            stacked: true
+            height: 280
+          tooltip:
+            x:
+              format: "HH:mm"
+        yaxis:
+          - min: 0
+            apex_config:
+              labels:
+                formatter: |
+                  EVAL:function(val) { return val.toFixed(0) + ' W'; }
+        series:
+          - entity: sensor.gesamtverbrauch_gemessen
+            type: area
+            name: Gemessen
+            color: '#2196F3'
+            stroke_width: 1
+            opacity: 0.6
+            group_by:
+              func: avg
+              duration: 15min
+          - entity: sensor.sonstiger_verbrauch
+            type: area
+            name: Sonstiger
+            color: '#FF5722'
+            stroke_width: 1
+            opacity: 0.6
+            group_by:
+              func: avg
+              duration: 15min
+
+      # =====================================================================
+      # Kosten pro Stunde Heute (Preis x Verbrauch)
+      # =====================================================================
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Tatsaechliche Stundenkosten Heute (ct)
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        span:
+          start: day
+        now:
+          show: true
+        yaxis:
+          - min: 0
+            apex_config:
+              labels:
+                formatter: |
+                  EVAL:function(val) { return val.toFixed(1) + ' ct'; }
+        apex_config:
+          chart:
+            height: 250
+          plotOptions:
+            bar:
+              columnWidth: "80%"
+              borderRadius: 2
+        series:
+          - entity: sensor.tibber_pulse_paule_power
+            type: column
+            name: Stundenkosten
+            unit: " ct"
+            float_precision: 1
+            statistics:
+              type: mean
+              period: hour
+            data_generator: |
+              const data = [];
+              const now = new Date();
+              const startOfDay = new Date(now);
+              startOfDay.setHours(0,0,0,0);
+              for (let h = 0; h <= now.getHours(); h++) {
+                const t = new Date(startOfDay);
+                t.setHours(h);
+                const power = parseFloat(hass.states['sensor.tibber_pulse_paule_power']?.state) || 0;
+                const price = parseFloat(hass.states['sensor.paule_current_electricity_price']?.state) || 0;
+                const cost = (power / 1000) * price;
+                data.push([t.getTime(), Math.round(cost * 10) / 10]);
+              }
+              return data;
+            color_threshold:
+              - value: 0
+                color: '#4CAF50'
+              - value: 10
+                color: '#FFC107'
+              - value: 20
+                color: '#FF9800'
+              - value: 30
+                color: '#F44336'
+
+      # =====================================================================
+      # Heizkosten
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.heizung_brenner_laufzeit_heute
+            name: Brenner Heute
+            icon: mdi:fire
+            unit: "h"
+          - type: entity
+            entity: sensor.heizkosten_schaetzung_heute
+            name: Heizkosten Heute
+            icon: mdi:fire-circle
+
+  # ===========================================================================
+  # ENERGIEFLUSS
+  # ===========================================================================
+  - title: Energiefluss
+    path: energiefluss
+    icon: mdi:transmission-tower
+    cards:
+
+      # =====================================================================
+      # Mushroom-Karten: Netz / PV / Haus Gesamt
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: sensor.tibber_pulse_paule_power
+            name: Netz
+            icon: mdi:transmission-tower
+            icon_color: |-
+              {% set p = states('sensor.tibber_pulse_paule_power') | float(0) %}
+              {% if p > 2000 %}red{% elif p > 500 %}orange{% else %}green{% endif %}
+            layout: vertical
+          - type: custom:mushroom-entity-card
+            entity: sensor.pv_leistung
+            name: PV
+            icon: mdi:solar-power
+            icon_color: |-
+              {% set p = states('sensor.pv_leistung') | float(0) %}
+              {% if p > 300 %}green{% elif p > 100 %}orange{% else %}grey{% endif %}
+            layout: vertical
+          - type: custom:mushroom-entity-card
+            entity: sensor.gesamtverbrauch_gemessen
+            name: Gemessen
+            icon: mdi:home-lightning-bolt
+            icon_color: blue
+            layout: vertical
+
+      # =====================================================================
+      # Sonstiger Verbrauch Karte
+      # =====================================================================
+      - type: custom:mushroom-entity-card
+        entity: sensor.sonstiger_verbrauch
+        name: Unbekannter / Sonstiger Verbrauch
+        icon: mdi:help-circle-outline
+        icon_color: |-
+          {% set p = states('sensor.sonstiger_verbrauch') | float(0) %}
+          {% if p > 500 %}red{% elif p > 200 %}orange{% else %}green{% endif %}
+
+      # =====================================================================
+      # RadialBar: Aktuelle Leistungsverteilung
+      # =====================================================================
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Aktuelle Leistungsverteilung
+        chart_type: radialBar
+        apex_config:
+          chart:
+            height: 350
+          plotOptions:
+            radialBar:
+              dataLabels:
+                name:
+                  fontSize: '14px'
+                value:
+                  fontSize: '16px'
+                  formatter: |
+                    EVAL:function(val) { return val.toFixed(0) + ' W'; }
+                total:
+                  show: true
+                  label: Gesamt
+        series:
+          - entity: sensor.server_leistung
+            name: Server
+            color: '#2196F3'
+            max: 500
+            show:
+              in_header: false
+          - entity: sensor.kueche_leistung
+            name: Kueche
+            color: '#FF9800'
+            max: 3000
+            show:
+              in_header: false
+          - entity: sensor.arbeitszimmer_leistung
+            name: Arbeitszimmer
+            color: '#4CAF50'
+            max: 500
+            show:
+              in_header: false
+          - entity: sensor.waschmaschine_leistung
+            name: Waschmaschine
+            color: '#9C27B0'
+            max: 2500
+            show:
+              in_header: false
+          - entity: sensor.trockner_leistung
+            name: Trockner
+            color: '#F44336'
+            max: 3000
+            show:
+              in_header: false
+
+      # =====================================================================
+      # Netzverbrauch vs PV Erzeugung 24h
+      # =====================================================================
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Netz vs. PV (24h)
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        span:
+          start: day
+        now:
+          show: true
+        apex_config:
+          chart:
+            height: 280
+          tooltip:
+            x:
+              format: "HH:mm"
+        yaxis:
+          - min: 0
+            apex_config:
+              labels:
+                formatter: |
+                  EVAL:function(val) { return val.toFixed(0) + ' W'; }
+        series:
+          - entity: sensor.tibber_pulse_paule_power
+            type: area
+            name: Netz
+            color: '#F44336'
+            stroke_width: 2
+            opacity: 0.3
+            group_by:
+              func: avg
+              duration: 15min
+          - entity: sensor.pv_leistung
+            type: area
+            name: PV
+            color: '#4CAF50'
+            stroke_width: 2
+            opacity: 0.3
+            group_by:
+              func: avg
+              duration: 15min
+
+      # =====================================================================
+      # Utility Meter Statistiken
+      # =====================================================================
+      - type: entities
+        title: Monatsverbrauch pro Geraet (kWh)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.grid_import_monthly
+            name: Netz Bezug
+            icon: mdi:transmission-tower
+          - entity: sensor.server_energy_monthly
+            name: Server
+            icon: mdi:server
+          - entity: sensor.kueche_energy_monthly
+            name: Kueche
+            icon: mdi:countertop
+          - entity: sensor.arbeitszimmer_energy_monthly
+            name: Arbeitszimmer
+            icon: mdi:desk
+          - entity: sensor.waschmaschine_energy_monthly
+            name: Waschmaschine
+            icon: mdi:washing-machine
+          - entity: sensor.trockner_energy_monthly
+            name: Trockner
+            icon: mdi:tumble-dryer

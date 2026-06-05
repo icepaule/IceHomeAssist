@@ -1,0 +1,387 @@
+# =============================================================================
+# Solar-Tracker esp_solar @ 192.168.178.92 (Single-Axis Neigungssteuerung)
+# Telemetrie: tele/solar/SENSOR (Voll-JSON) + tele/solar/BOOT (retained)
+# Bedienung: cmnd/solar/MANUAL (up|down|auto), cmnd/solar/MIN_ANGLE (0..70),
+#            cmnd/solar/RECALC, cmnd/solar/EMERGENCY, cmnd/solar/SETANGLE
+# Kein Webserver mehr auf dem ESP (Heap-Schutz, siehe Firmware-Kommentar).
+# =============================================================================
+
+mqtt:
+  sensor:
+    # ---- Winkel-Werte -----------------------------------------------------
+    - name: "Solartracker Aktueller Winkel"
+      unique_id: solartracker_panel_angle
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.PanelAngle }}"
+      unit_of_measurement: "°"
+      state_class: measurement
+      icon: mdi:angle-acute
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Ziel-Winkel"
+      unique_id: solartracker_target_angle
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.TargetAngle }}"
+      unit_of_measurement: "°"
+      state_class: measurement
+      icon: mdi:target
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Sonnen-Winkel"
+      unique_id: solartracker_sun_angle
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.SunAngle }}"
+      unit_of_measurement: "°"
+      state_class: measurement
+      icon: mdi:white-balance-sunny
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Min-Winkel"
+      unique_id: solartracker_min_angle
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.MinAngle }}"
+      unit_of_measurement: "°"
+      icon: mdi:arrow-collapse-down
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Max-Winkel"
+      unique_id: solartracker_max_angle
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.MaxAngle }}"
+      unit_of_measurement: "°"
+      icon: mdi:arrow-collapse-up
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Roh-Winkel (MPU)"
+      unique_id: solartracker_panel_angle_raw
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.PanelAngleRaw }}"
+      unit_of_measurement: "°"
+      state_class: measurement
+      icon: mdi:bug-outline
+      entity_category: diagnostic
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Toleranz"
+      unique_id: solartracker_tolerance
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.Tolerance }}"
+      unit_of_measurement: "°"
+      icon: mdi:plus-minus
+      entity_category: diagnostic
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    # ---- Motion-Status ----------------------------------------------------
+    - name: "Solartracker Motor"
+      unique_id: solartracker_motion_text
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.MotionText }}"
+      icon: mdi:engine-outline
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    # ---- System-Werte -----------------------------------------------------
+    - name: "Solartracker WLAN RSSI"
+      unique_id: solartracker_wifi_rssi
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SYSTEM.WiFiRSSI }}"
+      unit_of_measurement: "dBm"
+      device_class: signal_strength
+      state_class: measurement
+      entity_category: diagnostic
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Uptime"
+      unique_id: solartracker_uptime
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SYSTEM.Uptime }}"
+      unit_of_measurement: "s"
+      device_class: duration
+      state_class: total_increasing
+      entity_category: diagnostic
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Heap frei"
+      unique_id: solartracker_heap_free
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SYSTEM.HeapFree }}"
+      unit_of_measurement: "B"
+      state_class: measurement
+      entity_category: diagnostic
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Letzter Fehler"
+      unique_id: solartracker_last_error
+      state_topic: "tele/solar/SENSOR"
+      value_template: >-
+        {% set e = value_json.SYSTEM.LastError %}
+        {{ e if e else 'keiner' }}
+      icon: mdi:alert-circle-outline
+      entity_category: diagnostic
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    # ---- Boot-Diagnose (retained, KEIN availability — wir wollen den Wert
+    # gerade dann sehen, wenn der ESP offline ist / gerade rebootet hat) ----
+    # Payload: {"Time":"19.05.2026 09:02:43","Boot":"rc=SOFT code=4 heap=34704 t=441","Device":"esp_solar"}
+    - name: "Solartracker Letzter Boot"
+      unique_id: solartracker_last_boot
+      state_topic: "tele/solar/BOOT"
+      value_template: "{{ value_json.Boot }}"
+      icon: mdi:restart-alert
+      entity_category: diagnostic
+      json_attributes_topic: "tele/solar/BOOT"
+      json_attributes_template: >-
+        {% set b = value_json.Boot | default('') %}
+        {% set ns = namespace(d={}) %}
+        {%- for kv in b.split(' ') if '=' in kv -%}
+          {%- set k, v = kv.split('=', 1) -%}
+          {%- set ns.d = dict(ns.d, **{k: v}) -%}
+        {%- endfor -%}
+        {{ {
+          'time': value_json.Time,
+          'device': value_json.Device,
+          'rc': ns.d.get('rc'),
+          'code': ns.d.get('code'),
+          'heap': ns.d.get('heap'),
+          't_ms': ns.d.get('t'),
+          'raw': b
+        } | tojson }}
+
+  # ---- Binäre Zustände ----------------------------------------------------
+  binary_sensor:
+    - name: "Solartracker Online"
+      unique_id: solartracker_online
+      state_topic: "stat/esp_solar/STATUS"
+      value_template: "{{ value_json.Status }}"
+      payload_on: "online"
+      payload_off: "offline"
+      device_class: connectivity
+
+    - name: "Solartracker Manual-Override"
+      unique_id: solartracker_manual
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.Manual | string | lower }}"
+      payload_on: "true"
+      payload_off: "false"
+      icon: mdi:hand-back-right
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    - name: "Solartracker Nacht"
+      unique_id: solartracker_is_night
+      state_topic: "tele/solar/SENSOR"
+      value_template: "{{ value_json.SENSOR.IsNight | string | lower }}"
+      payload_on: "true"
+      payload_off: "false"
+      device_class: light
+      icon: mdi:weather-night
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+    # Sofortiges Echo via Sub-Topic (kommt direkt nach jeder Änderung + alle 30 s zyklisch)
+    - name: "Solartracker Emergency (Echo)"
+      unique_id: solartracker_emergency_echo
+      state_topic: "tele/solar/SENSOR/Emergency"
+      payload_on: "true"
+      payload_off: "false"
+      device_class: safety
+      icon: mdi:weather-hurricane
+      availability:
+        - topic: "stat/esp_solar/STATUS"
+          value_template: "{{ value_json.Status }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+# -----------------------------------------------------------------------------
+# Helfer
+# -----------------------------------------------------------------------------
+input_boolean:
+  pv_emergency_force:
+    name: "PV-Emergency manuell erzwingen"
+    icon: mdi:weather-hurricane
+    initial: false
+
+input_number:
+  # Slider fuer Min-Angle (publisht via Automation an cmnd/solar/MIN_ANGLE)
+  solartracker_min_angle_setpoint:
+    name: "Solartracker Min-Winkel (Setpoint)"
+    min: 0
+    max: 70
+    step: 0.5
+    unit_of_measurement: "°"
+    icon: mdi:arrow-collapse-down
+    mode: slider
+    initial: 32
+
+# -----------------------------------------------------------------------------
+# Scripts: ersetzen die alten Web-Buttons (Webserver wurde im Firmware-Umbau
+# 05.06.2026 entfernt; Steuerung jetzt komplett ueber cmnd/solar/*).
+# -----------------------------------------------------------------------------
+script:
+  solartracker_manual_up:
+    alias: "Solartracker: Hoch"
+    icon: mdi:arrow-up-bold
+    sequence:
+      - service: mqtt.publish
+        data:
+          topic: "cmnd/solar/MANUAL"
+          payload: "up"
+
+  solartracker_manual_down:
+    alias: "Solartracker: Runter"
+    icon: mdi:arrow-down-bold
+    sequence:
+      - service: mqtt.publish
+        data:
+          topic: "cmnd/solar/MANUAL"
+          payload: "down"
+
+  solartracker_manual_auto:
+    alias: "Solartracker: Auto-Modus"
+    icon: mdi:autorenew
+    sequence:
+      - service: mqtt.publish
+        data:
+          topic: "cmnd/solar/MANUAL"
+          payload: "auto"
+
+  solartracker_recalc:
+    alias: "Solartracker: Sonne neu berechnen"
+    icon: mdi:calculator
+    sequence:
+      - service: mqtt.publish
+        data:
+          topic: "cmnd/solar/RECALC"
+          payload: "1"
+
+# -----------------------------------------------------------------------------
+# Automation: bei Slider-Aenderung MIN_ANGLE publishen (ersetzt Web-Form)
+# -----------------------------------------------------------------------------
+automation:
+  - alias: "Solartracker: MIN_ANGLE Slider -> MQTT"
+    id: solartracker_min_angle_publish
+    trigger:
+      - platform: state
+        entity_id: input_number.solartracker_min_angle_setpoint
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "cmnd/solar/MIN_ANGLE"
+          payload: "{{ states('input_number.solartracker_min_angle_setpoint') | float }}"
+
+# -----------------------------------------------------------------------------
+# Template-Sensoren (Abweichung + Wetter-Aggregat als PV-Emergency-Trigger)
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      - name: "Solartracker Abweichung"
+        unique_id: solartracker_deviation
+        unit_of_measurement: "°"
+        state_class: measurement
+        icon: mdi:plus-minus-variant
+        availability: >-
+          {{ has_value('sensor.solartracker_aktueller_winkel') and
+             has_value('sensor.solartracker_ziel_winkel') }}
+        state: >-
+          {{ (states('sensor.solartracker_aktueller_winkel') | float
+              - states('sensor.solartracker_ziel_winkel') | float) | round(2) }}
+
+      # Reset-Ursache vom letzten Boot in Klartext (aus tele/solar/BOOT attribute rc)
+      - name: "Solartracker Boot-Grund"
+        unique_id: solartracker_boot_grund
+        icon: mdi:information-outline
+        state: >-
+          {% set rc = state_attr('sensor.solartracker_letzter_boot', 'rc') %}
+          {% set mapping = {
+            'PWRON': 'Power-On / Brownout (Stromausfall)',
+            'HARD': 'Hardware-Reset (Knopf · beide Watchdogs versagt)',
+            'WDT': 'Hardware-Watchdog',
+            'SOFT': 'Software-Reset (machine.reset / Health-Check)',
+            'DEEPSLEEP': 'Aufgewacht aus Deep-Sleep',
+            'WDT_HARD': 'Hardware-Watchdog (hart)'
+          } %}
+          {{ mapping.get(rc, rc if rc else 'unbekannt') }}
+
+  - binary_sensor:
+      # Aggregat: true wenn relevante Wetterwarnung läuft ODER Force-Helper an
+      # Trigger-Regel: DWD-current_warning_level >= 2 (Wetterwarnung+)
+      #                ODER NINA-Schwere in Schwer/Extrem
+      #                ODER input_boolean.pv_emergency_force
+      - name: "PV Emergency Trigger"
+        unique_id: pv_emergency_trigger
+        device_class: safety
+        icon: mdi:weather-hurricane
+        state: >-
+          {% set dwd_level = states('sensor.gemeinde_ottobrunn_current_warning_level') | int(0) %}
+          {% set nina_sev = states('sensor.nina_munchen_warnung_schwere') %}
+          {% set force = is_state('input_boolean.pv_emergency_force', 'on') %}
+          {{ force or dwd_level >= 2 or nina_sev in ['Schwer','Extrem'] }}
+        attributes:
+          dwd_level: "{{ states('sensor.gemeinde_ottobrunn_current_warning_level') }}"
+          dwd_count: "{{ state_attr('sensor.gemeinde_ottobrunn_current_warning_level','warning_count') }}"
+          dwd_last_update: "{{ state_attr('sensor.gemeinde_ottobrunn_current_warning_level','last_update') }}"
+          nina_severity: "{{ states('sensor.nina_munchen_warnung_schwere') }}"
+          nina_headline: "{{ states('sensor.nina_munchen_warnung_aktuell') }}"
+          force_active: "{{ is_state('input_boolean.pv_emergency_force','on') }}"
+          reason: >-
+            {% set dwd_level = states('sensor.gemeinde_ottobrunn_current_warning_level') | int(0) %}
+            {% set nina_sev = states('sensor.nina_munchen_warnung_schwere') %}
+            {% set force = is_state('input_boolean.pv_emergency_force', 'on') %}
+            {% set parts = [] %}
+            {% if force %}{% set parts = parts + ['Manuell erzwungen'] %}{% endif %}
+            {% if dwd_level >= 2 %}{% set parts = parts + ['DWD Level ' ~ dwd_level] %}{% endif %}
+            {% if nina_sev in ['Schwer','Extrem'] %}{% set parts = parts + ['NINA ' ~ nina_sev] %}{% endif %}
+            {{ parts | join(' + ') if parts else 'keine aktive Warnung' }}
