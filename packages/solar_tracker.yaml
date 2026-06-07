@@ -1,5 +1,5 @@
 # =============================================================================
-# Solar-Tracker esp_solar @ 192.168.178.92 (Single-Axis Neigungssteuerung)
+# Solar-Tracker esp_solar @ 10.10.12.92 (Single-Axis Neigungssteuerung, IoT-VLAN)
 # Telemetrie: tele/solar/SENSOR (Voll-JSON) + tele/solar/BOOT (retained)
 # Bedienung: cmnd/solar/MANUAL (up|down|auto), cmnd/solar/MIN_ANGLE (0..70),
 #            cmnd/solar/RECALC, cmnd/solar/EMERGENCY, cmnd/solar/SETANGLE

@@ -939,8 +939,8 @@ views:
       - type: markdown
         content: |
           ## Solar-Tracker (Neigung)
-          Single-Axis-Steuerung *esp_solar* @ `192.168.178.92`.
-          Bedienung folgt, sobald die Firmware cmnd-Topics unterstützt.
+          Single-Axis-Steuerung *esp_solar* @ `10.10.12.92` (IoT-VLAN).
+          Bedienung via cmnd/solar/MANUAL|MIN_ANGLE|RECALC siehe Karten unten.
 
       - type: horizontal-stack
         cards:
