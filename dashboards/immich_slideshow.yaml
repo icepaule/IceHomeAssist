@@ -1,0 +1,97 @@
+# =============================================================================
+# Immich Slideshow Dashboard
+# Quelle per Dropdown wählen -> passende Diashow (auto-rotierende Kamera)
+# Cast-Button schickt diese Ansicht auf den Sony Bravia (Google Cast)
+# Kamera-Entities aus custom_components/immich_picture
+# =============================================================================
+title: Fotos
+views:
+  - title: Slideshow
+    path: slideshow
+    icon: mdi:image-multiple
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: entities
+            title: Diashow
+            entities:
+              - entity: input_select.immich_slideshow_quelle
+                name: Quelle wählen
+          - type: button
+            name: Auf Sony TV casten
+            icon: mdi:cast
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: script.immich_slideshow_auf_tv
+
+      # --- Favoriten ---
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: input_select.immich_slideshow_quelle
+            state: Favoriten
+        card:
+          type: picture-entity
+          entity: camera.immich_picture_immich_picture_slideshow_favorite_assets
+          name: Favoriten
+          show_state: false
+          camera_view: auto
+          tap_action:
+            action: more-info
+
+      # --- Album "Hochzeit mit Family" ---
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: input_select.immich_slideshow_quelle
+            state: Hochzeit mit Family
+        card:
+          type: picture-entity
+          entity: camera.immich_picture_immich_picture_slideshow_album_assets
+          name: Hochzeit mit Family
+          show_state: false
+          camera_view: auto
+          tap_action:
+            action: more-info
+
+      # --- Zuletzt hinzugefügt (gesamte Bibliothek, neueste zuerst) ---
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: input_select.immich_slideshow_quelle
+            state: Zuletzt hinzugefügt
+        card:
+          type: picture-entity
+          entity: camera.immich_picture_immich_picture_slideshow_all_assets_recent
+          name: Zuletzt hinzugefügt
+          show_state: false
+          camera_view: auto
+          tap_action:
+            action: more-info
+
+      # --- Suche nach Zeitraum/Ort (Metadata-Suche, editierbar via Optionen) ---
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: input_select.immich_slideshow_quelle
+            state: Suche (Zeitraum/Ort)
+        card:
+          type: picture-entity
+          entity: camera.immich_picture_immich_picture_slideshow_search_by_metadata
+          name: Suche (Zeitraum/Ort)
+          show_state: false
+          camera_view: auto
+          tap_action:
+            action: more-info
+
+      # --- Hinweiskarte ---
+      - type: markdown
+        content: >
+          **Tipp:** Quelle oben wählen, Bild tippen für Vollbild, **Auf Sony TV
+          casten** für die Diashow am Fernseher.
+
+
+          Filter für **Zeitraum/Ort** ändern: Einstellungen → Geräte & Dienste →
+          *Immich Picture* (Search by Metadata) → **Konfigurieren** → JSON, z. B.
+          `{"city":"Lanzarote","takenAfter":"2026-03-20T00:00:00.000Z","type":"IMAGE"}`.

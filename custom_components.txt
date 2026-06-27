@@ -16,3 +16,8 @@ meross_cloud==1.3.12         # Meross Cloud - Smart Plugs/Switches
 meross_lan==5.8.0            # Meross LAN - Lokale Steuerung
 petkit==0.1.14               # PetKit - Haustier Zubehör
 xiaomi_cloud_map_extractor==v2.2.5  # Xiaomi Cloud Map - Staubsauger Karte
+
+# --- HACS CUSTOM REPOSITORIES (nicht im Standard-HACS-Store) ---
+# immich_picture==1.3.1   # remy/ha_immich_picture - Immich Slideshow-Kameras
+#   Reinstall: HACS -> Integrationen -> ⋮ -> Custom repositories ->
+#   https://github.com/remy/ha_immich_picture (Kategorie: Integration)

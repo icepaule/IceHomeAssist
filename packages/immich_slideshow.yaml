@@ -1,0 +1,27 @@
+# =============================================================================
+# Immich Slideshow – Helfer (Dropdown-Quelle + Cast auf Sony TV)
+# Integration: custom_components/immich_picture (remy/ha_immich_picture)
+# Kameras werden über Config-Entries erzeugt (Favoriten/Album/Zuletzt/Suche)
+# =============================================================================
+
+input_select:
+  immich_slideshow_quelle:
+    name: Immich Slideshow Quelle
+    icon: mdi:image-multiple
+    options:
+      - Favoriten
+      - Hochzeit mit Family
+      - Zuletzt hinzugefügt
+      - Suche (Zeitraum/Ort)
+    initial: Hochzeit mit Family
+
+script:
+  immich_slideshow_auf_tv:
+    alias: Immich Slideshow auf Sony TV casten
+    icon: mdi:cast
+    sequence:
+      - action: cast.show_lovelace_view
+        data:
+          entity_id: media_player.kd_55xe8505
+          dashboard_path: lovelace-immich
+          view_path: slideshow
