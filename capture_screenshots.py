@@ -214,6 +214,21 @@ def redact_screenshot(filepath):
     if "dashboard_home" in name:
         _blur_region(img, (690, 140, 1080, 170))
 
+    # 3. System-Dashboard: Externe IP (Netzwerk-Karte, Fritz!Box-Sensor)
+    if "dashboard_system" in name:
+        _blur_region(img, (1650, 445, 1863, 470))
+
+    # 4. Charly-Dashboard: Live-Karten zeigen Strassennamen der Heimatadresse.
+    # Blur reicht hier nicht (Kartenausschnitt bleibt erkennbar) - komplett
+    # abdecken statt verwischen.
+    if "dashboard_charly" in name:
+        draw = ImageDraw.Draw(img)
+        for region in [(838, 68, 1330, 415), (838, 460, 1330, 780)]:
+            draw.rectangle(region, fill=(230, 230, 230))
+            cx = (region[0] + region[2]) // 2
+            cy = (region[1] + region[3]) // 2
+            draw.text((cx - 90, cy - 8), "Karte entfernt (Privatsphaere)", fill=(120, 120, 120))
+
     img.save(filepath, optimize=True)
 
 

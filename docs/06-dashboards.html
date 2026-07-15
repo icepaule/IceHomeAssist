@@ -202,10 +202,12 @@
                 <h3>2. Energie</h3>
                 <p>
                     Umfassendes Energiemonitoring mit Echtzeit-Verbrauchsdaten aller Tasmota-Sensoren
-                    (PV, Server, Trockner, Waschmaschine, Küche, Arbeitszimmer), Tibber-Strompreisen
-                    und Tages-/Wochen-/Monatsstatistiken.
+                    (PV, Server, Trockner, Waschmaschine, Küche, Arbeitszimmer, Spülmaschine), Tibber-Strompreisen
+                    und Tages-/Wochen-/Monatsstatistiken. Seit Juli 2026 vereint dieses eine Dashboard auch das
+                    native Energy-Panel und das ehemals separate Live-Strom-Dashboard (Details siehe
+                    <a href="10-energie.html">Energie</a>).
                 </p>
-                <p><strong>Typische Karten:</strong> Echtzeit-Leistungsanzeigen, Strompreis-Graph, Tagesverbrauch-Verlauf, PV-Ertrag</p>
+                <p><strong>Typische Karten:</strong> Echtzeit-Leistungsanzeigen, Strompreis-Graph, Tagesverbrauch-Verlauf, PV-Ertrag, energy-distribution</p>
                 <div class="screenshot">
                     <img src="images/dashboard_energie.png" alt="Energie Dashboard" loading="lazy">
                     <p class="screenshot-caption">Energie Dashboard - Stromverbrauch und PV-Monitoring</p>
@@ -228,8 +230,11 @@
             <div class="card">
                 <h3>4. Räume</h3>
                 <p>
-                    Raumweise Ansicht mit Temperatur, Luftfeuchtigkeit und aktiven Geräten
-                    pro Raum. Ermöglicht die schnelle Steuerung von Geräten in einem bestimmten Raum.
+                    Raumweise Ansicht (Wohnzimmer, Küche, Büro, Garten) mit den tatsächlich vorhandenen Geräten:
+                    TV, Staubsauger, Trinkbrunnen, Geschirrspüler, Rollos, PV-Anlage und der Charly-Katzentracker.
+                    Im Juli 2026 grundlegend überarbeitet &ndash; die vorherige Version enthielt größtenteils
+                    Mockup-Karten (raumweise Lichter/Klima/Bewegungsmelder, 4-Zonen-Bewässerung) ohne reale
+                    Hardware dahinter; diese wurden entfernt.
                 </p>
                 <div class="screenshot">
                     <img src="images/dashboard_raeume.png" alt="Räume Dashboard" loading="lazy">
@@ -240,10 +245,12 @@
             <div class="card">
                 <h3>5. Medien</h3>
                 <p>
-                    Steuerung aller Mediengeräte: Amazon Echo Show 8, Sony Bravia TV, Musik-Wiedergabe.
-                    Enthält Media-Player-Karten mit Lautstärke, Wiedergabesteuerung und Quellenwahl.
+                    Steuerung der drei echten Alexa-Geräte (Echo Dot, Echo Plus, Echo Show 8 &ndash; nicht
+                    raumgebunden benannt), der Sony Bravia TV und Radiosender per TUNEIN. Im Juli 2026
+                    bereinigt: Kodi, Chromecast, Plex und Spotify wurden entfernt, da keine dieser
+                    Integrationen tatsächlich installiert ist (siehe <a href="11-medien.html">Medien</a>).
                 </p>
-                <p><strong>Typische Karten:</strong> Mini Media Player, Media Control, TTS-Eingabe</p>
+                <p><strong>Typische Karten:</strong> Mushroom Media Player, Chips-Karte für Radiosender, TTS-Eingabe</p>
                 <div class="screenshot">
                     <img src="images/dashboard_medien.png" alt="Medien Dashboard" loading="lazy">
                     <p class="screenshot-caption">Medien Dashboard - Steuerung aller Mediengeräte</p>
@@ -302,12 +309,14 @@
             <div class="card">
                 <h3>10. Charly</h3>
                 <p>
-                    Spezialdashboard für die Katze Charly: PetKit-Futterautomat-Status, Fütterungsplan,
-                    Trinkbrunnen-Status und Aktivitätsübersicht.
+                    Spezialdashboard für die Katze Charly: Tractive-GPS-Tracker (Live-Standort, Akku,
+                    Aktivitäts-/Schlafdaten). Im Juli 2026 korrigiert &ndash; referenzierte zuvor mehrere
+                    nicht existierende Sensoren (u.a. einen Kalorien- und einen kombinierten
+                    Gesamtschlaf-Sensor), siehe <a href="13-haustier.html">Haustier</a>.
                 </p>
                 <div class="screenshot">
                     <img src="images/dashboard_charly.png" alt="Charly Dashboard" loading="lazy">
-                    <p class="screenshot-caption">Charly Dashboard - Haustier-Tracking und PetKit</p>
+                    <p class="screenshot-caption">Charly Dashboard - Tractive GPS-Tracking und Aktivitätsdaten</p>
                 </div>
             </div>
 
@@ -316,7 +325,8 @@
                 <p>
                     Vereinfachtes Dashboard für den Kiosk-Modus (z.B. auf einem Tablet an der Wand).
                     Zeigt nur die wichtigsten Informationen ohne Navigationsleiste und mit
-                    größeren Touch-Zielen.
+                    größeren Touch-Zielen, u.a. WLAN-Client-Zähler pro SSID (Details siehe
+                    <a href="12-netzwerk.html">Netzwerk</a>).
                 </p>
                 <div class="screenshot">
                     <img src="images/dashboard_kiosk.png" alt="Kiosk Dashboard" loading="lazy">

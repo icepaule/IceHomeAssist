@@ -49,21 +49,13 @@ views:
       - type: horizontal-stack
         cards:
           - type: entity
-            entity: sensor.charly_activity
+            entity: sensor.charly_activity_time
             name: Aktivitaet
             icon: mdi:cat
-          - type: entity
-            entity: sensor.charly_activity_time
-            name: Aktive Zeit
-            icon: mdi:run
           - type: entity
             entity: sensor.charly_rest_time
             name: Ruhezeit
             icon: mdi:sleep
-          - type: entity
-            entity: sensor.charly_calories_burned
-            name: Kalorien
-            icon: mdi:fire
 
       # --- Schlaf + Tagesziel ---
       - type: entities
@@ -73,9 +65,6 @@ views:
           - entity: sensor.charly_daily_goal
             name: Tagesziel
             icon: mdi:bullseye-arrow
-          - entity: sensor.charly_sleep
-            name: Schlaf gesamt
-            icon: mdi:sleep
           - entity: sensor.charly_day_sleep
             name: Tagschlaf
             icon: mdi:weather-sunny
@@ -106,7 +95,7 @@ views:
         title: "Aktivitaet (24h)"
         hours_to_show: 24
         entities:
-          - entity: sensor.charly_activity
+          - entity: sensor.charly_activity_time
             name: Aktivitaet
 
       # --- Akku-Verlauf ---
@@ -144,8 +133,6 @@ views:
         title: "Schlaf (7 Tage)"
         hours_to_show: 168
         entities:
-          - entity: sensor.charly_sleep
-            name: Schlaf gesamt
           - entity: sensor.charly_day_sleep
             name: Tag
           - entity: sensor.charly_night_sleep

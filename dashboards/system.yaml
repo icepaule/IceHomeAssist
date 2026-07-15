@@ -21,13 +21,13 @@ views:
                 icon_color: green
                 content: HA OK
               - type: entity
-                entity: sensor.processor_use
+                entity: sensor.home_assistant_core_cpu_percent
                 icon: mdi:cpu-64-bit
               - type: entity
-                entity: sensor.memory_use_percent
+                entity: sensor.home_assistant_supervisor_memory_percent
                 icon: mdi:memory
               - type: entity
-                entity: sensor.disk_use_percent
+                entity: sensor.home_assistant_host_disk_used
                 icon: mdi:harddisk
 
       # ===== HOME ASSISTANT =====
@@ -36,25 +36,25 @@ views:
         cards:
           - type: entities
             entities:
-              - entity: sensor.current_version
+              - entity: update.home_assistant_core_update
                 name: HA Version
                 icon: mdi:home-assistant
-              - entity: sensor.supervisor_updates
-                name: Updates verfügbar
-              - entity: sensor.processor_use
+              - entity: update.home_assistant_supervisor_update
+                name: Supervisor Update
+              - entity: sensor.home_assistant_core_cpu_percent
                 name: CPU
-              - entity: sensor.memory_use_percent
+              - entity: sensor.home_assistant_supervisor_memory_percent
                 name: RAM
-              - entity: sensor.disk_use_percent
-                name: Speicher
+              - entity: sensor.home_assistant_host_disk_used
+                name: Speicher belegt
 
           - type: custom:mini-graph-card
             name: CPU & RAM
             entities:
-              - entity: sensor.processor_use
+              - entity: sensor.home_assistant_core_cpu_percent
                 name: CPU
                 color: "#ff6384"
-              - entity: sensor.memory_use_percent
+              - entity: sensor.home_assistant_supervisor_memory_percent
                 name: RAM
                 color: "#36a2eb"
             hours_to_show: 24
@@ -143,97 +143,46 @@ views:
           # Unifi
           - type: custom:mushroom-template-card
             primary: Unifi Controller
-            secondary: "{{ states('sensor.unifi_clients') }} Clients"
+            secondary: "{{ states('sensor.unifi_total_clients') }} Clients"
             icon: mdi:access-point-network
             icon_color: blue
             tap_action:
               action: navigate
               navigation_path: /lovelace-system/netzwerk-details
 
-          # WLAN APs
+          # Access Points (nur Gesamt-Zahlen verfuegbar, keine Aufschluesselung pro Raum)
           - type: entities
             title: Access Points
             entities:
-              - entity: sensor.unifi_ap_eg_clients
-                name: AP Erdgeschoss
+              - entity: sensor.unifi_aps_online
+                name: APs Online
                 icon: mdi:access-point
-              - entity: sensor.unifi_ap_og_clients
-                name: AP Obergeschoss
-                icon: mdi:access-point
-              - entity: sensor.unifi_ap_pavillon_clients
-                name: AP Pavillon
-                icon: mdi:access-point
+              - entity: sensor.unifi_aps_gesamt
+                name: APs Gesamt
+                icon: mdi:access-point-network
 
-          # Pi-hole
-          - type: custom:mushroom-template-card
-            primary: Pi-hole
-            secondary: "{{ states('sensor.pi_hole_ads_blocked_today') }} Werbung blockiert"
-            icon: mdi:shield-check
-            icon_color: "{{ 'green' if is_state('binary_sensor.pi_hole_status', 'on') else 'red' }}"
-
-      # ===== VMWARE =====
-      - type: grid
-        title: "🖥️ VMware"
-        cards:
-          # ESXi Host
-          - type: custom:mushroom-template-card
-            primary: ESXi NUC
-            secondary: >
-              CPU: {{ states('sensor.esxi_nuc_cpu') }}% |
-              RAM: {{ states('sensor.esxi_nuc_memory') }}%
-            icon: mdi:server
-            icon_color: "{{ 'green' if is_state('binary_sensor.esxi_nuc_status', 'on') else 'red' }}"
-
-          # VMs
+          # AdGuard (ersetzt Pi-hole, keine Blocklist-Statistik-Sensoren verfuegbar)
           - type: entities
-            title: Virtuelle Maschinen
+            title: AdGuard
             entities:
-              - entity: switch.vm_iobroker
-                name: ioBroker VM
-                icon: mdi:cog
-              - entity: switch.vm_pihole
-                name: Pi-hole VM
-                icon: mdi:shield
-              - entity: switch.vm_unifi
-                name: Unifi Controller
-                icon: mdi:access-point
-
-          # VM Actions
-          - type: horizontal-stack
-            cards:
-              - type: custom:mushroom-template-card
-                primary: Alle starten
-                icon: mdi:play
-                icon_color: green
-                tap_action:
-                  action: call-service
-                  service: script.vm_alle_starten
-
-              - type: custom:mushroom-template-card
-                primary: Alle stoppen
-                icon: mdi:stop
-                icon_color: red
-                tap_action:
-                  action: call-service
-                  service: script.vm_alle_stoppen
-                  confirmation:
-                    text: Wirklich alle VMs stoppen?
+              - entity: device_tracker.adguard
+                name: AdGuard Pi
 
       # ===== NAS / STORAGE =====
+      # ESXi/QNAP komplett entfernt (ESXi ausser Dienst -> prox2, kein QNAP
+      # vorhanden - echte NAS-Hardware ist Synology "SynNAS")
       - type: grid
-        title: "💾 Speicher"
+        title: "💾 Speicher (SynNAS)"
         cards:
-          # QNAP
           - type: custom:mushroom-template-card
-            primary: QNAP NAS
-            secondary: >
-              {{ states('sensor.qnap_free_space') }} frei
+            primary: SynNAS
+            secondary: "Volume 1: {{ states('sensor.synnas_volume_1_status') }}"
             icon: mdi:nas
-            icon_color: "{{ 'green' if is_state('binary_sensor.qnap_status', 'on') else 'red' }}"
+            icon_color: "{{ 'green' if is_state('sensor.synnas_volume_1_status', 'normal') else 'red' }}"
 
           - type: gauge
-            entity: sensor.qnap_used_space_percent
-            name: QNAP Speicher
+            entity: sensor.synnas_volume_1_volume_used
+            name: Volume 1 belegt
             min: 0
             max: 100
             severity:
@@ -241,63 +190,44 @@ views:
               yellow: 70
               red: 90
 
-          # Synology
-          - type: custom:mushroom-template-card
-            primary: Synology
-            secondary: "{{ states('sensor.synology_status') }}"
-            icon: mdi:nas
-            icon_color: blue
-
-      # ===== USV =====
-      - type: grid
-        title: "🔋 USV"
-        cards:
-          - type: custom:mushroom-template-card
-            primary: USV Status
-            secondary: "{{ states('sensor.usv_status') }}"
-            icon: mdi:battery-charging
-            icon_color: >
-              {% set status = states('sensor.usv_status') %}
-              {% if status == 'Online' %}green{% elif status == 'On Battery' %}orange{% else %}red{% endif %}
-
           - type: gauge
-            entity: sensor.usv_battery_charge
-            name: Ladung
+            entity: sensor.synnas_volume_2_volume_used
+            name: Volume 2 belegt
             min: 0
             max: 100
             severity:
-              green: 50
-              yellow: 20
-              red: 0
+              green: 0
+              yellow: 70
+              red: 90
 
           - type: entities
-            title: USV Details
+            title: SynNAS Details
             entities:
-              - entity: sensor.usv_load
-                name: Last
-              - entity: sensor.usv_runtime
-                name: Restlaufzeit
-              - entity: sensor.usv_input_voltage
-                name: Eingangsspannung
+              - entity: sensor.synnas_cpu_utilization_total
+                name: CPU
+              - entity: sensor.synnas_memory_usage_real
+                name: RAM
+              - entity: sensor.synnas_temperature
+                name: Temperatur
+              - entity: update.synnas_dsm_update
+                name: DSM Update
 
       # ===== GERÄTE PING =====
       - type: grid
         title: "📡 Geräte"
         cards:
           - type: entities
-            title: Ping Status
+            title: Status
             show_header_toggle: false
             entities:
-              - entity: binary_sensor.ping_fritzbox
+              - entity: binary_sensor.fritz_box_6591_cable_vodafone_connection
                 name: Fritz!Box
-              - entity: binary_sensor.ping_unifi
+              - entity: binary_sensor.unifi_controller_online
                 name: Unifi Controller
-              - entity: binary_sensor.ping_qnap
-                name: QNAP
-              - entity: binary_sensor.ping_esxi
-                name: ESXi
-              - entity: binary_sensor.ping_drucker
-                name: Drucker
+              - entity: binary_sensor.synnas_security_status
+                name: SynNAS Sicherheit
+              - entity: sensor.brother_mfc_j5730dw
+                name: Drucker (Brother)
 
   # ===== NETZWERK DETAILS SUBVIEW =====
   - title: Netzwerk Details
@@ -518,65 +448,22 @@ views:
                 name: Letzter Neustart
                 icon: mdi:restart
 
-          # Wake on LAN
+          # Wake on LAN (nur eindeutig zuordenbare Geraete - "Desktop PC"/
+          # "Server" generisch gab es so nicht, echte Buttons sind pro Geraet)
           - type: entities
             title: Wake on LAN
             show_header_toggle: false
             entities:
-              - entity: button.wol_desktop_pc
-                name: Desktop PC
-                icon: mdi:desktop-tower
-              - entity: button.wol_nas
-                name: NAS
+              - entity: button.synas_wake_on_lan
+                name: SynNAS
                 icon: mdi:nas
-              - entity: button.wol_server
-                name: Server
-                icon: mdi:server
+              - entity: button.brother_wake_on_lan
+                name: Drucker
+                icon: mdi:printer
 
-  # ===== KAMERAS =====
-  - title: Kameras
-    path: kameras
-    icon: mdi:cctv
-    cards:
-      - type: vertical-stack
-        cards:
-          - type: custom:mushroom-title-card
-            title: Kameras
-
-          - type: horizontal-stack
-            cards:
-              - type: picture-entity
-                entity: camera.balkon
-                name: Balkon
-                show_state: false
-                camera_view: auto
-
-              - type: picture-entity
-                entity: camera.haustuer
-                name: Haustür
-                show_state: false
-                camera_view: auto
-
-          # Kamera Actions
-          - type: custom:mushroom-chips-card
-            alignment: center
-            chips:
-              - type: action
-                icon: mdi:cctv
-                tap_action:
-                  action: call-service
-                  service: camera.snapshot
-                  target:
-                    entity_id: camera.haustuer
-                  data:
-                    filename: /config/www/snapshots/haustuer_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg
-              - type: action
-                icon: mdi:record
-                tap_action:
-                  action: call-service
-                  service: camera.record
-                  target:
-                    entity_id: camera.haustuer
+  # Kameras-View entfernt (14.07.2026): keine echte Kamera-Hardware
+  # (Balkon/Haustuer-Kameras existierten nie) - nur Immich-Slideshow und
+  # Kiosk-Tablet-Kamera sind real, siehe lovelace-immich/lovelace-kiosk.
 
   # ===== LOGS =====
   - title: Logs

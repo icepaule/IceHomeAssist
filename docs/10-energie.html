@@ -338,15 +338,68 @@ template:
                 <li><code>sensor.trockner_energie_gesamt</code> - Trockner</li>
                 <li><code>sensor.waschmaschine_energie_gesamt</code> - Waschmaschine</li>
                 <li><code>sensor.kueche_energie_gesamt</code> - Küche</li>
-                <li><code>sensor.arbeitszimmer_energie_gesamt</code> - Arbeitszimmer</li>
+                <li><code>sensor.arbeitszimmer_energie_gesamt</code> - Arbeitszimmer (manueller MQTT-Sensor,
+                    siehe Kasten unten)</li>
+                <li><code>sensor.kitchen_spule_strom_spule_energie</code> - Spülmaschine (Riemann-Summe aus
+                    <code>sensor.spule_power</code>, da die Tuya-Steckdose nur Watt liefert)</li>
             </ul>
 
             <h4>Strompreis</h4>
             <ul>
                 <li><strong>Quelle:</strong> Tibber Integration</li>
-                <li><strong>Entity:</strong> <code>sensor.electricity_price</code></li>
+                <li><strong>Entity:</strong> <code>sensor.paule_electricity_price</code></li>
                 <li>Automatische Berechnung der Kosten pro Gerät</li>
             </ul>
+
+            <div class="info-box">
+                <strong>Bekannte Ausnahme &ndash; Arbeitszimmer:</strong> Nach einer SSID/Topic-Migration hat die
+                Tasmota-Discovery für dieses Gerät keine Energie-Entities mehr angelegt (Root Cause ungeklärt).
+                Workaround in <code>packages/strom_az_fix.yaml</code>: drei manuell definierte
+                <code>mqtt: sensor:</code>-Einträge, die direkt das <code>tele/strom_az/SENSOR</code>-Topic
+                auswerten, statt auf Discovery zu warten.
+            </div>
+
+            <!-- ============================================================ -->
+            <h2>Dashboard-Konsolidierung (Juli 2026)</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Bis Juli 2026 existierten <strong>drei getrennte</strong> Ansichten für Energiedaten: das native
+                Home-Assistant-Energy-Panel (<code>/energy/overview</code>), ein separates
+                Custom-Dashboard <code>live-strom</code> für die aktuellen Watt-Werte, und das YAML-Dashboard
+                <code>lovelace-energie</code> selbst. Das war unpraktisch &ndash; man musste zwischen drei
+                Menüpunkten wechseln, um sich ein vollständiges Bild zu machen. Alle drei wurden in die
+                <strong>Uebersicht</strong>-View von <code>lovelace-energie</code> (<code>dashboards/energie_v2.yaml</code>)
+                zusammengeführt; das eigenständige <code>live-strom</code>-Dashboard wurde anschließend gelöscht.
+            </p>
+
+            <pre class="mermaid">
+flowchart LR
+    subgraph vorher["Vorher: 3 Menüpunkte"]
+        A["/energy/overview<br/>natives Energy-Panel"]
+        B["/live-strom/live<br/>eigenes Custom-Dashboard"]
+        C["lovelace-energie<br/>YAML-Dashboard"]
+    end
+    subgraph nachher["Nachher: 1 Menüpunkt"]
+        D["lovelace-energie / Uebersicht<br/>energy-distribution + energy-usage-graph<br/>+ Live-Watt-Glance + 24h-Verlauf"]
+    end
+    A --> D
+    B --> D
+    C --> D
+            </pre>
+
+            <p>
+                Die Uebersicht-View enthält jetzt zusätzlich zu den bisherigen Karten: die nativen
+                <code>energy-date-selection</code>/<code>energy-distribution</code>/<code>energy-sources-table</code>/
+                <code>energy-usage-graph</code>-Karten (identische Daten wie das alte Energy-Panel), sowie eine
+                <code>glance</code>-Karte mit den aktuellen Watt-Werten aller Verbraucher und einen 24h-<code>history-graph</code>
+                (identisch zum alten Live-Strom-Dashboard).
+            </p>
+
+            <div class="screenshot">
+                <img src="images/dashboard_energie.png" alt="Konsolidiertes Energie Dashboard" loading="lazy">
+                <p class="screenshot-caption">Energie Dashboard nach der Konsolidierung &ndash; Verteilung, Verbraucher und Live-Verlauf auf einen Blick</p>
+            </div>
 
             <!-- ============================================================ -->
             <h2>Utility Meters</h2>
@@ -673,5 +726,7 @@ function doSearch() {
 }
 document.addEventListener('click', e => { if (!e.target.closest('.search-container')) document.getElementById('searchResults').classList.remove('active'); });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
 </body>
 </html>

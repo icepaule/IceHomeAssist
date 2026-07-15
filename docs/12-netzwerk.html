@@ -840,6 +840,47 @@ views:
           red: 0</code></pre>
 
             <!-- ============================================================ -->
+            <h2>WLAN-Client-Zähler pro SSID (Juli 2026)</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Das Kiosk-Dashboard zeigt die Anzahl verbundener Geräte je SSID (Bad!Net, Bad!IoT, Bad:Bad).
+                UniFi liefert dafür keinen fertigen Sensor &ndash; nur einzelne <code>device_tracker</code>-Entities
+                mit einem <code>essid</code>-Attribut (nur gesetzt, solange das Gerät online ist). Die Zähler
+                werden daher per Template-Sensor über alle <code>device_tracker</code>-Entities gebildet.
+            </p>
+
+            <pre class="mermaid">
+flowchart LR
+    AP["UniFi AP<br/>3 SSIDs"] --> DT["device_tracker.*<br/>essid-Attribut<br/>(nur wenn state=home)"]
+    DT --> T1["template sensor<br/>essid == 'Bad!Net'<br/>sensor.wifi_clients_bad_inet"]
+    DT --> T2["template sensor<br/>essid == 'Bad!IoT'<br/>sensor.wifi_clients_bad_iot"]
+    DT --> T3["template sensor<br/>essid == 'Bad:Bad'<br/>sensor.wifi_clients_bad_bad"]
+    T1 --> K["Kiosk-Dashboard"]
+    T2 --> K
+    T3 --> K
+            </pre>
+
+            <pre><code># packages/wifi_client_counters.yaml
+template:
+  - sensor:
+      - name: "Wifi Clients Bad Inet"
+        unique_id: wifi_clients_bad_inet
+        state: >
+          {{ states.device_tracker
+             | selectattr('state', 'eq', 'home')
+             | selectattr('attributes.essid', 'eq', 'Bad!Net')
+             | list | count }}
+      # ... analog fuer 'Bad!IoT' -> wifi_clients_bad_iot
+      # ... analog fuer 'Bad:Bad' -> wifi_clients_bad_bad (Gastnetz)</code></pre>
+
+            <div class="info-box">
+                Die SSID-Namen wurden gegen die UniFi-Controller-API (<code>rest/wlanconf</code>) verifiziert,
+                nicht geraten &ndash; die Schreibweise ist bewusst uneinheitlich (<code>Bad!Net</code>,
+                <code>Bad!IoT</code>, <code>Bad:Bad</code>).
+            </div>
+
+            <!-- ============================================================ -->
             <h2>Netzwerk-Monitoring Automatisierungen</h2>
             <!-- ============================================================ -->
 
@@ -926,5 +967,7 @@ function doSearch() {
 }
 document.addEventListener('click', e => { if (!e.target.closest('.search-container')) document.getElementById('searchResults').classList.remove('active'); });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
 </body>
 </html>

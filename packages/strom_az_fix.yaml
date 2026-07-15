@@ -1,0 +1,34 @@
+# Strom-AZ Energy Sensors
+# Tasmota MQTT auto-discovery isn't creating energy entities for this device after
+# today's SSID/Topic migration (root cause unresolved). Manual MQTT sensors as a
+# reliable workaround, matching the naming convention of the other Strom-* devices
+# (see packages/energy.yaml utility_meter section, which already expects
+# sensor.arbeitszimmer_energie_gesamt).
+mqtt:
+  sensor:
+    - name: "Arbeitszimmer Energie Gesamt"
+      unique_id: strom_az_energie_gesamt
+      state_topic: "tele/strom_az/SENSOR"
+      value_template: "{{ value_json.ENERGY.Total }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+    - name: "Arbeitszimmer Leistung"
+      unique_id: strom_az_leistung
+      state_topic: "tele/strom_az/SENSOR"
+      value_template: "{{ value_json.ENERGY.Power }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+    - name: "Arbeitszimmer Energie Heute"
+      unique_id: strom_az_energie_heute
+      state_topic: "tele/strom_az/SENSOR"
+      value_template: "{{ value_json.ENERGY.Today }}"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+input_boolean:
+  spuelmaschine_warten:
+    name: "Spuelmaschine wartet auf guenstigen Strom"
+    icon: mdi:dishwasher

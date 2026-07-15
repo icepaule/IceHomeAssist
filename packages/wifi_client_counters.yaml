@@ -1,0 +1,36 @@
+# WLAN-Client-Zaehler pro SSID fuers Kiosk-Dashboard (kiosk_tablet.yaml).
+# UniFi liefert keine fertigen Sensoren pro SSID, nur einzelne device_tracker
+# mit essid-Attribut (nur gesetzt wenn state=home) - daher hier per Template
+# gezaehlt. SSID-Namen verifiziert via UniFi-Controller-API (192.168.1.7):
+# "Bad!Net" (Internet/VLAN666), "Bad!IoT" (VLAN12), "Bad:Bad" (Gast/VLAN13).
+template:
+  - sensor:
+      - name: "Wifi Clients Bad Inet"
+        unique_id: wifi_clients_bad_inet
+        icon: mdi:wifi
+        unit_of_measurement: "Geräte"
+        state: >
+          {{ states.device_tracker
+             | selectattr('state', 'eq', 'home')
+             | selectattr('attributes.essid', 'eq', 'Bad!Net')
+             | list | count }}
+
+      - name: "Wifi Clients Bad Iot"
+        unique_id: wifi_clients_bad_iot
+        icon: mdi:wifi
+        unit_of_measurement: "Geräte"
+        state: >
+          {{ states.device_tracker
+             | selectattr('state', 'eq', 'home')
+             | selectattr('attributes.essid', 'eq', 'Bad!IoT')
+             | list | count }}
+
+      - name: "Wifi Clients Bad Bad"
+        unique_id: wifi_clients_bad_bad
+        icon: mdi:incognito
+        unit_of_measurement: "Geräte"
+        state: >
+          {{ states.device_tracker
+             | selectattr('state', 'eq', 'home')
+             | selectattr('attributes.essid', 'eq', 'Bad:Bad')
+             | list | count }}

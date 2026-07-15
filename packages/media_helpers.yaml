@@ -1,0 +1,7 @@
+# Helper fuer die "Durchsage"-Karte im Medien-Dashboard (script.notify_alexa
+# braucht einen message-Text, den man hier eintippen kann statt per Automation).
+input_text:
+  alexa_message:
+    name: "Alexa Durchsage Text"
+    icon: mdi:bullhorn
+    max: 255

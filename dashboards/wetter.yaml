@@ -218,21 +218,19 @@ views:
         title: Schuppen Wetterstation (Luft1)
         show_header_toggle: false
         entities:
-          - entity: sensor.luft1_wetterstation_schuppen_temperatur
-            name: Temperatur (BMP280)
           - entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
             name: Temperatur (DHT11)
           - entity: sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit
             name: Luftfeuchtigkeit
-          - entity: sensor.luft1_wetterstation_schuppen_luftdruck
-            name: Luftdruck
           - entity: sensor.schuppen_taupunkt
             name: Taupunkt
+          # Kein Luftdruck: Luft1 hat nur DHT11 (Temp/Feuchte) + AS3935
+          # (Blitzsensor), keinen Barometer.
 
       - type: horizontal-stack
         cards:
           - type: gauge
-            entity: sensor.luft1_wetterstation_schuppen_temperatur
+            entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
             name: Schuppen
             min: -10
             max: 40

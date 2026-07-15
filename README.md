@@ -25,7 +25,7 @@ Die vollständige HTML-Dokumentation (deutsch) ist unter GitHub Pages verfügbar
 | **HA Image** | `ghcr.io/home-assistant/qemux86-64-homeassistant` |
 | **Config-Pfad** | `/var/lib/homeassistant/homeassistant/` (Host) = `/config` (Container) |
 | **Dashboards** | 11 YAML-Dashboards |
-| **Packages** | 12 Konfigurations-Pakete |
+| **Packages** | 20 Konfigurations-Pakete |
 | **Automationen** | 4 YAML-Automationen + Node-RED Flows (10 Tabs, 188 Nodes) |
 | **Integrationen** | 40+ (davon 12 HACS Custom Components) |
 

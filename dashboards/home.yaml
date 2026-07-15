@@ -151,12 +151,12 @@ views:
       - type: entities
         title: Schuppen Wetterstation (Luft1)
         entities:
-          - entity: sensor.luft1_wetterstation_schuppen_temperatur
+          - entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
             name: Temperatur
           - entity: sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit
             name: Luftfeuchtigkeit
-          - entity: sensor.luft1_wetterstation_schuppen_luftdruck
-            name: Luftdruck
+          # Kein Luftdruck: Luft1 hat nur DHT11 (Temp/Feuchte) + AS3935
+          # (Blitzsensor), keinen Barometer.
 
       # Bewässerung (Platzhalter)
       - type: markdown

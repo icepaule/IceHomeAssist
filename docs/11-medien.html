@@ -483,47 +483,66 @@ data:
             </p>
 
             <h3>Dashboard-Aufbau</h3>
-            <pre><code># dashboards/medien.yaml
-views:
-  - title: Medien
-    icon: mdi:multimedia
+            <div class="info-box">
+                <strong>Überarbeitet Juli 2026:</strong> Die vorherige Version referenzierte Kodi, Chromecast,
+                Plex und Spotify &ndash; keine dieser Integrationen ist tatsächlich installiert. Radio und
+                Durchsagen laufen stattdessen über die bereits vorhandene <code>script.notify_alexa</code> bzw.
+                TUNEIN-<code>media_player.play_media</code>-Mechanik aus <code>packages/wifi_buttons.yaml</code>.
+            </div>
+            <pre><code># dashboards/media.yaml (Auszug)
+sections:
+  - type: grid
+    title: "🔊 Echo Geräte"
     cards:
-      # Alexa Echo Show - Steuerung
-      - type: media-control
+      - type: custom:mushroom-media-player-card
+        entity: media_player.marcus_echo_dot
+      - type: custom:mushroom-media-player-card
+        entity: media_player.marcus_echo_plus
+      - type: custom:mushroom-media-player-card
         entity: media_player.marcus_echo_show_8_2nd_gen
 
-      # Alexa Gruppe - Überall
-      - type: media-control
-        entity: media_player.uberall
-
-      # Sony Bravia TV
-      - type: media-control
-        entity: media_player.sony_bravia
-
-      # Schnellzugriff: TTS Durchsage
+      # Durchsage über input_text + script.notify_alexa
       - type: entities
-        title: Schnellaktionen
+        title: Durchsage
         entities:
+          - entity: input_text.alexa_message
           - type: button
-            name: "Test-Durchsage"
+            name: An alle Echos ansagen
             tap_action:
               action: call-service
-              service: notify.alexa_media_marcus_echo_show_8_2nd_gen
+              service: script.notify_alexa
               data:
-                message: "Dies ist eine Test-Durchsage."
-                data:
-                  type: tts
+                message: "{{ states('input_text.alexa_message') }}"
 
-      # Geräte-Status
-      - type: entities
-        title: Medienstatus
-        entities:
-          - entity: media_player.marcus_echo_show_8_2nd_gen
-            name: Echo Show 8
-          - entity: media_player.uberall
-            name: Alexa Überall
-          - entity: media_player.sony_bravia
-            name: Sony Bravia TV</code></pre>
+  - type: grid
+    title: "📻 Radio (Echo Show 8)"
+    cards:
+      # Radiosender per TUNEIN direkt an media_player.play_media,
+      # kein separates Radio-Backend noetig
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: action
+            content: WDR 2
+            tap_action:
+              action: call-service
+              service: media_player.play_media
+              target:
+                entity_id: media_player.marcus_echo_show_8_2nd_gen
+              data:
+                media_content_id: WDR 2
+                media_content_type: TUNEIN
+
+  - type: grid
+    title: "📺 TV"
+    cards:
+      - type: custom:mushroom-media-player-card
+        entity: media_player.kd_55xe8505_2   # Bravia (Cast)</code></pre>
+
+            <p>
+                Kein Kodi (keine Integration installiert), kein Chromecast (kein Gerät vorhanden), kein Plex
+                (kein Server), kein Spotify (keine Integration &ndash; die Radiosender laufen komplett über
+                TUNEIN via Alexa).
+            </p>
 
             <!-- ============================================================ -->
             <h2>Alexa Routinen und Skills</h2>

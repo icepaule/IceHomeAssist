@@ -107,38 +107,78 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><code>device_tracker.charly</code></td>
+                        <td><code>device_tracker.charly_tracker</code></td>
                         <td>Device Tracker</td>
                         <td>GPS-Position mit Latitude/Longitude</td>
                     </tr>
                     <tr>
-                        <td><code>sensor.charly_battery_level</code></td>
+                        <td><code>sensor.charly_tracker_battery</code></td>
                         <td>Sensor</td>
                         <td>Akkustand des Trackers in Prozent</td>
                     </tr>
                     <tr>
-                        <td><code>sensor.charly_activity</code></td>
+                        <td><code>sensor.charly_tracker_state</code></td>
                         <td>Sensor</td>
-                        <td>Aktuelle Aktivität (Ruhen, Aktiv, etc.)</td>
+                        <td>Tracker-Betriebsstatus</td>
                     </tr>
                     <tr>
-                        <td><code>sensor.charly_speed</code></td>
+                        <td><code>sensor.charly_activity_time</code></td>
                         <td>Sensor</td>
-                        <td>Aktuelle Geschwindigkeit</td>
+                        <td>Aktivitätszeit</td>
                     </tr>
                     <tr>
-                        <td><code>binary_sensor.charly_tracker_online</code></td>
+                        <td><code>sensor.charly_rest_time</code></td>
+                        <td>Sensor</td>
+                        <td>Ruhezeit</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.charly_daily_goal</code></td>
+                        <td>Sensor</td>
+                        <td>Tagesziel Aktivität</td>
+                    </tr>
+                    <tr>
+                        <td><code>sensor.charly_day_sleep</code> / <code>charly_night_sleep</code></td>
+                        <td>Sensor</td>
+                        <td>Tag-/Nachtschlaf (kein kombinierter "Gesamtschlaf"-Sensor vorhanden)</td>
+                    </tr>
+                    <tr>
+                        <td><code>switch.charly_live_tracking</code></td>
+                        <td>Switch</td>
+                        <td>Live-Tracking ein/aus</td>
+                    </tr>
+                    <tr>
+                        <td><code>switch.charly_tracker_buzzer</code> / <code>charly_tracker_led</code></td>
+                        <td>Switch</td>
+                        <td>Piepser / LED-Licht am Tracker</td>
+                    </tr>
+                    <tr>
+                        <td><code>binary_sensor.charly_tracker_battery_charging</code></td>
                         <td>Binär-Sensor</td>
-                        <td>Tracker-Verbindungsstatus</td>
+                        <td>Lädt gerade</td>
+                    </tr>
+                    <tr>
+                        <td><code>binary_sensor.charly_tracker_power_saving</code></td>
+                        <td>Binär-Sensor</td>
+                        <td>Energiesparmodus aktiv</td>
                     </tr>
                 </tbody>
             </table>
 
+            <div class="info-box">
+                <strong>Korrigiert Juli 2026:</strong> Diese Tabelle referenzierte zuvor Entities, die es nie gab
+                (<code>device_tracker.charly</code> ohne Suffix, <code>sensor.charly_battery_level</code>,
+                <code>sensor.charly_activity</code>, <code>sensor.charly_speed</code>,
+                <code>binary_sensor.charly_tracker_online</code>). Ebenso wurden im Dashboard
+                <code>sensor.charly_calories_burned</code> (kein Kalorien-Sensor in der Tractive-Integration)
+                und <code>sensor.charly_sleep</code> (kein kombinierter Gesamtschlaf-Sensor, nur Tag/Nacht
+                getrennt) entfernt.
+            </div>
+
             <h3>Device Tracker Attribute</h3>
             <p>
-                Die <code>device_tracker.charly</code> Entity enthält folgende Attribute:
+                Die <code>device_tracker.charly_tracker</code> Entity enthält folgende Attribute:
             </p>
-            <pre><code># device_tracker.charly - Attribute
+            <pre><code># device_tracker.charly_tracker - Attribute
 source_type: gps
 latitude: 51.xxxxx
 longitude: 7.xxxxx
@@ -264,7 +304,7 @@ views:
       - type: map
         title: "Charly - Standort"
         entities:
-          - entity: device_tracker.charly
+          - entity: device_tracker.charly_tracker
         default_zoom: 17
         hours_to_show: 24
         dark_mode: true
@@ -274,20 +314,20 @@ views:
       - type: entities
         title: "Charly - Status"
         entities:
-          - entity: device_tracker.charly
+          - entity: device_tracker.charly_tracker
             name: Aufenthaltsort
-          - entity: sensor.charly_activity
+          - entity: sensor.charly_activity_time
             name: Aktivität
-          - entity: sensor.charly_battery_level
+          - entity: sensor.charly_tracker_battery
             name: Tracker Akku
-          - entity: sensor.charly_speed
-            name: Geschwindigkeit
-          - entity: binary_sensor.charly_tracker_online
-            name: Tracker Online
+          - entity: sensor.charly_tracker_state
+            name: Tracker Status
+          - entity: binary_sensor.charly_tracker_power_saving
+            name: Energiesparmodus
 
       # Tracker-Akku Gauge
       - type: gauge
-        entity: sensor.charly_battery_level
+        entity: sensor.charly_tracker_battery
         name: "Tracker Akku"
         min: 0
         max: 100
@@ -323,8 +363,8 @@ views:
         title: "Aktivitätsverlauf (24h)"
         hours_to_show: 24
         entities:
-          - entity: sensor.charly_activity
-          - entity: device_tracker.charly</code></pre>
+          - entity: sensor.charly_activity_time
+          - entity: device_tracker.charly_tracker</code></pre>
 
             <!-- ============================================================ -->
             <h2>Automatisierungen für Charly</h2>
@@ -335,7 +375,7 @@ views:
   description: "Benachrichtigung wenn Charly die Gartenzone verlässt"
   trigger:
     - platform: zone
-      entity_id: device_tracker.charly
+      entity_id: device_tracker.charly_tracker
       zone: zone.garten
       event: leave
   condition:
@@ -353,8 +393,8 @@ views:
         title: "Charly unterwegs"
         message: >
           Charly hat den Garten verlassen und befindet sich jetzt bei
-          {{ state_attr('device_tracker.charly', 'latitude') }},
-          {{ state_attr('device_tracker.charly', 'longitude') }}.
+          {{ state_attr('device_tracker.charly_tracker', 'latitude') }},
+          {{ state_attr('device_tracker.charly_tracker', 'longitude') }}.
         data:
           actions:
             - action: "OPEN_MAP"
@@ -364,7 +404,7 @@ views:
             <pre><code>- alias: "Charly kommt nach Hause"
   trigger:
     - platform: zone
-      entity_id: device_tracker.charly
+      entity_id: device_tracker.charly_tracker
       zone: zone.zuhause
       event: enter
   action:
@@ -378,7 +418,7 @@ views:
             <pre><code>- alias: "Charly Tracker Akku niedrig"
   trigger:
     - platform: numeric_state
-      entity_id: sensor.charly_battery_level
+      entity_id: sensor.charly_tracker_battery
       below: 20
   action:
     - service: notify.mobile_app_marcus_handy
@@ -386,13 +426,13 @@ views:
         title: "Tracker Akku niedrig"
         message: >
           Der Tractive Tracker von Charly hat nur noch
-          {{ states('sensor.charly_battery_level') }}% Akku.
+          {{ states('sensor.charly_tracker_battery') }}% Akku.
           Bitte aufladen!
     - service: notify.alexa_media_marcus_echo_show_8_2nd_gen
       data:
         message: >
           Achtung, Charlys GPS-Tracker hat nur noch
-          {{ states('sensor.charly_battery_level') }} Prozent Akku.
+          {{ states('sensor.charly_tracker_battery') }} Prozent Akku.
         data:
           type: tts</code></pre>
 
@@ -443,9 +483,9 @@ views:
 recorder:
   include:
     entities:
-      - device_tracker.charly
-      - sensor.charly_activity
-      - sensor.charly_battery_level
+      - device_tracker.charly_tracker
+      - sensor.charly_activity_time
+      - sensor.charly_tracker_battery
       - sensor.petkit_feeder_food_level
       - sensor.petkit_feeder_daily_amount
   commit_interval: 30    # Alle 30 Sekunden speichern</code></pre>

@@ -71,6 +71,9 @@ views:
           - entity: sensor.trockner_leistung
             name: Trockner
             icon: mdi:tumble-dryer
+          - entity: sensor.spule_power
+            name: Spuelmaschine
+            icon: mdi:dishwasher
 
       # =====================================================================
       # Energie 24h: Gesamtverbrauch & PV-Anteil
@@ -180,6 +183,50 @@ views:
             type: line
             color: "#37474f"
             stroke_width: 3
+
+      # =====================================================================
+      # Energie-Dashboard (migriert von /energy, damit man dort nicht mehr
+      # hin muss) - native Cards, gleiche Daten wie Grid/Solar/Verbraucher-Prefs
+      # =====================================================================
+      - type: energy-date-selection
+
+      - type: energy-distribution
+        link_dashboard: true
+
+      - type: energy-sources-table
+
+      - type: energy-usage-graph
+
+      # =====================================================================
+      # Live-Watt Uebersicht (migriert von /live-strom)
+      # =====================================================================
+      - type: glance
+        title: Aktuelle Leistung (Watt)
+        show_state: true
+        entities:
+          - entity: sensor.waschmaschine_leistung
+            name: Waschmaschine
+          - entity: sensor.kueche_leistung
+            name: Gefriertruhe
+          - entity: sensor.arbeitszimmer_leistung
+            name: Arbeitszimmer
+          - entity: sensor.server_leistung
+            name: Server
+          - entity: sensor.trockner_leistung
+            name: Trockner
+          - entity: sensor.spule_power
+            name: Spuelmaschine
+
+      - type: history-graph
+        title: Live-Verlauf letzte 24h
+        hours_to_show: 24
+        entities:
+          - sensor.waschmaschine_leistung
+          - sensor.kueche_leistung
+          - sensor.arbeitszimmer_leistung
+          - sensor.server_leistung
+          - sensor.trockner_leistung
+          - sensor.spule_power
 
   # ===========================================================================
   # STROMPREISE (mit tibber_prices HACS Sensoren)
@@ -1272,8 +1319,22 @@ views:
                 entity: sensor.kueche_energie_heute
                 name: Heute
           - type: entity
-            entity: sensor.kuche_kosten_pro_stunde
+            entity: sensor.kueche_kosten_pro_stunde
             name: Kosten/h
+
+      # Spuele
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: "### Spuelmaschine"
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: sensor.spule_power
+                name: Leistung
+              - type: entity
+                entity: sensor.kitchen_spule_strom_spule_energie
+                name: Energie Gesamt
 
       # History
       - type: history-graph
@@ -1284,6 +1345,8 @@ views:
             name: Server
           - entity: sensor.arbeitszimmer_leistung
             name: Arbeitszimmer
+          - entity: sensor.spule_power
+            name: Spuele
 
   # ===========================================================================
   # STATISTIK
