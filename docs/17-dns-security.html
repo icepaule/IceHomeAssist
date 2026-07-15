@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS-Security (MISP/AdGuard/pfSense) - IceHomeAssist</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>IceHomeAssist</h1>
+            <div class="subtitle">Home Assistant Dokumentation</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">Start</div>
+            <a href="index.html">Startseite</a>
+            <a href="01-uebersicht.html">Systemübersicht</a>
+            <div class="nav-section">Installation</div>
+            <a href="02-installation.html">Installation</a>
+            <a href="03-docker-setup.html">Docker Setup</a>
+            <a href="04-konfiguration.html">Konfiguration</a>
+            <div class="nav-section">Komponenten</div>
+            <a href="05-integrationen.html">Integrationen</a>
+            <a href="06-dashboards.html">Dashboards</a>
+            <a href="07-automatisierungen.html">Automatisierungen</a>
+            <a href="08-nodered.html">Node-RED</a>
+            <a href="09-mqtt.html">MQTT</a>
+            <div class="nav-section">Anwendungen</div>
+            <a href="10-energie.html">Energie</a>
+            <a href="11-medien.html">Medien</a>
+            <a href="12-netzwerk.html">Netzwerk</a>
+            <a href="13-haustier.html">Haustier</a>
+            <div class="nav-section">Betrieb</div>
+            <a href="14-sicherheit.html">Sicherheit</a>
+            <a href="15-wiederherstellung.html">Wiederherstellung</a>
+            <a href="16-troubleshooting.html">Troubleshooting</a>
+            <a href="17-dns-security.html" class="active">DNS-Security (MISP/AdGuard/pfSense)</a>
+        </div>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                <span class="breadcrumb">
+                    <a href="index.html">Home</a>
+                    <span class="separator">&rsaquo;</span>
+                    Betrieb
+                    <span class="separator">&rsaquo;</span>
+                    DNS-Security
+                </span>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" placeholder="Suchen..." id="searchInput" onkeyup="doSearch()">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </header>
+        <div class="content">
+
+            <h1>DNS-Security: MISP, AdGuard &amp; pfSense</h1>
+
+            <p>
+                Die Heim-<strong>MISP</strong>-Instanz (Malware Information Sharing Platform) liefert
+                Threat-Intelligence-Feeds (IP- und Domain-IOCs), die automatisiert in <strong>AdGuard Home</strong>
+                (DNS-Blocking für alle WLAN-Clients) und <strong>pfBlockerNG</strong> (IP-Blocking auf der WAN-Seite
+                von pfSense) eingespeist werden. Ergänzt wird das um eine eigene Blockseite (HTTP+HTTPS) und einen
+                täglichen HTML-Mail-Report der geblockten Anfragen.
+            </p>
+
+            <div class="info-box">
+                <strong>Ziel:</strong> Bekannte bösartige Domains/IPs aus Community-Threat-Feeds (CIRCL, ELLIO,
+                Emerging Threats, Phishtank, OpenPhish, AlienVault, blocklist.de, Threatfox u.a.) sollen im
+                gesamten Heimnetz &ndash; WLAN wie auch Management-VLANs &ndash; automatisch geblockt werden,
+                ohne dass jedes Gerät einzeln konfiguriert werden muss.
+            </div>
+
+            <!-- ============================================================ -->
+            <h2>Architektur-Überblick</h2>
+            <!-- ============================================================ -->
+
+            <pre class="mermaid">
+flowchart TB
+    MISP["MISP<br/>85 Threat-Feeds<br/>(CIRCL, ELLIO, ET, Phishtank, ...)"]
+    SYNC["misp-ioc-sync.py<br/>(Cron alle 6h)"]
+    ADGUARD["AdGuard Home<br/>DNS-Filter"]
+    PFB["pfBlockerNG<br/>IPv4-Liste (WAN inbound)"]
+    BLOCKPAGE["Blockseite<br/>(Port 8099, HTTP+HTTPS)"]
+    REPORT["Täglicher Mail-Report<br/>(07:00 Uhr)"]
+
+    MISP -- "to_ids=1 + Warninglist-Filter" --> SYNC
+    SYNC -- "Domain-Feed" --> ADGUARD
+    SYNC -- "IP-Liste" --> PFB
+    ADGUARD --> BLOCKPAGE
+    ADGUARD -- Querylog --> REPORT
+
+    WIFI["WLAN-Clients<br/>(Bad!Net 192.168.178.0/24)"] -- DNS --> ADGUARD
+    MGMT["Management-Netz<br/>10.10.0.0/24 u.a. VLANs"] -- DNS --> PFSENSE["pfSense / unbound<br/>(Forwarding Mode)"]
+    PFSENSE -- "Forward (einzige Quelle!)" --> ADGUARD
+    WAN["Internet (WAN)"] -- IP-Traffic --> PFB
+            </pre>
+
+            <p>
+                Zwei getrennte Blocking-Pfade decken die zwei Netz-Segmente ab: WLAN-Clients (Bad!Net) nutzen
+                AdGuard direkt als DHCP-DNS-Server, während pfSense für das Management-Netz (10.10.0.0/24 und
+                weitere interne VLANs) den DNS-Verkehr an AdGuard weiterleitet (siehe
+                <a href="#pfsense-forwarding">pfSense-Forwarding</a> unten). IP-basierter Schutz für Traffic,
+                der pfSense direkt Richtung Internet passiert, läuft zusätzlich über pfBlockerNG.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>MISP: IOC-Sync-Skript</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Das Skript <code>/opt/misp-ioc-sync/misp-ioc-sync.py</code> läuft alle 6 Stunden per Cron und
+                zieht per REST-API alle <code>to_ids=1</code>-Attribute (IP-dst/-src, Domain/Hostname) &ndash;
+                gefiltert über <code>enforceWarninglist=1</code>, um False Positives zu vermeiden (dazu gleich mehr).
+                Ergebnis: eine Domain-Liste für AdGuard und eine IP-Liste für pfBlockerNG, beide über HTTP von
+                NUC-HA ausgeliefert.
+            </p>
+
+            <div class="screenshot">
+                <img src="images/misp_feeds_overview.png" alt="MISP Feeds Übersicht" loading="lazy">
+                <p class="screenshot-caption">MISP Feed-Konfiguration: aktivierte Community-Threat-Feeds (CIRCL, ELLIO, Emerging Threats, Phishtank u.a.)</p>
+            </div>
+
+            <h3>Warninglists gegen False Positives</h3>
+            <p>
+                MISP liefert Warninglists (z.B. CDN-Ranges, öffentliche DNS-Resolver, Microsoft/Azure-Ranges,
+                Top-10000-Domains, VPN/Datacenter-Ranges), die verhindern, dass weit verbreitete, harmlose
+                Adressen fälschlich als IOC übernommen werden. Ein gutes Dutzend wichtiger Listen war standardmäßig
+                deaktiviert und musste erst aktiviert werden &ndash; ohne sie wären etliche legitime Dienste
+                geblockt worden.
+            </p>
+
+            <div class="screenshot">
+                <img src="images/misp_warninglists.png" alt="MISP Warninglists" loading="lazy">
+                <p class="screenshot-caption">MISP Warninglists: reduzieren False Positives, indem bekannte harmlose Ranges/Domains von der IOC-Übernahme ausgeschlossen werden</p>
+            </div>
+
+            <div class="warning-box">
+                <strong>Stolperstein:</strong> Der MISP-Konsolenbefehl <code>cake authkey &lt;email&gt;</code> ist
+                in der verwendeten Version defekt &ndash; er gibt einen plausibel aussehenden API-Key aus, der aber
+                nie in der Datenbank landet. Funktionierender Ersatz:
+                <code>cake user change_authkey &lt;email&gt; &lt;40-hex-key&gt;</code> (Key vorher selbst z.B. per
+                <code>openssl rand -hex 20</code> erzeugen).
+            </div>
+
+            <!-- ============================================================ -->
+            <h2>AdGuard Home Integration</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Der MISP-Domain-Feed wird in AdGuard als zusätzliche Custom-Filterliste registriert. Da das
+                WLAN (Bad!Net) AdGuard ohnehin schon als DHCP-DNS-Server nutzt, greift der Schutz dort ohne
+                weitere Client-Konfiguration.
+            </p>
+
+            <div class="screenshot">
+                <img src="images/adguard_dashboard.png" alt="AdGuard Home Dashboard" loading="lazy">
+                <p class="screenshot-caption">AdGuard Home Dashboard mit Top-Clients &ndash; sichtbar auch der pfSense-Host (hier noch mit altem PTR-Namen "sophos-dmz")</p>
+            </div>
+
+            <div class="screenshot">
+                <img src="images/adguard_custom_filters.png" alt="AdGuard DNS-Blocklisten" loading="lazy">
+                <p class="screenshot-caption">AdGuard DNS-Blocklisten: öffentliche Listen plus der MISP-Custom-Feed (weiter unten in der Liste)</p>
+            </div>
+
+            <!-- ============================================================ -->
+            <h2>Custom-Blockseite statt NXDOMAIN</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Statt einer nichtssagenden <code>NXDOMAIN</code>-Antwort zeigt AdGuard bei geblockten Domains
+                (<code>blocking_mode: custom_ip</code>) eine kleine, selbst gehostete Info-Seite: Domain,
+                Client-IP, Blockierungsgrund und die auslösende Filterliste. Läuft als eigener systemd-Dienst
+                auf Port 8099, über Apache sowohl per HTTP als auch HTTPS (selbstsigniertes Zertifikat) erreichbar
+                &ndash; aus beiden betroffenen Netzen (Bad!Net und Management-Netz).
+            </p>
+
+            <div class="screenshot">
+                <img src="images/adguard_blockpage_demo.png" alt="AdGuard Custom-Blockseite" loading="lazy">
+                <p class="screenshot-caption">Custom-Blockseite: zeigt Domain, Client-IP, Grund und Regel statt einer nichtssagenden NXDOMAIN-Antwort</p>
+            </div>
+
+            <!-- ============================================================ -->
+            <h2 id="pfsense-forwarding">pfSense: DNS-Schutz fürs Management-Netz</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Das WLAN wird über AdGuard als DHCP-DNS-Server automatisch geschützt. Für das Management-Netz
+                (10.10.0.0/24 und weitere interne VLANs, die pfSense/unbound als DNS-Server nutzen) war das nicht
+                der Fall &ndash; unbound löste bis dahin rein rekursiv auf, ganz am MISP-Feed vorbei. Die Lösung:
+                pfSense im <strong>Forwarding-Modus</strong> an AdGuard hängen, statt eine eigene, parallele
+                Blockliste in pfBlockerNG (DNSBL) zu pflegen.
+            </p>
+
+            <div class="screenshot">
+                <img src="images/pfsense_unbound_forwarding.png" alt="pfSense DNS Resolver Forwarding Mode" loading="lazy">
+                <p class="screenshot-caption">pfSense DNS Resolver: Forwarding Mode aktiv, DNSSEC-Validierung bewusst deaktiviert</p>
+            </div>
+
+            <p>
+                Damit die Sinkhole-Antworten von AdGuard tatsächlich beim Client ankommen, waren zwei weitere,
+                sicherheitsrelevante Anpassungen nötig:
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Einstellung</th>
+                        <th>Warum nötig</th>
+                        <th>Akzeptierter Trade-off</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Nur <strong>ein</strong> Forwarder (AdGuard, kein 1.1.1.1/9.9.9.9 parallel)</td>
+                        <td>unbound wählt bei mehreren Forwardern selbst per Latenz-Messung aus &ndash; würde
+                            AdGuard sonst unvorhersehbar umgehen</td>
+                        <td>AdGuard wird Single-Point-of-Failure für DNS im Management-Netz</td>
+                    </tr>
+                    <tr>
+                        <td>DNSSEC-Validierung deaktiviert</td>
+                        <td>unsignierte Sinkhole-Antworten von AdGuard wurden sonst als
+                            <code>harden-dnssec-stripped</code> verworfen</td>
+                        <td>Kein DNSSEC mehr direkt auf pfSense (AdGuard/dessen Upstreams validieren weiterhin)</td>
+                    </tr>
+                    <tr>
+                        <td>DNS-Rebinding-Schutz deaktiviert</td>
+                        <td>eine öffentliche Domain, die auf eine private IP auflöst, ist exakt das
+                            Sinkhole-Muster &ndash; wurde sonst als Rebinding-Angriff geblockt</td>
+                        <td>Global deaktiviert (einfachste Lösung, auf User-Wunsch statt Subnetz-Scoping)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="screenshot">
+                <img src="images/pfsense_dns_rebind_check.png" alt="pfSense DNS Rebind Check" loading="lazy">
+                <p class="screenshot-caption">System &rarr; Advanced &rarr; Admin Access: DNS Rebinding Check deaktiviert</p>
+            </div>
+
+            <div class="warning-box">
+                <strong>pfSense-Quirk:</strong> Das DNSSEC-Häkchen im GUI kann leer aussehen und trotzdem
+                "aktiv" sein &ndash; der zugrundeliegende Code prüft nur <code>isset($config['unbound']['dnssec'])</code>,
+                nicht den tatsächlichen Wert. Ein leerer String im Config-Array zählt schon als aktiviert.
+                Nur ein vollständiges <code>unset()</code> des Schlüssels schaltet DNSSEC wirklich ab.
+            </div>
+
+            <h3>Warum native pfBlockerNG-DNSBL nicht funktioniert hat</h3>
+            <p>
+                Der ursprüngliche Plan war, den MISP-Domain-Feed direkt als pfBlockerNG-DNSBL-Liste einzubinden
+                (rein auf pfSense, ohne AdGuard-Umweg). Rohe Config-Array-Schreibzugriffe auf
+                <code>pfblockerngdnsblsettings</code> wurden von pfSense beim Speichern jedoch stillschweigend
+                wieder auf einen leeren String zurückgesetzt &ndash; nach zwei Anläufen wurde der Ansatz zugunsten
+                der Forwarding-Lösung aufgegeben, statt auf einer Produktiv-Firewall weiter blind an einem
+                undokumentierten Schema zu raten.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>Tägliches Mail-Reporting</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                <code>/opt/adguard-blockpage/daily-report.py</code> verschickt morgens um 07:00 Uhr eine
+                HTML-Mail mit Top-Quell-IPs, Top-geblockten-Domains, Grund-Verteilung und einer Detail-Tabelle
+                der letzten 24h &ndash; Versand über den bestehenden Axigen-SMTP-Mechanismus.
+            </p>
+
+            <h3>Hostnamen-Anreicherung</h3>
+            <p>
+                Rohe IPs in einer Tabelle sind wenig aussagekräftig. Der Report löst Quell-IPs daher zusätzlich
+                zu Namen auf &ndash; in dieser Prioritätsreihenfolge: bekannte Sonderfälle (z.B. pfSense selbst),
+                dann der UniFi-Controller (<code>stat/alluser</code>, deckt alle WLAN-Clients ab), zuletzt
+                AdGuards eigene PTR-Auflösung aus dem Querylog.
+            </p>
+
+            <div class="info-box">
+                <strong>Bekannte Einschränkung:</strong> Der DNS-Verkehr aus dem Management-Netz (10.10.0.0/24)
+                erscheint im AdGuard-Log komplett unter der <strong>einen</strong> pfSense-WAN-IP, weil AdGuard bei
+                einer Forwarder-Kette nur den letzten Hop sieht, nicht den ursprünglichen Client. Eine
+                Einzel-Client-Zuordnung per <strong>EDNS Client Subnet</strong> ist mit dem auf pfSense
+                mitgelieferten unbound-Build nicht möglich (<code>--disable-subnet</code> beim Compile), AdGuard
+                selbst unterstützt ECS zwar (<code>edns_cs_enabled</code>), aber ohne einen ECS-fähigen Forwarder
+                bringt das nichts. Der Report weist an dieser Stelle explizit darauf hin, statt die
+                Einschränkung zu verschleiern.
+            </div>
+
+            <!-- ============================================================ -->
+            <h2>Cron-Übersicht</h2>
+            <!-- ============================================================ -->
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Job</th>
+                        <th>Zeitplan</th>
+                        <th>Datei</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>MISP-IOC-Sync (AdGuard + pfBlockerNG)</td>
+                        <td>alle 6h</td>
+                        <td><code>/etc/cron.d/misp-ioc-sync</code></td>
+                    </tr>
+                    <tr>
+                        <td>Täglicher Blocking-Report (Mail)</td>
+                        <td>07:00 Uhr</td>
+                        <td><code>/etc/cron.d/misp-blockpage-report</code></td>
+                    </tr>
+                    <tr>
+                        <td>UniFi Config-Backup (Kontext: <a href="15-wiederherstellung.html">Wiederherstellung</a>)</td>
+                        <td>sonntags 03:00 Uhr</td>
+                        <td><code>/etc/cron.d/unifi-backup</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+    </main>
+</div>
+<script>
+mermaid.initialize({ startOnLoad: true, theme: "dark" });
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    if (a.getAttribute('href') === location.pathname.split('/').pop()) {
+        a.classList.add('active');
+    }
+});
+
+const searchIndex = [
+    {title: "Startseite", url: "index.html", text: "Übersicht Home Assistant Dokumentation Inhaltsverzeichnis"},
+    {title: "Systemübersicht", url: "01-uebersicht.html", text: "Architektur NUC Docker Container Komponenten"},
+    {title: "Installation", url: "02-installation.html", text: "Ersteinrichtung Debian Docker Setup"},
+    {title: "Docker Setup", url: "03-docker-setup.html", text: "Container Image Volumes Netzwerk"},
+    {title: "Konfiguration", url: "04-konfiguration.html", text: "configuration.yaml YAML Packages Secrets"},
+    {title: "Integrationen", url: "05-integrationen.html", text: "HACS Alexa Tibber DWD MQTT Dreame Meross"},
+    {title: "Dashboards", url: "06-dashboards.html", text: "Lovelace YAML Karten Home Energie Wetter"},
+    {title: "Automatisierungen", url: "07-automatisierungen.html", text: "Automationen Scripts Trigger Aktionen"},
+    {title: "Node-RED", url: "08-nodered.html", text: "Flows WiFi Buttons MQTT ESP32 Tasmota"},
+    {title: "MQTT", url: "09-mqtt.html", text: "Mosquitto Broker Tasmota Sensoren Topics"},
+    {title: "Energie", url: "10-energie.html", text: "Photovoltaik Tibber Strompreis PV Solar"},
+    {title: "Medien", url: "11-medien.html", text: "Alexa Echo Android TV Bravia Media Player"},
+    {title: "Netzwerk", url: "12-netzwerk.html", text: "UniFi SNMP MikroTik Switch WiFi Radar"},
+    {title: "Haustier", url: "13-haustier.html", text: "Charly Katze Tractive GPS Tracker"},
+    {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
+    {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
+    {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
+    {title: "DNS-Security (MISP/AdGuard/pfSense)", url: "17-dns-security.html", text: "MISP IOC Sync AdGuard pfSense Blockseite Warninglists DNSSEC Forwarding Report"},
+];
+
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const results = document.getElementById('searchResults');
+    if (q.length < 2) { results.classList.remove('active'); return; }
+    const matches = searchIndex.filter(i =>
+        i.title.toLowerCase().includes(q) || i.text.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="search-result-item">Keine Ergebnisse</div>';
+    } else {
+        results.innerHTML = matches.map(m =>
+            `<a class="search-result-item" href="${m.url}"><div class="result-title">${m.title}</div><div class="result-preview">${m.text}</div></a>`
+        ).join('');
+    }
+    results.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-container')) {
+        document.getElementById('searchResults').classList.remove('active');
+    }
+});
+</script>
+</body>
+</html>
