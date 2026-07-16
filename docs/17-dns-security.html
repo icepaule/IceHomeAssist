@@ -87,21 +87,35 @@ flowchart TB
     MISP["MISP<br/>85 Threat-Feeds<br/>(CIRCL, ELLIO, ET, Phishtank, ...)"]
     SYNC["misp-ioc-sync.py<br/>(Cron alle 6h)"]
     ADGUARD["AdGuard Home<br/>DNS-Filter"]
-    PFB["pfBlockerNG<br/>IPv4-Liste (WAN inbound)"]
+    PFB["pfBlockerNG<br/>IPv4-Listen (WAN inbound + VLAN11/13 outbound)"]
     BLOCKPAGE["Blockseite<br/>(Port 8099, HTTP+HTTPS)"]
-    REPORT["Täglicher Mail-Report<br/>(07:00 Uhr)"]
+    REPORT1["AdGuard Mail-Report<br/>(07:00 Uhr, + OTX + Client-Zuordnung)"]
+    REPORT2["pfBlockerNG Mail-Report<br/>(07:10 Uhr, + OTX + Richtung)"]
+    OTX["AlienVault OTX<br/>(ASN/Land/Stadt/Pulses)"]
 
     MISP -- "to_ids=1 + Warninglist-Filter" --> SYNC
     SYNC -- "Domain-Feed" --> ADGUARD
     SYNC -- "IP-Liste" --> PFB
     ADGUARD --> BLOCKPAGE
-    ADGUARD -- Querylog --> REPORT
+    ADGUARD -- Querylog --> REPORT1
+    PFB -- "ip_block.log" --> REPORT2
+    REPORT1 -.-> OTX
+    REPORT2 -.-> OTX
 
-    WIFI["WLAN-Clients<br/>(Bad!Net 192.168.178.0/24)"] -- DNS --> ADGUARD
-    MGMT["Management-Netz<br/>10.10.0.0/24 u.a. VLANs"] -- DNS --> PFSENSE["pfSense / unbound<br/>(Forwarding Mode)"]
+    WIFI["WLAN-Clients<br/>(Bad!Net 192.168.178.0/24, ueber UniFi USG)"] -- DNS --> ADGUARD
+    MGMT["Management-Netz<br/>10.10.0.0/24 (VLAN11) + VLAN13"] -- DNS --> PFSENSE["pfSense / unbound<br/>(Forwarding Mode)"]
     PFSENSE -- "Forward (einzige Quelle!)" --> ADGUARD
-    WAN["Internet (WAN)"] -- IP-Traffic --> PFB
+    MGMT -- "Outbound zu Bedrohungs-IP?" --> PFB
+    WAN["Internet (WAN)"] -- "Inbound-Angriffe" --> PFB
             </pre>
+
+            <div class="warning-box">
+                <strong>Scope-Grenze:</strong> Das Haupt-WLAN (Bad!Net, 192.168.178.0/24 &ndash; die meisten
+                Smartphones/Tablets/Laptops) hängt an einer separaten UniFi USG, nicht an dieser pfSense.
+                Die pfBlockerNG-Outbound-Prüfung (s.u.) sieht daher <strong>nur</strong> Traffic aus dem
+                Management-Netz/VLAN11 und VLAN13 &ndash; nicht das Haupt-WLAN. Die DNS-basierte
+                AdGuard-Filterung deckt dagegen beide Netze ab.
+            </div>
 
             <p>
                 Zwei getrennte Blocking-Pfade decken die zwei Netz-Segmente ab: WLAN-Clients (Bad!Net) nutzen
@@ -291,6 +305,75 @@ flowchart TB
             </div>
 
             <!-- ============================================================ -->
+            <h2>pfBlockerNG: Outbound-Erweiterung (Deny_Both)</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Ursprünglich blockte pfBlockerNG nur <strong>eingehenden</strong> WAN-Traffic (Angreifer aus dem
+                Internet). Es gab keinerlei Sichtbarkeit, ob umgekehrt ein Gerät im eigenen Netz versucht,
+                eine bekannte Bedrohungs-IP zu kontaktieren &ndash; ein Hinweis auf eine mögliche Infektion.
+                Beide Listen (<code>pfB_Threats</code>, <code>pfB_MISP_IOC</code>) wurden daher von
+                <code>Deny_Inbound</code> auf <code>Deny_Both</code> umgestellt.
+            </p>
+
+            <div class="screenshot">
+                <img src="images/pfsense_pfblockerng_outbound_interfaces.png" alt="pfBlockerNG Inbound/Outbound Interface-Konfiguration" loading="lazy">
+                <p class="screenshot-caption">pfBlockerNG IP-Konfiguration: Inbound-Regeln auf WAN, Outbound-Regeln neu auf VLAN11 + VLAN13</p>
+            </div>
+
+            <div class="info-box">
+                <strong>Wichtige Scope-Grenze:</strong> Diese pfSense verwaltet nur vier Interfaces &ndash; WAN,
+                ein ungenutztes Alt-Segment ("LAN"), VLAN11 (= das eigentliche Management-Netz 10.10.0.0/24) und
+                VLAN13. Das Haupt-WLAN (192.168.178.0/24, die meisten privaten Endgeräte) läuft über eine
+                separate UniFi USG. Die neue Outbound-Prüfung schützt also gezielt die
+                <strong>Server-/Infrastruktur-Ebene</strong>, nicht private Endgeräte im Haupt-WLAN.
+            </div>
+
+            <p>
+                Angewendet wurde die Änderung über <code>php /usr/local/www/pfblockerng/pfblockerng.php update</code>
+                (ein reiner <code>updateip</code>-Aufruf reicht nicht, da er nur Alias-Inhalte aktualisiert, nicht
+                die Firewall-Regeln selbst neu erzeugt). Nach der Umstellung wurden vier neue pf-Regeln erzeugt
+                (eine je Liste × Interface) und die Konnektivität sofort verifiziert, bevor der neue Zustand als
+                stabil betrachtet wurde.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2>Reputationsanreicherung mit AlienVault OTX</h2>
+            <!-- ============================================================ -->
+
+            <p>
+                Beide täglichen Reports reichern ihre Treffer jetzt mit Daten aus
+                <strong>AlienVault OTX</strong> (Open Threat Exchange) an &ndash; pro externer IP/Domain wird
+                abgefragt, wie viele Bedrohungsberichte ("Pulses") sie referenzieren, ergänzt um ASN/Land/Stadt
+                bei IPs. Ergebnisse werden lokal mit einer 7-Tage-TTL gecacht, um die kostenlose API nicht
+                unnötig zu belasten (max. 80 neue Abfragen pro Lauf).
+            </p>
+
+            <div class="screenshot">
+                <img src="images/pfblockerng_report_otx.png" alt="pfBlockerNG Report mit OTX-Reputationsdaten" loading="lazy">
+                <p class="screenshot-caption">pfBlockerNG-Report: Richtung (eingehend/ausgehend), ASN/Land/Stadt und OTX-Pulses je Bedrohungs-IP</p>
+            </div>
+
+            <p>
+                Bei ausgehenden Treffern (LAN &rarr; Bedrohungs-IP) wird konsequent das Ziel angereichert, nicht
+                die Quelle &ndash; schließlich ist dort die interne Client-IP uninteressant, die externe Ziel-IP
+                aber der eigentliche Risikoindikator. Der AdGuard-Report zeigt zusätzlich, welche LAN-Clients
+                eine geblockte Domain überhaupt angefragt haben:
+            </p>
+
+            <div class="screenshot">
+                <img src="images/adguard_report_otx_clients.png" alt="AdGuard Report mit Client-Zuordnung und OTX-Pulses" loading="lazy">
+                <p class="screenshot-caption">AdGuard-Report: welche Clients haben welche Domain angefragt, plus OTX-Pulses je Domain (Gerätenamen im Screenshot anonymisiert)</p>
+            </div>
+
+            <div class="info-box">
+                <strong>Bewusst nicht umgesetzt:</strong> Ein Zurückspielen geblockter IOCs als eigene OTX-Pulses
+                wurde geprüft und verworfen &ndash; die Indikatoren stammen ja bereits aus öffentlichen Feeds
+                (Spamhaus, das eigene MISP), ein Zurückmelden wäre nur ein Echo ohne neuen Erkenntniswert für
+                die Community.
+            </div>
+
+            <!-- ============================================================ -->
             <h2>Cron-Übersicht</h2>
             <!-- ============================================================ -->
 
@@ -309,9 +392,14 @@ flowchart TB
                         <td><code>/etc/cron.d/misp-ioc-sync</code></td>
                     </tr>
                     <tr>
-                        <td>Täglicher Blocking-Report (Mail)</td>
+                        <td>Täglicher AdGuard-Blocking-Report (Mail, + OTX + Client-Zuordnung)</td>
                         <td>07:00 Uhr</td>
                         <td><code>/etc/cron.d/misp-blockpage-report</code></td>
+                    </tr>
+                    <tr>
+                        <td>Täglicher pfBlockerNG-Report (Mail, + OTX + Richtung)</td>
+                        <td>07:10 Uhr</td>
+                        <td><code>/etc/cron.d/pfblockerng-daily-report</code></td>
                     </tr>
                     <tr>
                         <td>UniFi Config-Backup (Kontext: <a href="15-wiederherstellung.html">Wiederherstellung</a>)</td>
@@ -356,7 +444,7 @@ const searchIndex = [
     {title: "Sicherheit", url: "14-sicherheit.html", text: "Secrets Backups Passwörter Verschlüsselung"},
     {title: "Wiederherstellung", url: "15-wiederherstellung.html", text: "Disaster Recovery restore.sh Backup"},
     {title: "Troubleshooting", url: "16-troubleshooting.html", text: "Probleme Fehler Logs Debug Lösungen"},
-    {title: "DNS-Security (MISP/AdGuard/pfSense)", url: "17-dns-security.html", text: "MISP IOC Sync AdGuard pfSense Blockseite Warninglists DNSSEC Forwarding Report"},
+    {title: "DNS-Security (MISP/AdGuard/pfSense)", url: "17-dns-security.html", text: "MISP IOC Sync AdGuard pfSense Blockseite Warninglists DNSSEC Forwarding Report pfBlockerNG Outbound Deny_Both AlienVault OTX Reputation ASN"},
 ];
 
 function doSearch() {
