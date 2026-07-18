@@ -250,6 +250,41 @@ views:
               red: 30
             needle: true
 
+      # -----------------------------------------------------------------
+      # ICEWEATHERSTATION - EIGENE MESSSTATION (lokal, kein Online-Dienst!)
+      # -----------------------------------------------------------------
+      - type: markdown
+        content: "## 🏠 IceWeatherstation — eigene Messwerte (lokal)"
+
+      - type: entities
+        title: "🏠 IceWeatherstation (lokal, nicht online)"
+        show_header_toggle: false
+        card_mod:
+          style: |
+            ha-card {
+              border: 2px solid var(--success-color, green) !important;
+            }
+        entities:
+          - entity: sensor.tasmota_ds18b20_temperature
+            name: Temperatur (DS18B20)
+          - entity: sensor.tasmota_iceweather_windspeed
+            name: Windgeschwindigkeit
+          - entity: sensor.tasmota_iceweather_winddir
+            name: Windrichtung (Grad)
+          - entity: sensor.tasmota_iceweather_rain24h
+            name: Regenmenge (24h)
+          - entity: sensor.tasmota_as3935_distance_2
+            name: Blitz-Distanz
+          - entity: sensor.tasmota_as3935_energy_2
+            name: Blitz-Energie
+          - entity: sensor.tasmota_rssi_7
+            name: WLAN-Signal (IceWeatherstation)
+
+      - type: markdown
+        content: >
+          *Hinweis: BME280 (Lufttemperatur/-feuchte/-druck der Station) noch
+          nicht verbaut, folgt sobald geliefert.*
+
   # ===========================================================================
   # WARNUNGEN (Detail-View)
   # ===========================================================================
