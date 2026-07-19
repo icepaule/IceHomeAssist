@@ -1,0 +1,24 @@
+# =============================================================================
+# ICEWEATHERSTATION - Einheiten-Korrekturen für Tasmota-Integration-Entities
+# =============================================================================
+# Tasmotas Discovery kennt fuer eigene Berry-JSON-Felder (IceWeather:{...})
+# keine Einheiten, und beim AS3935-Distance-Feld hat die HA-Tasmota-Integration
+# eine falsche Standard-Einheit (cm statt km, wie Tasmotas eigenes Web-UI
+# korrekt zeigt). "device_class: null" verhindert dabei HAs automatische
+# Einheiten-Umrechnung (die sonst den bereits korrekt in km vorliegenden Wert
+# faelschlich nochmal umrechnen wuerde).
+#
+# Doku: https://github.com/icepaule/IceWeatherstation
+# =============================================================================
+
+homeassistant:
+  customize:
+    sensor.tasmota_as3935_distance_2:
+      device_class: null
+      unit_of_measurement: "km"
+    sensor.tasmota_iceweather_windspeed:
+      unit_of_measurement: "m/s"
+    sensor.tasmota_iceweather_winddir:
+      unit_of_measurement: "°"
+    sensor.tasmota_iceweather_rain24h:
+      unit_of_measurement: "mm"
