@@ -22,11 +22,15 @@ views:
             ha-card {
               border: 2px solid var(--success-color, green) !important;
             }
+            #states > * {
+              margin-top: -8px !important;
+              margin-bottom: -8px !important;
+            }
         entities:
-          - entity: sensor.tasmota_bme280_temperature
-            name: Temperatur (BME280)
           - entity: sensor.tasmota_ds18b20_temperature
-            name: Temperatur (DS18B20, Zusatzsonde)
+            name: Temperatur
+          - entity: sensor.tasmota_bme280_temperature
+            name: Temperatur (BME280, Sonneneinfluss - unzuverlässig)
           - entity: sensor.tasmota_bme280_humidity
             name: Luftfeuchtigkeit
           - entity: sensor.tasmota_bme280_pressure
@@ -49,7 +53,7 @@ views:
       - type: horizontal-stack
         cards:
           - type: gauge
-            entity: sensor.tasmota_bme280_temperature
+            entity: sensor.tasmota_ds18b20_temperature
             name: Schuppen
             min: -10
             max: 40
