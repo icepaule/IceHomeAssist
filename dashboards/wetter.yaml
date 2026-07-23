@@ -8,6 +8,78 @@ views:
     icon: mdi:weather-cloudy
     cards:
       # -----------------------------------------------------------------
+      # ICEWEATHERSTATION - EIGENE MESSSTATION (lokal, kein Online-Dienst!)
+      # Bewusst als allererste Karte, damit sie sofort sichtbar ist.
+      # -----------------------------------------------------------------
+      - type: markdown
+        content: "## 🏠 IceWeatherstation — eigene Messwerte (lokal)"
+
+      - type: entities
+        title: "🏠 IceWeatherstation (lokal, nicht online)"
+        show_header_toggle: false
+        card_mod:
+          style: |
+            ha-card {
+              border: 2px solid var(--success-color, green) !important;
+            }
+        entities:
+          - entity: sensor.tasmota_bme280_temperature
+            name: Temperatur (BME280)
+          - entity: sensor.tasmota_ds18b20_temperature
+            name: Temperatur (DS18B20, Zusatzsonde)
+          - entity: sensor.tasmota_bme280_humidity
+            name: Luftfeuchtigkeit
+          - entity: sensor.tasmota_bme280_pressure
+            name: Luftdruck
+          - entity: sensor.tasmota_iceweather_windspeed
+            name: Windgeschwindigkeit
+          - entity: sensor.tasmota_iceweather_winddir
+            name: Windrichtung (Grad)
+          - entity: sensor.tasmota_iceweather_rain24h
+            name: Regenmenge (24h)
+          - entity: sensor.tasmota_iceweather_rainhour
+            name: Regenmenge (laufende Stunde)
+          - entity: sensor.tasmota_analog_range1
+            name: Schallpegel
+          - entity: sensor.tasmota_as3935_distance_2
+            name: Blitz-Distanz
+          - entity: sensor.tasmota_as3935_energy_2
+            name: Blitz-Energie
+
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.tasmota_bme280_temperature
+            name: Schuppen
+            min: -10
+            max: 40
+            severity:
+              green: 15
+              yellow: 25
+              red: 30
+            needle: true
+          - type: gauge
+            entity: sensor.wetter_temperatur_aktuell
+            name: Online
+            min: -10
+            max: 40
+            severity:
+              green: 15
+              yellow: 25
+              red: 30
+            needle: true
+          - type: gauge
+            entity: sensor.tasmota_bme280_humidity
+            name: Feuchte
+            min: 0
+            max: 100
+            severity:
+              green: 30
+              yellow: 60
+              red: 80
+            needle: true
+
+      # -----------------------------------------------------------------
       # WARNUNGEN OBEN (nur wenn aktiv)
       # -----------------------------------------------------------------
       - type: conditional
@@ -93,7 +165,7 @@ views:
         content: "## Interaktives Radar"
 
       - type: iframe
-        url: "https://embed.windy.com/embed2.html?lat=YOUR_LAT&lon=YOUR_LON&detailLat=YOUR_LAT&detailLon=YOUR_LON&width=650&height=450&zoom=7&level=surface&overlay=radar&product=radar&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1"
+        url: "https://embed.windy.com/embed2.html?lat=48.79&lon=11.50&detailLat=48.14&detailLon=11.58&width=650&height=450&zoom=7&level=surface&overlay=radar&product=radar&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1"
         aspect_ratio: "16:10"
 
       # -----------------------------------------------------------------
@@ -212,78 +284,9 @@ views:
           {% endif %}
 
       # -----------------------------------------------------------------
-      # SCHUPPEN WETTERSTATION
+      # Luft1-Schuppenstation ausgemustert (2026-07-19): AS3935 und die
+      # Funktion physisch zur IceWeatherstation umgezogen, siehe oben.
       # -----------------------------------------------------------------
-      - type: entities
-        title: Schuppen Wetterstation (Luft1)
-        show_header_toggle: false
-        entities:
-          - entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
-            name: Temperatur (DHT11)
-          - entity: sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit
-            name: Luftfeuchtigkeit
-          - entity: sensor.schuppen_taupunkt
-            name: Taupunkt
-          # Kein Luftdruck: Luft1 hat nur DHT11 (Temp/Feuchte) + AS3935
-          # (Blitzsensor), keinen Barometer.
-
-      - type: horizontal-stack
-        cards:
-          - type: gauge
-            entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
-            name: Schuppen
-            min: -10
-            max: 40
-            severity:
-              green: 15
-              yellow: 25
-              red: 30
-            needle: true
-          - type: gauge
-            entity: sensor.wetter_temperatur_aktuell
-            name: Online
-            min: -10
-            max: 40
-            severity:
-              green: 15
-              yellow: 25
-              red: 30
-            needle: true
-
-      # -----------------------------------------------------------------
-      # ICEWEATHERSTATION - EIGENE MESSSTATION (lokal, kein Online-Dienst!)
-      # -----------------------------------------------------------------
-      - type: markdown
-        content: "## 🏠 IceWeatherstation — eigene Messwerte (lokal)"
-
-      - type: entities
-        title: "🏠 IceWeatherstation (lokal, nicht online)"
-        show_header_toggle: false
-        card_mod:
-          style: |
-            ha-card {
-              border: 2px solid var(--success-color, green) !important;
-            }
-        entities:
-          - entity: sensor.tasmota_ds18b20_temperature
-            name: Temperatur (DS18B20)
-          - entity: sensor.tasmota_iceweather_windspeed
-            name: Windgeschwindigkeit
-          - entity: sensor.tasmota_iceweather_winddir
-            name: Windrichtung (Grad)
-          - entity: sensor.tasmota_iceweather_rain24h
-            name: Regenmenge (24h)
-          - entity: sensor.tasmota_as3935_distance_2
-            name: Blitz-Distanz
-          - entity: sensor.tasmota_as3935_energy_2
-            name: Blitz-Energie
-          - entity: sensor.tasmota_rssi_7
-            name: WLAN-Signal (IceWeatherstation)
-
-      - type: markdown
-        content: >
-          *Hinweis: BME280 (Lufttemperatur/-feuchte/-druck der Station) noch
-          nicht verbaut, folgt sobald geliefert.*
 
   # ===========================================================================
   # WARNUNGEN (Detail-View)

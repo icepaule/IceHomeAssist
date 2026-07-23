@@ -22,3 +22,8 @@ homeassistant:
       unit_of_measurement: "°"
     sensor.tasmota_iceweather_rain24h:
       unit_of_measurement: "mm"
+    sensor.tasmota_iceweather_rainhour:
+      unit_of_measurement: "mm"
+    sensor.tasmota_analog_range1:
+      unit_of_measurement: "dBA"
+      friendly_name: "IceWeatherstation Schallpegel"
