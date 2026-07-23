@@ -43,6 +43,8 @@ views:
             name: Regenmenge (24h)
           - entity: sensor.tasmota_iceweather_rainhour
             name: Regenmenge (laufende Stunde)
+          - entity: sensor.tasmota_iceweather_rainsuppressedmm
+            name: Regen unterdrückt (Solartracker)
           - entity: sensor.tasmota_analog_range1
             name: Schallpegel
           - entity: sensor.tasmota_as3935_distance_2
