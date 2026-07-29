@@ -4072,12 +4072,12 @@
         "id": "6d902ac85f6942a6",
         "type": "server-state-changed",
         "z": "tab_matrix4",
-        "name": "Preis-Trend",
+        "name": "sensor.paule_current_price_trend",
         "server": "80ef547.fe1b7a8",
         "version": 6,
         "entities": {
             "entity": [
-                "sensor.paule_price_trend_1h"
+                "sensor.paule_current_price_trend"
             ],
             "substring": [],
             "regex": []
