@@ -267,33 +267,17 @@
             </p>
 
             <h3>Flow-Diagramm</h3>
-            <pre><code>┌─────────────┐    ┌──────────────┐    ┌───────────────┐    ┌─────────────┐
-│  MQTT In    │───▶│  JSON Parse  │───▶│  Button       │───▶│  input_select│
-│             │    │              │    │  Identifi-    │    │  Abfrage    │
-│ stat/wifi-  │    │ Payload      │    │  kation       │    │  (HA API)   │
-│ button1/    │    │ parsen       │    │  (welcher?)   │    │             │
-│ RESULT      │    │              │    │              │    │             │
-└─────────────┘    └──────────────┘    └───────────────┘    └──────┬──────┘
-                                                                    │
-                                                                    ▼
-                                                           ┌───────────────┐
-                                                           │  Switch-Node  │
-                                                           │               │
-                                                           │ Aktion        │
-                                                           │ auswählen     │
-                                                           │ basierend auf │
-                                                           │ input_select  │
-                                                           └───────┬───────┘
-                                                                   │
-                                    ┌──────────────────────────────┼──────────┐
-                                    │              │               │          │
-                              ┌─────▼────┐  ┌─────▼────┐  ┌──────▼───┐ ┌───▼────┐
-                              │ Licht    │  │ Musik    │  │ Staub-   │ │ Szene  │
-                              │ Toggle   │  │ Play/    │  │ sauger   │ │ Abend  │
-                              │          │  │ Pause    │  │ Start    │ │        │
-                              │ (HA      │  │ (HA      │  │ (HA      │ │ (HA    │
-                              │ Service) │  │ Service) │  │ Service) │ │Service)│
-                              └──────────┘  └──────────┘  └──────────┘ └────────┘</code></pre>
+            <pre class="mermaid">
+flowchart LR
+    A["MQTT In<br/>stat/wifibutton1/RESULT"] --> B["JSON Parse<br/>Payload parsen"]
+    B --> C["Button-Identifikation<br/>(welcher Button?)"]
+    C --> D["input_select Abfrage<br/>(HA API)"]
+    D --> E["Switch-Node<br/>Aktion auswählen basierend auf input_select"]
+    E --> F1["Licht Toggle<br/>(HA Service)"]
+    E --> F2["Musik Play/Pause<br/>(HA Service)"]
+    E --> F3["Staubsauger Start<br/>(HA Service)"]
+    E --> F4["Szene Abend<br/>(HA Service)"]
+            </pre>
 
             <h3>Flow-Beschreibung</h3>
             <div class="card">
@@ -591,5 +575,7 @@ document.addEventListener('click', e => {
     }
 });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
 </body>
 </html>

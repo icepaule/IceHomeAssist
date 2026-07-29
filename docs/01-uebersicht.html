@@ -73,44 +73,22 @@
 
             <!-- Architektur-Diagramm -->
             <h2>Architekturdiagramm</h2>
-            <pre><code>┌─────────────────────────────────────────────────────────────────┐
-│                        Intel NUC (x86-64)                       │
-│                     Debian 13 (Bookworm/Trixie)                 │
-│                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │                     Docker Engine                          │  │
-│  │                                                            │  │
-│  │  ┌──────────────────────────────────────────────────────┐  │  │
-│  │  │          Home Assistant OS Container                  │  │  │
-│  │  │   ghcr.io/home-assistant/qemux86-64-homeassistant    │  │  │
-│  │  │                                                       │  │  │
-│  │  │  ┌─────────────┐  ┌──────────┐  ┌───────────────┐   │  │  │
-│  │  │  │  HA Core    │  │ Addons   │  │   HACS        │   │  │  │
-│  │  │  │             │  │          │  │               │   │  │  │
-│  │  │  │ Dashboards  │  │ Node-RED │  │ 12 Custom     │   │  │  │
-│  │  │  │ Automations │  │ Mosquitto│  │ Components    │   │  │  │
-│  │  │  │ Packages    │  │ Matter   │  │               │   │  │  │
-│  │  │  └─────────────┘  └──────────┘  └───────────────┘   │  │  │
-│  │  │                                                       │  │  │
-│  │  │  Volume: /var/lib/homeassistant:/data                 │  │  │
-│  │  │  Netzwerk: --network=host                             │  │  │
-│  │  └──────────────────────────────────────────────────────┘  │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  Ports: 8123 (HA), 1880 (Node-RED), 1883 (MQTT)               │
-└────────────────────┬────────────────────────────────────────────┘
-                     │ Netzwerk (LAN)
-                     │
-        ┌────────────┼────────────────────────┐
-        │            │                        │
-   ┌────▼────┐  ┌───▼──────┐  ┌─────────────▼──────────────┐
-   │  WiFi   │  │  MQTT    │  │    Cloud-Dienste            │
-   │ Geräte  │  │ Geräte   │  │                             │
-   │         │  │          │  │  Tibber, DWD, Divera,       │
-   │ Alexa   │  │ Tasmota  │  │  Meross Cloud, PetKit,     │
-   │ Bravia  │  │ ESP32    │  │  Amazon (Alexa)             │
-   │ UniFi   │  │ Sensoren │  │                             │
-   └─────────┘  └──────────┘  └────────────────────────────-┘</code></pre>
+            <pre class="mermaid">
+flowchart TB
+    subgraph NUC["Intel NUC (x86-64) — Debian 13 (Bookworm/Trixie)"]
+        subgraph Docker["Docker Engine"]
+            subgraph HAOS["Home Assistant OS Container<br/>ghcr.io/home-assistant/qemux86-64-homeassistant"]
+                Core["HA Core<br/>Dashboards, Automations, Packages"]
+                Addons["Addons<br/>Node-RED, Mosquitto, Matter"]
+                HACS["HACS<br/>12 Custom Components"]
+            end
+        end
+    end
+    NUC -->|"Ports: 8123 (HA), 1880 (Node-RED), 1883 (MQTT)<br/>Volume: /var/lib/homeassistant:/data<br/>Netzwerk: --network=host"| LAN["Netzwerk (LAN)"]
+    LAN --> WiFi["WiFi-Geräte<br/>Alexa, Bravia, UniFi"]
+    LAN --> MQTT["MQTT-Geräte<br/>Tasmota, ESP32, Sensoren"]
+    LAN --> Cloud["Cloud-Dienste<br/>Tibber, DWD, Divera, Meross Cloud, PetKit, Amazon (Alexa)"]
+            </pre>
 
             <!-- Hardware -->
             <h2>Hardware</h2>
@@ -434,5 +412,7 @@ document.addEventListener('click', e => {
     }
 });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
 </body>
 </html>
