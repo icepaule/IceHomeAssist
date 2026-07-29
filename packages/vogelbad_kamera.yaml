@@ -1,0 +1,88 @@
+# =============================================================================
+# VOGELBAD-KAMERA (WAVEEME, vermutlich Xiongmai-Basis)
+# =============================================================================
+# Pipeline: Kamera (RTSP) -> Frigate (CT203/frigate01, prox2, Bewegungs-/Vogel-
+#           erkennung) -> n8n (ki02:5678, Artbestimmung via Ollama qwen2.5vl)
+#           -> MQTT home/vogelbad/erkennung -> hier.
+#
+# Doku: https://github.com/icepaule/IceBirdwatch
+#
+# TODO nach Kamera-Setup morgen:
+#   - Frigate-Kamera-URL in CT203 /opt/frigate/config.yml eintragen
+#   - n8n-Workflows importieren + MQTT/SQLite-Credentials setzen + aktivieren
+# =============================================================================
+
+mqtt:
+  sensor:
+    - name: "Vogelbad Letzte Erkennung"
+      unique_id: vogelbad_letzte_erkennung
+      state_topic: "home/vogelbad/erkennung"
+      value_template: "{{ value_json.umgangssprachlich }}"
+      json_attributes_topic: "home/vogelbad/erkennung"
+      json_attributes_template: >
+        {{ {
+          'lateinisch': value_json.lateinisch,
+          'konfidenz': value_json.konfidenz,
+          'anmerkung': value_json.anmerkung,
+          'zeitstempel': value_json.zeitstempel,
+          'bild_url': value_json.bild_url
+        } | tojson }}
+      icon: mdi:bird
+
+rest:
+  - resource: "http://10.10.0.210:5678/webhook/vogelbad-historie"
+    scan_interval: 120
+    sensor:
+      - name: "Vogelbad Historie"
+        unique_id: vogelbad_historie
+        value_template: "{{ value_json.eintraege | length }}"
+        json_attributes_path: "$.eintraege"
+        json_attributes:
+          - "0"
+        icon: mdi:history
+
+# Hinweis: json_attributes mit "0" oben ist ein Platzhalter-Workaround, falls die
+# REST-Integration die volle Liste nicht sauber als Attribut uebernimmt. Robuster
+# Zugriff im Dashboard erfolgt ueber einen eigenen rest_command + Template-Sensor,
+# siehe template: -Block unten, der die komplette Liste als JSON-Attribut haelt.
+
+template:
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/2"
+      - trigger: state
+        entity_id: sensor.vogelbad_letzte_erkennung
+    action:
+      - action: rest_command.vogelbad_historie_abrufen
+        response_variable: historie_response
+    sensor:
+      - name: "Vogelbad Historie Liste"
+        unique_id: vogelbad_historie_liste
+        state: "{{ historie_response['content']['eintraege'] | length }}"
+        attributes:
+          eintraege: "{{ historie_response['content']['eintraege'] }}"
+        icon: mdi:format-list-bulleted
+
+rest_command:
+  vogelbad_historie_abrufen:
+    url: "http://10.10.0.210:5678/webhook/vogelbad-historie"
+    method: GET
+
+automation:
+  - alias: "Vogelbad: Benachrichtigung bei neuer Erkennung"
+    id: vogelbad_neue_erkennung_notification
+    trigger:
+      - trigger: state
+        entity_id: sensor.vogelbad_letzte_erkennung
+    condition:
+      - condition: template
+        value_template: "{{ trigger.to_state.state not in ['unknown', 'unavailable', ''] }}"
+    action:
+      - action: persistent_notification.create
+        data:
+          title: "Neuer Vogel erkannt"
+          message: >
+            {{ trigger.to_state.state }}
+            ({{ trigger.to_state.attributes.get('lateinisch', '') }})
+            um {{ trigger.to_state.attributes.get('zeitstempel', '') }}
+          notification_id: "vogelbad_letzte_erkennung"
