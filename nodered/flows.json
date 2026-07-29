@@ -4119,7 +4119,7 @@
         "type": "function",
         "z": "tab_matrix4",
         "name": "Speichere Trend",
-        "func": "flow.set('m4_trend', parseFloat(msg.payload) || 0);",
+        "func": "// sensor.paule_price_trend_1h ist ein Enum-Sensor (strongly_falling..strongly_rising),\n// kein numerischer Wert - parseFloat() darauf ergibt immer NaN -> Pfeil zeigte nie den\n// echten Trend an, unabhaengig vom Entity-Zustand. Auf numerische Zuordnung umgestellt,\n// damit die bestehende Schwellenwert-Logik (>0.1 / <-0.1) in der Anzeige-Funktion greift.\nvar trendMap = {\n    strongly_falling: -2,\n    falling: -1,\n    stable: 0,\n    rising: 1,\n    strongly_rising: 2\n};\nvar trendState = String(msg.payload || '');\nflow.set('m4_trend', trendMap.hasOwnProperty(trendState) ? trendMap[trendState] : 0);",
         "outputs": 1,
         "x": 360,
         "y": 170,
