@@ -158,6 +158,13 @@ lovelace:
       icon: mdi:tag-search
       show_in_sidebar: true
       filename: dashboards/deal_hunter.yaml
+    # === VOGELBAD ===
+    lovelace-vogelbad:
+      mode: yaml
+      title: Vogelbad
+      icon: mdi:bird
+      show_in_sidebar: true
+      filename: dashboards/vogelbad.yaml
     # === STAUBSAUGER ===
     lovelace-vacuum:
       mode: yaml

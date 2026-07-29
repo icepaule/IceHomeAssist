@@ -1,0 +1,71 @@
+title: Vogelbad
+views:
+  # ===========================================================================
+  # Uebersicht: Live-Bild + aktuelle Erkennung
+  # ===========================================================================
+  - title: Übersicht
+    path: overview
+    icon: mdi:bird
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: picture
+            image: "http://10.10.0.73:5000/api/vogelbad/latest.jpg"
+            tap_action:
+              action: url
+              url_path: "http://10.10.0.73:5000/api/vogelbad"
+          - type: custom:mushroom-template-card
+            primary: "{{ states('sensor.vogelbad_letzte_erkennung') }}"
+            secondary: >
+              {{ state_attr('sensor.vogelbad_letzte_erkennung', 'lateinisch') }}
+              — {{ (state_attr('sensor.vogelbad_letzte_erkennung', 'konfidenz') | float(0) * 100) | round(0) }}% Konfidenz
+            icon: mdi:bird
+            icon_color: green
+          - type: custom:mushroom-template-card
+            primary: "Letzte Sichtung"
+            secondary: "{{ state_attr('sensor.vogelbad_letzte_erkennung', 'zeitstempel') }}"
+            icon: mdi:clock-outline
+            icon_color: blue
+
+      - type: grid
+        cards:
+          - type: custom:mushroom-template-card
+            primary: "Frigate NVR"
+            secondary: "Live-Ansicht & Aufnahmen"
+            icon: mdi:cctv
+            icon_color: grey
+            tap_action:
+              action: url
+              url_path: "http://10.10.0.73:5000"
+          - type: custom:mushroom-template-card
+            primary: "Anzahl Erkennungen"
+            secondary: "{{ states('sensor.vogelbad_historie_liste') }} gespeichert"
+            icon: mdi:counter
+            icon_color: purple
+
+  # ===========================================================================
+  # Historie: alle erkannten Voegel/Tiere
+  # ===========================================================================
+  - title: Historie
+    path: historie
+    icon: mdi:history
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: markdown
+            title: "Erkannte Besucher"
+            content: >
+              {% set eintraege = state_attr('sensor.vogelbad_historie_liste', 'eintraege') or [] %}
+              {% if eintraege | length == 0 %}
+              _Noch keine Erkennungen gespeichert._
+              {% else %}
+              | Bild | Umgangssprachlich | Lateinisch | Datum | Uhrzeit | Konfidenz |
+              |---|---|---|---|---|---|
+              {% for e in eintraege %}
+              | ![Bild]({{ e.bild_url }}) | {{ e.umgangssprachlich }} | _{{ e.lateinisch }}_ | {{ e.zeitstempel[:10] }} | {{ e.zeitstempel[11:16] }} | {{ (e.konfidenz | float(0) * 100) | round(0) }}% |
+              {% endfor %}
+              {% endif %}

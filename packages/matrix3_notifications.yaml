@@ -11,54 +11,54 @@ input_boolean:
   matrix3_thw_alarm:
     name: "Matrix3: THW Alarm"
     icon: mdi:fire-truck
-    initial: true
+    initial: false
 
   matrix3_internet_offline:
     name: "Matrix3: Internet Offline"
     icon: mdi:web-off
-    initial: true
+    initial: false
 
   # --- HOCH (Prio 2) ---
   matrix3_nina_warnung:
     name: "Matrix3: NINA Warnung"
     icon: mdi:alert-octagon
-    initial: true
+    initial: false
 
   matrix3_dwd_wetter:
     name: "Matrix3: DWD Unwetter"
     icon: mdi:weather-lightning-rainy
-    initial: true
+    initial: false
 
   matrix3_hochwasser:
     name: "Matrix3: Hochwasser"
     icon: mdi:waves
-    initial: true
+    initial: false
 
   matrix3_thw_rueckmeldung:
     name: "Matrix3: THW Rückmeldung"
     icon: mdi:calendar-alert
-    initial: true
+    initial: false
 
   matrix3_netzwerk:
     name: "Matrix3: Netzwerk-Fehler"
     icon: mdi:lan-disconnect
-    initial: true
+    initial: false
 
   # --- MITTEL (Prio 3) ---
   matrix3_petkit:
     name: "Matrix3: Petkit Fehler"
     icon: mdi:cat
-    initial: true
+    initial: false
 
   matrix3_meshtastic:
     name: "Matrix3: Meshtastic Nachricht"
     icon: mdi:radio-tower
-    initial: true
+    initial: false
 
   matrix3_mesh_batterie:
     name: "Matrix3: Mesh Batterie niedrig"
     icon: mdi:battery-alert
-    initial: true
+    initial: false
 
   matrix3_waschmaschine:
     name: "Matrix3: Waschmaschine wartet"
