@@ -1,0 +1,666 @@
+# =============================================================================
+# Siemens Geschirrspüler SN43ES04TE (iQ300) - Home Connect Integration
+# =============================================================================
+# Device: Siemens SN43ES04TE @ 10.10.12.38 (Bad!IoT VLAN)
+# Integration: home_connect_alt (HACS), BSH haid 405100396089025945
+# Pattern: PetKit-Style (script.send_notification + matrix3 input_boolean)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+input_boolean:
+  matrix3_dishwasher:
+    name: "Matrix3: Spüler fertig"
+    icon: mdi:dishwasher
+    initial: false
+
+  dishwasher_pv_auto_start:
+    name: "Spüler: PV-Auto-Start aktiv"
+    icon: mdi:solar-power-variant
+    initial: false
+
+  dishwasher_tibber_auto_start:
+    name: "Spüler: Tibber-Auto-Start aktiv"
+    icon: mdi:cash-clock
+    initial: false
+
+counter:
+  dishwasher_runs_since_salt:
+    name: "Spüler-Läufe seit Salz nachfüllen"
+    icon: mdi:shaker-outline
+    initial: 0
+    step: 1
+
+  dishwasher_runs_since_rinse_aid:
+    name: "Spüler-Läufe seit Klarspüler nachfüllen"
+    icon: mdi:bottle-tonic-outline
+    initial: 0
+    step: 1
+
+  dishwasher_runs_total:
+    name: "Spüler-Läufe insgesamt"
+    icon: mdi:counter
+    initial: 0
+    step: 1
+
+# -----------------------------------------------------------------------------
+# Input Number: Schwellen + Energy-Lookup + kumulative Stats-Basis
+# -----------------------------------------------------------------------------
+# kWh-Werte aus Datenblatt SN43ES04TE; im UI tunbar.
+input_number:
+  dishwasher_pv_min_watts:
+    name: "Spüler: PV-Schwelle Auto-Start"
+    min: 500
+    max: 3500
+    step: 100
+    initial: 1500
+    unit_of_measurement: "W"
+    icon: mdi:flash
+
+  dishwasher_tibber_max_ct:
+    name: "Spüler: Tibber-Schwelle Auto-Start"
+    min: 5
+    max: 40
+    step: 1
+    initial: 18
+    unit_of_measurement: "ct/kWh"
+    icon: mdi:cash
+
+  dishwasher_kwh_eco50:
+    name: "Spüler kWh: Eco 50°"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 0.83
+    unit_of_measurement: "kWh"
+    icon: mdi:leaf
+  dishwasher_kwh_auto:
+    name: "Spüler kWh: Auto 45-65°"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 1.05
+    unit_of_measurement: "kWh"
+    icon: mdi:auto-mode
+  dishwasher_kwh_intensiv70:
+    name: "Spüler kWh: Intensiv 70°"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 1.50
+    unit_of_measurement: "kWh"
+    icon: mdi:fire
+  dishwasher_kwh_speed65:
+    name: "Spüler kWh: Speed 65°"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 1.15
+    unit_of_measurement: "kWh"
+    icon: mdi:run-fast
+  dishwasher_kwh_quick45:
+    name: "Spüler kWh: Quick 45°"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 0.80
+    unit_of_measurement: "kWh"
+    icon: mdi:fast-forward
+  dishwasher_kwh_night:
+    name: "Spüler kWh: Nacht"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 0.95
+    unit_of_measurement: "kWh"
+    icon: mdi:weather-night
+  dishwasher_kwh_glas40:
+    name: "Spüler kWh: Glas 40°"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 0.85
+    unit_of_measurement: "kWh"
+    icon: mdi:glass-tulip
+  dishwasher_kwh_prerinse:
+    name: "Spüler kWh: Vorspülen"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 0.02
+    unit_of_measurement: "kWh"
+    icon: mdi:water
+  dishwasher_kwh_machinecare:
+    name: "Spüler kWh: Maschinenpflege"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 1.40
+    unit_of_measurement: "kWh"
+    icon: mdi:wrench
+  dishwasher_kwh_fallback:
+    name: "Spüler kWh: unbekanntes Programm"
+    min: 0.0
+    max: 3.0
+    step: 0.01
+    initial: 1.00
+    unit_of_measurement: "kWh"
+    icon: mdi:help-circle
+  dishwasher_total_cost:
+    name: "Spüler Gesamtkosten (kumulativ)"
+    min: 0
+    max: 100000
+    step: 0.0001
+    initial: 0
+    unit_of_measurement: "EUR"
+    icon: mdi:cash-multiple
+  dishwasher_total_energy:
+    name: "Spüler Gesamtenergie (kumulativ)"
+    min: 0
+    max: 100000
+    step: 0.0001
+    initial: 0
+    unit_of_measurement: "kWh"
+    icon: mdi:lightning-bolt
+  dishwasher_total_water:
+    name: "Spüler Gesamtwasser (kumulativ)"
+    min: 0
+    max: 1000000
+    step: 0.1
+    initial: 0
+    unit_of_measurement: "L"
+    icon: mdi:water-pump
+
+# -----------------------------------------------------------------------------
+# Wasser-Lookup pro Programm (L)
+# -----------------------------------------------------------------------------
+# Verwende input_number-Pendants auch hier — der Übersicht halber als zweite Gruppe.
+# (separat zur Kosten-Berechnung wird Wasser nicht direkt verwendet, nur Stats)
+
+# -----------------------------------------------------------------------------
+# Template Sensors - kurze Namen + Klartext
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      - name: "Spüler Status"
+        unique_id: dishwasher_status_text
+        icon: >
+          {% set s = states('sensor.siemens_405100396089025945_bsh_common_status_operationstate') %}
+          {% if s == 'BSH.Common.EnumType.OperationState.Run' %} mdi:dishwasher
+          {% elif s == 'BSH.Common.EnumType.OperationState.Finished' %} mdi:dishwasher-alert
+          {% elif s in ['BSH.Common.EnumType.OperationState.Error','BSH.Common.EnumType.OperationState.ActionRequired'] %} mdi:alert-circle
+          {% else %} mdi:dishwasher-off {% endif %}
+        state: >
+          {% set s = states('sensor.siemens_405100396089025945_bsh_common_status_operationstate') %}
+          {% set map = {
+            'BSH.Common.EnumType.OperationState.Inactive': 'Aus',
+            'BSH.Common.EnumType.OperationState.Ready': 'Bereit',
+            'BSH.Common.EnumType.OperationState.DelayedStart': 'Verzögerter Start',
+            'BSH.Common.EnumType.OperationState.Run': 'Läuft',
+            'BSH.Common.EnumType.OperationState.Pause': 'Pause',
+            'BSH.Common.EnumType.OperationState.ActionRequired': 'Aktion nötig',
+            'BSH.Common.EnumType.OperationState.Finished': 'Fertig',
+            'BSH.Common.EnumType.OperationState.Error': 'Fehler',
+            'BSH.Common.EnumType.OperationState.Aborting': 'Wird abgebrochen',
+            'BSH.Common.EnumType.OperationState.Aborted': 'Abgebrochen'
+          } %}
+          {{ map.get(s, s | replace('BSH.Common.EnumType.OperationState.', '')) }}
+
+      - name: "Spüler Programm"
+        unique_id: dishwasher_program_text
+        icon: mdi:format-list-bulleted-type
+        state: >
+          {% set p = states('sensor.siemens_405100396089025945_selected_program') %}
+          {% set map = {
+            'Dishcare.Dishwasher.Program.Auto1': 'Auto 45-65°C',
+            'Dishcare.Dishwasher.Program.Auto2': 'Auto 2',
+            'Dishcare.Dishwasher.Program.Auto3': 'Auto 3',
+            'Dishcare.Dishwasher.Program.Eco50': 'Eco 50°C',
+            'Dishcare.Dishwasher.Program.Quick45': 'Schnell 45°C',
+            'Dishcare.Dishwasher.Program.Intensiv70': 'Intensiv 70°C',
+            'Dishcare.Dishwasher.Program.Normal65': 'Normal 65°C',
+            'Dishcare.Dishwasher.Program.Glas40': 'Glas 40°C',
+            'Dishcare.Dishwasher.Program.NightWash': 'Nacht',
+            'Dishcare.Dishwasher.Program.PreRinse': 'Vorspülen',
+            'Dishcare.Dishwasher.Program.MachineCare': 'Maschinenpflege'
+          } %}
+          {{ map.get(p, p | replace('Dishcare.Dishwasher.Program.', '')) if p not in ['unknown','unavailable','none'] else '—' }}
+
+      # BSH-API liefert Energy/Water-Forecast in PROZENT der Max-Last, nicht in
+      # absoluten Einheiten — daher hier korrekt als %-Sensor.
+      - name: "Spüler Energie-Effizienz BSH"
+        unique_id: dishwasher_energy_forecast
+        unit_of_measurement: "%"
+        icon: mdi:gauge
+        state: >
+          {{ states('sensor.siemens_405100396089025945_bsh_common_option_energyforecast') | float(0) | round(0) }}
+        availability: >
+          {{ states('sensor.siemens_405100396089025945_bsh_common_option_energyforecast') not in ['unknown','unavailable','none'] }}
+
+      - name: "Spüler Wasser-Effizienz BSH"
+        unique_id: dishwasher_water_forecast
+        unit_of_measurement: "%"
+        icon: mdi:water-percent
+        state: >
+          {{ states('sensor.siemens_405100396089025945_bsh_common_option_waterforecast') | float(0) | round(0) }}
+        availability: >
+          {{ states('sensor.siemens_405100396089025945_bsh_common_option_waterforecast') not in ['unknown','unavailable','none'] }}
+
+      # ----- Lookup-basierte echte Werte für laufendes/gewähltes Programm -----
+      - name: "Spüler Energie aktueller Lauf"
+        unique_id: dishwasher_energy_per_run
+        unit_of_measurement: "kWh"
+        device_class: energy
+        icon: mdi:lightning-bolt
+        state: >
+          {% set p = states('sensor.siemens_405100396089025945_selected_program') %}
+          {% set m = {
+            'Dishcare.Dishwasher.Program.Eco50': 'eco50',
+            'Dishcare.Dishwasher.Program.Auto1': 'auto',
+            'Dishcare.Dishwasher.Program.Auto2': 'auto',
+            'Dishcare.Dishwasher.Program.Auto3': 'auto',
+            'Dishcare.Dishwasher.Program.Intensiv70': 'intensiv70',
+            'Dishcare.Dishwasher.Program.Normal65': 'speed65',
+            'Dishcare.Dishwasher.Program.Quick45': 'quick45',
+            'Dishcare.Dishwasher.Program.NightWash': 'night',
+            'Dishcare.Dishwasher.Program.Glas40': 'glas40',
+            'Dishcare.Dishwasher.Program.PreRinse': 'prerinse',
+            'Dishcare.Dishwasher.Program.MachineCare': 'machinecare'
+          } %}
+          {% set key = m.get(p, 'fallback') %}
+          {{ states('input_number.dishwasher_kwh_' ~ key) | float(1.0) | round(2) }}
+
+      - name: "Spüler Kosten aktueller Lauf"
+        unique_id: dishwasher_cost_current_run
+        unit_of_measurement: "EUR"
+        device_class: monetary
+        icon: mdi:cash
+        state: >
+          {% set kwh = states('sensor.spuler_energie_aktueller_lauf') | float(0) %}
+          {% set price = states('sensor.tibber_current_price_2') | float(0) %}
+          {{ (kwh * price) | round(3) }}
+        attributes:
+          tibber_price_eur_kwh: >
+            {{ states('sensor.tibber_current_price_2') | float(0) | round(4) }}
+          kwh_for_run: >
+            {{ states('sensor.spuler_energie_aktueller_lauf') | float(0) | round(2) }}
+
+      # Kumulierte Sensoren als state_class: total_increasing → fütterbar in
+      # utility_meter / Energy-Dashboard / Statistics-Graph
+      - name: "Spüler Gesamtkosten"
+        unique_id: dishwasher_cost_total
+        unit_of_measurement: "EUR"
+        device_class: monetary
+        state_class: total_increasing
+        icon: mdi:cash-multiple
+        state: "{{ states('input_number.dishwasher_total_cost') | float(0) | round(4) }}"
+
+      - name: "Spüler Gesamtenergie"
+        unique_id: dishwasher_energy_total
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total_increasing
+        icon: mdi:lightning-bolt
+        state: "{{ states('input_number.dishwasher_total_energy') | float(0) | round(3) }}"
+
+      - name: "Spüler Gesamtwasser"
+        unique_id: dishwasher_water_total
+        unit_of_measurement: "L"
+        device_class: water
+        state_class: total_increasing
+        icon: mdi:water-pump
+        state: "{{ states('input_number.dishwasher_total_water') | float(0) | round(1) }}"
+
+      # Fortschritt: direkter HC-Sensor mit kurzem Namen
+      - name: "Spüler Fortschritt"
+        unique_id: dishwasher_progress
+        unit_of_measurement: "%"
+        icon: mdi:progress-clock
+        state: >
+          {{ states('sensor.siemens_405100396089025945_bsh_common_option_programprogress') | int(0) }}
+        availability: >
+          {{ states('sensor.siemens_405100396089025945_bsh_common_option_programprogress')
+             not in ['unknown','unavailable','none'] }}
+
+      # Restzeit-Sekunden aus Endzeit-Timestamp errechnen (HC liefert ISO-Zeit)
+      - name: "Spüler Restzeit Sekunden"
+        unique_id: dishwasher_remaining_time_seconds
+        unit_of_measurement: "s"
+        icon: mdi:timer-sand
+        state: >
+          {% set end = states('sensor.siemens_405100396089025945_bsh_common_option_remainingprogramtime') %}
+          {% if end in ['unknown','unavailable','none'] %}0
+          {% else %}{{ [ (as_timestamp(end) - as_timestamp(now())) | int(0), 0 ] | max }}
+          {% endif %}
+
+      # Restzeit lesbar als hh:mm
+      - name: "Spüler Restzeit"
+        unique_id: dishwasher_remaining_time_hhmm
+        icon: mdi:timer-sand
+        state: >
+          {% set s = states('sensor.spuler_restzeit_sekunden') | int(0) %}
+          {% if s <= 0 %}—
+          {% else %}{{ '%d:%02d' | format(s // 3600, (s % 3600) // 60) }}
+          {% endif %}
+
+  - binary_sensor:
+      - name: "Spüler läuft"
+        unique_id: dishwasher_running
+        icon: mdi:dishwasher
+        state: >
+          {{ states('sensor.siemens_405100396089025945_bsh_common_status_operationstate')
+             == 'BSH.Common.EnumType.OperationState.Run' }}
+
+      - name: "Spüler fertig"
+        unique_id: dishwasher_finished
+        icon: mdi:dishwasher-alert
+        state: >
+          {{ states('sensor.siemens_405100396089025945_bsh_common_status_operationstate')
+             == 'BSH.Common.EnumType.OperationState.Finished' }}
+
+      - name: "Spüler Fehler"
+        unique_id: dishwasher_error
+        icon: mdi:alert-circle
+        device_class: problem
+        state: >
+          {{ states('sensor.siemens_405100396089025945_bsh_common_status_operationstate')
+             in ['BSH.Common.EnumType.OperationState.Error',
+                 'BSH.Common.EnumType.OperationState.ActionRequired',
+                 'BSH.Common.EnumType.OperationState.Aborted'] }}
+
+      - name: "Spüler Tür offen"
+        unique_id: dishwasher_door_open
+        device_class: door
+        state: >
+          {{ states('binary_sensor.siemens_405100396089025945_bsh_common_status_doorstate')
+             == 'on' }}
+
+      - name: "Spüler online"
+        unique_id: dishwasher_online
+        device_class: connectivity
+        state: >
+          {{ states('binary_sensor.siemens_405100396089025945_connected') == 'on' }}
+
+      - name: "Spüler bereit für Remote-Start"
+        unique_id: dishwasher_remote_start_ready
+        icon: mdi:remote
+        state: >
+          {{ states('binary_sensor.siemens_405100396089025945_bsh_common_status_remotecontrolstartallowed')
+             == 'on' }}
+
+# -----------------------------------------------------------------------------
+# Automations
+# -----------------------------------------------------------------------------
+automation:
+  # 1) Programm fertig → Push + Matrix3 + Alexa + Kosten/Energie kumulieren
+  - id: dishwasher_finished_notify
+    alias: "Spüler: Fertig-Benachrichtigung"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spuler_fertig
+        to: "on"
+        for: "00:00:05"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.matrix3_dishwasher
+      - service: counter.increment
+        target:
+          entity_id:
+            - counter.dishwasher_runs_total
+            - counter.dishwasher_runs_since_salt
+            - counter.dishwasher_runs_since_rinse_aid
+      # Kumulative Werte für Statistik / Utility-Meter fortschreiben
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dishwasher_total_cost
+        data:
+          value: >
+            {{ ((states('input_number.dishwasher_total_cost') | float(0))
+                + (states('sensor.spuler_kosten_aktueller_lauf') | float(0)))
+               | round(4) }}
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dishwasher_total_energy
+        data:
+          value: >
+            {{ ((states('input_number.dishwasher_total_energy') | float(0))
+                + (states('sensor.spuler_energie_aktueller_lauf') | float(0)))
+               | round(3) }}
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dishwasher_total_water
+        data:
+          value: >
+            {%- set p = states('sensor.siemens_405100396089025945_selected_program') -%}
+            {%- set water_map = {
+              'Dishcare.Dishwasher.Program.Eco50': 9.5,
+              'Dishcare.Dishwasher.Program.Auto1': 11.0,
+              'Dishcare.Dishwasher.Program.Auto2': 11.0,
+              'Dishcare.Dishwasher.Program.Auto3': 11.0,
+              'Dishcare.Dishwasher.Program.Intensiv70': 14.0,
+              'Dishcare.Dishwasher.Program.Normal65': 10.0,
+              'Dishcare.Dishwasher.Program.Quick45': 9.0,
+              'Dishcare.Dishwasher.Program.NightWash': 11.0,
+              'Dishcare.Dishwasher.Program.Glas40': 13.0,
+              'Dishcare.Dishwasher.Program.PreRinse': 5.0,
+              'Dishcare.Dishwasher.Program.MachineCare': 13.0
+            } -%}
+            {{ ((states('input_number.dishwasher_total_water') | float(0))
+                + (water_map.get(p, 10.0))) | round(1) }}
+      - service: script.send_notification
+        data:
+          title: "🍽️ Geschirrspüler"
+          message: >
+            Fertig — Programm "{{ states('sensor.spuler_programm') }}" beendet
+            ({{ states('sensor.spuler_energie_aktueller_lauf') }} kWh,
+            {{ states('sensor.spuler_kosten_aktueller_lauf') }} €).
+          priority: "normal"
+
+  # 2) Fehler / Eingriff erforderlich → Pushover Critical
+  - id: dishwasher_error_notify
+    alias: "Spüler: Fehler-Benachrichtigung"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spuler_fehler
+        to: "on"
+        for: "00:00:10"
+    action:
+      - service: script.send_notification
+        data:
+          title: "⚠️ Geschirrspüler Fehler"
+          message: >
+            Status: {{ states('sensor.spuler_status') }}.
+            Bitte am Gerät prüfen (Tür, Wasserzulauf, Filter).
+          priority: "high"
+
+  # 3) Tür nach Fertig > 60 min offen → Erinnerung Alexa
+  - id: dishwasher_door_left_open_after_finish
+    alias: "Spüler: Erinnerung Ausräumen"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spuler_fertig
+        to: "on"
+        for: "01:00:00"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.spuler_tur_offen
+        state: "off"
+    action:
+      - service: script.send_notification
+        data:
+          title: "🍽️ Geschirrspüler"
+          message: "Seit über einer Stunde fertig — bitte ausräumen."
+          priority: "normal"
+
+  # 4) Matrix3-Reset wenn Tür geöffnet (= ausgeräumt)
+  - id: dishwasher_matrix3_reset_on_door_open
+    alias: "Spüler: Matrix3-Alert beim Öffnen löschen"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spuler_tur_offen
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.matrix3_dishwasher
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.matrix3_dishwasher
+
+  # 5) PV-Smart-Start: bei genug PV-Leistung und Remote-Start-bereit los
+  - id: dishwasher_pv_smart_start
+    alias: "Spüler: PV-Auto-Start"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.pv_leistung
+        above: input_number.dishwasher_pv_min_watts
+        for: "00:10:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.dishwasher_pv_auto_start
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.spuler_bereit_fur_remote_start
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.spuler_lauft
+        state: "off"
+    action:
+      - service: button.press
+        target:
+          entity_id: button.siemens_405100396089025945_start_pause
+      - service: script.send_notification
+        data:
+          title: "☀️ Spüler gestartet (PV)"
+          message: >
+            PV liefert {{ states('sensor.pv_leistung') }} W — Spüler läuft jetzt mit
+            Programm "{{ states('sensor.spuler_programm') }}".
+          priority: "low"
+
+  # 6) Tibber-Smart-Start (analog, billige Stunde)
+  # Voraussetzung: sensor.tibber_current_price existiert oder via tibber_local
+  - id: dishwasher_tibber_smart_start
+    alias: "Spüler: Tibber-Auto-Start"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.tibber_current_price_ct
+        below: input_number.dishwasher_tibber_max_ct
+    condition:
+      - condition: state
+        entity_id: input_boolean.dishwasher_tibber_auto_start
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.spuler_bereit_fur_remote_start
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.spuler_lauft
+        state: "off"
+    action:
+      - service: button.press
+        target:
+          entity_id: button.siemens_405100396089025945_start_pause
+      - service: script.send_notification
+        data:
+          title: "💰 Spüler gestartet (Tibber)"
+          message: >
+            Strom aktuell {{ states('sensor.tibber_current_price_ct') }} ct/kWh —
+            Spüler läuft jetzt.
+          priority: "low"
+
+  # 7) Home Connect Events (Salz/Klarspüler/Aquastop) — fängt alle Eventtypen ab
+  - id: dishwasher_home_connect_events
+    alias: "Spüler: Home Connect Events verarbeiten"
+    trigger:
+      - platform: event
+        event_type:
+          - home_connect_alt_event
+          - home_connect_event
+    condition:
+      - condition: template
+        value_template: >
+          {{ trigger.event.data.haId | default('') == '405100396089025945' or
+             trigger.event.data.device_id | default('') == '1f88cfe5ffe2b012fa2ea5d7baf9e2f5' }}
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.event.data.key | default('') == 'Dishcare.Dishwasher.Event.SaltNearlyEmpty' }}
+            sequence:
+              - service: script.send_notification
+                data:
+                  title: "🧂 Spüler"
+                  message: "Salz fast leer — bitte nachfüllen. (Aktueller Stand seit letzter Füllung: {{ states('counter.dishwasher_runs_since_salt') }} Läufe)"
+                  priority: "normal"
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.event.data.key | default('') == 'Dishcare.Dishwasher.Event.RinseAidNearlyEmpty' }}
+            sequence:
+              - service: script.send_notification
+                data:
+                  title: "✨ Spüler"
+                  message: "Klarspüler fast leer — bitte nachfüllen. ({{ states('counter.dishwasher_runs_since_rinse_aid') }} Läufe seit letzter Füllung)"
+                  priority: "normal"
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.event.data.key | default('') in
+                     ['BSH.Common.Event.AquaStopOccured',
+                      'BSH.Common.Event.WaterLevelTooLow'] }}
+            sequence:
+              - service: script.send_notification
+                data:
+                  title: "🚨 SPÜLER WASSER-ALARM"
+                  message: "AquaStop ausgelöst oder Wasserzulauf-Problem — sofort prüfen!"
+                  priority: "critical"
+
+# -----------------------------------------------------------------------------
+# Utility Meter - Kosten/Energie/Wasser pro Tag/Woche/Monat/Jahr
+# -----------------------------------------------------------------------------
+utility_meter:
+  dishwasher_cost_daily:
+    name: "Spüler Kosten Tag"
+    source: sensor.spuler_gesamtkosten
+    cycle: daily
+  dishwasher_cost_weekly:
+    name: "Spüler Kosten Woche"
+    source: sensor.spuler_gesamtkosten
+    cycle: weekly
+  dishwasher_cost_monthly:
+    name: "Spüler Kosten Monat"
+    source: sensor.spuler_gesamtkosten
+    cycle: monthly
+  dishwasher_cost_yearly:
+    name: "Spüler Kosten Jahr"
+    source: sensor.spuler_gesamtkosten
+    cycle: yearly
+
+  dishwasher_energy_daily:
+    name: "Spüler Energie Tag"
+    source: sensor.spuler_gesamtenergie
+    cycle: daily
+  dishwasher_energy_weekly:
+    name: "Spüler Energie Woche"
+    source: sensor.spuler_gesamtenergie
+    cycle: weekly
+  dishwasher_energy_monthly:
+    name: "Spüler Energie Monat"
+    source: sensor.spuler_gesamtenergie
+    cycle: monthly
+  dishwasher_energy_yearly:
+    name: "Spüler Energie Jahr"
+    source: sensor.spuler_gesamtenergie
+    cycle: yearly
+
+  dishwasher_water_daily:
+    name: "Spüler Wasser Tag"
+    source: sensor.spuler_gesamtwasser
+    cycle: daily
+  dishwasher_water_monthly:
+    name: "Spüler Wasser Monat"
+    source: sensor.spuler_gesamtwasser
+    cycle: monthly

@@ -128,6 +128,126 @@ views:
       - type: markdown
         content: "## Obergeschoss"
 
+      # Schlafzimmer - Luftqualität (Luft1)
+      - type: vertical-stack
+        title: Schlafzimmer - Luftqualität (Luft1)
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
+                name: Temperatur
+              - type: entity
+                entity: sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+              - type: entity
+                entity: sensor.luft1_wetterstation_luft1_luftqualitaet_ppm
+                name: CO2 (äquiv.)
+              - type: entity
+                entity: sensor.luft1_wetterstation_luft1_luftqualitaet_bewertung
+                name: Bewertung
+          - type: custom:apexcharts-card
+            header:
+              title: Klima - Tag
+              show: true
+            graph_span: 24h
+            yaxis:
+              - id: temp
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "°C"
+              - id: pct
+                opposite: true
+                min: 0
+                max: 100
+                apex_config:
+                  title:
+                    text: "%"
+            series:
+              - entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
+                name: Temperatur
+                yaxis_id: temp
+                curve: smooth
+                color: "#F44336"
+              - entity: sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+                yaxis_id: pct
+                curve: smooth
+                color: "#2196F3"
+          - type: custom:apexcharts-card
+            header:
+              title: Klima - Monat
+              show: true
+            graph_span: 30d
+            yaxis:
+              - id: temp
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "°C"
+              - id: pct
+                opposite: true
+                min: 0
+                max: 100
+                apex_config:
+                  title:
+                    text: "%"
+            series:
+              - entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
+                name: Temperatur
+                yaxis_id: temp
+                curve: smooth
+                color: "#F44336"
+                group_by:
+                  func: avg
+                  duration: 2h
+              - entity: sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+                yaxis_id: pct
+                curve: smooth
+                color: "#2196F3"
+                group_by:
+                  func: avg
+                  duration: 2h
+          - type: custom:apexcharts-card
+            header:
+              title: Luftqualität (CO2-äquiv.) - Tag
+              show: true
+            graph_span: 24h
+            yaxis:
+              - id: ppm
+                decimals: 0
+                apex_config:
+                  title:
+                    text: "ppm"
+            series:
+              - entity: sensor.luft1_wetterstation_luft1_luftqualitaet_ppm
+                name: CO2 äquiv.
+                yaxis_id: ppm
+                curve: smooth
+                color: "#9C27B0"
+          - type: custom:apexcharts-card
+            header:
+              title: Luftqualität (CO2-äquiv.) - Monat
+              show: true
+            graph_span: 30d
+            yaxis:
+              - id: ppm
+                decimals: 0
+                apex_config:
+                  title:
+                    text: "ppm"
+            series:
+              - entity: sensor.luft1_wetterstation_luft1_luftqualitaet_ppm
+                name: CO2 äquiv.
+                yaxis_id: ppm
+                curve: smooth
+                color: "#9C27B0"
+                group_by:
+                  func: avg
+                  duration: 2h
+
       - type: markdown
         content: |
           *Heizungs- und Klimasteuerung noch nicht konfiguriert.*
@@ -146,17 +266,6 @@ views:
     cards:
       - type: markdown
         content: "## Garten & Außenbereich"
-
-      # Schuppen Wetter
-      - type: entities
-        title: Schuppen Wetterstation (Luft1)
-        entities:
-          - entity: sensor.luft1_wetterstation_schuppen_temperatur_dht
-            name: Temperatur
-          - entity: sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit
-            name: Luftfeuchtigkeit
-          # Kein Luftdruck: Luft1 hat nur DHT11 (Temp/Feuchte) + AS3935
-          # (Blitzsensor), keinen Barometer.
 
       # Bewässerung (Platzhalter)
       - type: markdown

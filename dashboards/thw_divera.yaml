@@ -121,6 +121,53 @@ views:
           {% endif %}
 
       # -------------------------------------------------------------------
+      # TERMINE MIT RÜCKMELDUNGS-STATUS (Zugesagt / Offen)
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Termine & Rückmeldung
+        content: |
+          {% set src = states.sensor.divera_nachster_unbeantworteter_termin %}
+          {% if src is none or src.state == 'unavailable' %}
+            *Keine Termine verfügbar.*
+          {% else %}
+            {% set items = src.attributes.get('items', {}) %}
+            {% set sorting = src.attributes.get('sorting', []) %}
+            {% set ids = sorting if sorting else items.keys()|list %}
+            {% set ns = namespace(rows=[]) %}
+            {% for id in ids %}
+              {% set it = items.get(id|string) or items.get(id) %}
+              {% if it %}
+                {% set p = it.get('participation', 0) %}
+                {% set icon = '⏳ Offen' if p == 0
+                              else '✅ Zugesagt' if p == 1
+                              else '❓ Vielleicht' if p == 2
+                              else '❌ Abgesagt' if p == 3
+                              else '· (' ~ p ~ ')' %}
+                {% set ts = it.get('start', 0) %}
+                {% set dt = (ts | timestamp_custom('%a %d.%m. %H:%M', true)) if ts else '?' %}
+                {% set title = it.get('title', '–') %}
+                {% set loc = it.get('address', '') %}
+                {% set ns.rows = ns.rows + [(ts, icon, dt, title, loc)] %}
+              {% endif %}
+            {% endfor %}
+            {% set rows = ns.rows | sort(attribute=0) %}
+            {% if rows | length == 0 %}
+              *Keine Termine geladen.*
+            {% else %}
+            | Status | Termin | Titel |
+            |---|---|---|
+            {% for ts, icon, dt, title, loc in rows -%}
+            | {{ icon }} | {{ dt }} | {{ title }}{% if loc %} _({{ loc }})_{% endif %} |
+            {% endfor %}
+
+            **Offen:** {{ rows | selectattr(1, 'eq', '⏳ Offen') | list | length }} ·
+            **Zugesagt:** {{ rows | selectattr(1, 'eq', '✅ Zugesagt') | list | length }} ·
+            **Abgesagt:** {{ rows | selectattr(1, 'eq', '❌ Abgesagt') | list | length }} ·
+            **Vielleicht:** {{ rows | selectattr(1, 'eq', '❓ Vielleicht') | list | length }}
+            {% endif %}
+          {% endif %}
+
+      # -------------------------------------------------------------------
       # PERSONALSTÄRKE / VERFÜGBARKEIT
       # -------------------------------------------------------------------
       - type: markdown
@@ -183,7 +230,263 @@ views:
           {% endif %}
 
   # =========================================================================
-  # VIEW 2: Alarm-Details (Subview)
+  # VIEW 2: Dienste-Überwachung
+  # =========================================================================
+  - title: Dienste
+    path: dienste
+    icon: mdi:lan-check
+    cards:
+      # -------------------------------------------------------------------
+      # STATUS-BANNER
+      # -------------------------------------------------------------------
+      - type: custom:mushroom-template-card
+        primary: >-
+          {% set down = states('sensor.thw_dienste_gestort') | int(0) %}
+          {% if down == 0 %}Alle THW-Dienste erreichbar{% else %}{{ down }} THW-Dienst(e) gestört{% endif %}
+        secondary: >-
+          Prüfung alle 5 Min · Neuprüfung 1 Min · Alarm nach 3 Fehlversuchen
+          — Stand {{ now().strftime('%d.%m. %H:%M') }} Uhr
+        icon: >-
+          {% set down = states('sensor.thw_dienste_gestort') | int(0) %}
+          {{ 'mdi:lan-disconnect' if down > 0 else 'mdi:lan-check' }}
+        icon_color: >-
+          {% set down = states('sensor.thw_dienste_gestort') | int(0) %}
+          {{ 'red' if down > 0 else 'green' }}
+        card_mod:
+          style: |
+            ha-card {
+              {% if states('sensor.thw_dienste_gestort') | int(0) > 0 %}
+              background-color: rgba(255, 0, 0, 0.12) !important;
+              border: 2px solid red !important;
+              {% else %}
+              border: 2px solid rgba(0, 170, 0, 0.5) !important;
+              {% endif %}
+            }
+
+      # -------------------------------------------------------------------
+      # RUBRIK: ÜBERWACHTE THW-DIENSTE (Live-Tabelle)
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Überwachte THW-Dienste
+        content: |
+          {% set svcs = states.binary_sensor
+            | selectattr('entity_id','search','thw_(web|vpn|mail)_')
+            | list | sort(attribute='name') %}
+          | Dienst | Status | Seit |
+          |---|---|---|
+          {% for s in svcs -%}
+          | {{ s.attributes.get('friendly_name', s.name) }} | {{ '🟢 OK' if s.state == 'on' else ('🔴 Gestört' if s.state == 'off' else '⚪ Unbekannt') }} | {{ s.last_changed | as_timestamp | timestamp_custom('%d.%m. %H:%M', true) }} |
+          {% endfor %}
+
+          **Gestört:** {{ states('sensor.thw_dienste_gestort') }} · **Gesamt:** {{ svcs | length }}
+
+      # -------------------------------------------------------------------
+      # KACHEL-ÜBERSICHT (grün = OK, rot = gestört)
+      # -------------------------------------------------------------------
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_web_heroesday_de
+            primary: heroesday.de
+            secondary: >-
+              {% if is_state('binary_sensor.thw_web_heroesday_de','on') %}OK{% elif is_state('binary_sensor.thw_web_heroesday_de','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_heroesday_de',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_web_heroesday_de','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_web_heroesday_de','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-heroesday
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_web_herosbeach_de
+            primary: herosbeach.de
+            secondary: >-
+              {% if is_state('binary_sensor.thw_web_herosbeach_de','on') %}OK{% elif is_state('binary_sensor.thw_web_herosbeach_de','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_herosbeach_de',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_web_herosbeach_de','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_web_herosbeach_de','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-herosbeach
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_web_herosday_de
+            primary: herosday.de
+            secondary: >-
+              {% if is_state('binary_sensor.thw_web_herosday_de','on') %}OK{% elif is_state('binary_sensor.thw_web_herosday_de','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_herosday_de',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_web_herosday_de','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_web_herosday_de','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-herosday
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_web_riesenkicker_info
+            primary: riesenkicker.info
+            secondary: >-
+              {% if is_state('binary_sensor.thw_web_riesenkicker_info','on') %}OK{% elif is_state('binary_sensor.thw_web_riesenkicker_info','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_riesenkicker_info',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_web_riesenkicker_info','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_web_riesenkicker_info','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-riesenkicker
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_web_thwfv_muenchen_ost_de
+            primary: thwfv-muc-ost.de
+            secondary: >-
+              {% if is_state('binary_sensor.thw_web_thwfv_muenchen_ost_de','on') %}OK{% elif is_state('binary_sensor.thw_web_thwfv_muenchen_ost_de','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_thwfv_muenchen_ost_de',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_web_thwfv_muenchen_ost_de','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_web_thwfv_muenchen_ost_de','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-thwfv
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_web_weinfest
+            primary: weinfest
+            secondary: >-
+              {% if is_state('binary_sensor.thw_web_weinfest','on') %}OK{% elif is_state('binary_sensor.thw_web_weinfest','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_weinfest',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_web_weinfest','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_web_weinfest','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-weinfest
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_web_thw_muenchen_ost_de
+            primary: thw-muc-ost.de
+            secondary: >-
+              {% if is_state('binary_sensor.thw_web_thw_muenchen_ost_de','on') %}OK{% elif is_state('binary_sensor.thw_web_thw_muenchen_ost_de','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_thw_muenchen_ost_de',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_web_thw_muenchen_ost_de','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_web_thw_muenchen_ost_de','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-thwmucost
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_vpn_intranet
+            primary: VPN Intranet
+            secondary: >-
+              {% if is_state('binary_sensor.thw_vpn_intranet','on') %}OK{% elif is_state('binary_sensor.thw_vpn_intranet','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_vpn_intranet',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_vpn_intranet','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_vpn_intranet','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-vpn
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_mail_imaps
+            primary: Mail IMAPS
+            secondary: >-
+              {% if is_state('binary_sensor.thw_mail_imaps','on') %}OK{% elif is_state('binary_sensor.thw_mail_imaps','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_mail_imaps',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_mail_imaps','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_mail_imaps','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-mailimaps
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.thw_mail_submission
+            primary: Mail SMTP
+            secondary: >-
+              {% if is_state('binary_sensor.thw_mail_submission','on') %}OK{% elif is_state('binary_sensor.thw_mail_submission','off') %}{{ (state_attr('sensor.thw_trace_log','data') or {}).get('thw_mail_submission',{}).get('summary','Diagnose läuft…') }}{% else %}–{% endif %}
+            icon: "{{ 'mdi:check-circle' if is_state('binary_sensor.thw_mail_submission','on') else 'mdi:alert-circle' }}"
+            icon_color: "{{ 'green' if is_state('binary_sensor.thw_mail_submission','on') else 'red' }}"
+            layout: vertical
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-thw/dienst-mailsmtp
+
+      # -------------------------------------------------------------------
+      # EINSTELLUNGEN & STEUERUNG
+      # -------------------------------------------------------------------
+      - type: entities
+        title: Überwachung & Alarmierung
+        show_header_toggle: false
+        entities:
+          - entity: binary_sensor.thw_dienste_gesamt
+            name: Gesamtstatus (Problem = Störung)
+          - entity: sensor.thw_dienste_gestort
+            name: Anzahl gestörter Dienste
+          - type: section
+            label: Einstellungen
+          - entity: input_boolean.thw_dienste_alarm_pause
+            name: Alarme pausieren (AUS = aktiv)
+          - entity: input_boolean.thw_pushover_enabled
+            name: Echte Pushover-API nutzen (sonst iPhone-Push)
+
+      # -------------------------------------------------------------------
+      # LETZTE 5 ALARMIERUNGEN
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Letzte Alarmierungen
+        content: |
+          {% set items = state_attr('sensor.thw_alarm_log','eintraege') or [] %}
+          {% if items | length == 0 %}
+          *Noch keine Alarmierungen seit Aktivierung.*
+          {% else %}
+          | Zeit | Dienst / Grund | Kanal |
+          |---|---|---|
+          {% for it in items -%}
+          | {{ it.zeit }} | {{ it.dienst }} | {{ it.kanal }} |
+          {% endfor %}
+          {% endif %}
+
+      # -------------------------------------------------------------------
+      # STÖRUNGSHISTORIE (kompakt) — Details unter /lovelace-thw/stoerungen
+      # -------------------------------------------------------------------
+      - type: markdown
+        title: Störungshistorie
+        content: |
+          {% set items = state_attr('sensor.thw_stoerungs_log','eintraege') or [] %}
+          {% if items | length == 0 %}
+          *Noch keine Störungen aufgezeichnet.*
+          {% else %}
+          | Beginn | Dienst | Kategorie | Vermutliche Ursache | Status |
+          |---|---|---|---|---|
+          {% for it in items -%}
+          | {{ it.beginn }} | {{ it.dienst }} | **{{ it.kategorie }}** | {{ it.ursache | truncate(70, true, '…') }} | {% if it.status == 'behoben' %}✅ behoben ({% if it.dauer >= 60 %}{{ it.dauer // 60 }} h {{ it.dauer % 60 }} m{% else %}{{ it.dauer }} min{% endif %}){% else %}🔴 offen{% endif %} |
+          {% endfor %}
+          {% endif %}
+
+          [→ Vollständige Störungs-Details mit Diagnosebericht](/lovelace-thw/stoerungen)
+
+  # =========================================================================
+  # VIEW: Störungs-Details (Subview) — vollständige Diagnoseberichte
+  # =========================================================================
+  - title: Störungs-Details
+    path: stoerungen
+    icon: mdi:clipboard-pulse
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## Störungshistorie – vollständige Diagnose
+          {% set items = state_attr('sensor.thw_stoerungs_log','eintraege') or [] %}
+          {% if items | length == 0 %}
+          *Noch keine Störungen aufgezeichnet. Sobald ein Dienst ausfällt und die
+          Störung nach 3 Neuprüfungen bestätigt ist, erscheint hier der komplette
+          Diagnosebericht (DNS · TCP · TLS-Zertifikat · HTTP-Timing · Traceroute)
+          inklusive der wahrscheinlichen Ursache.*
+          {% else %}
+          _Die letzten {{ items | length }} bestätigten Störungen. Ältere Berichte
+          liegen dauerhaft als Datei unter `/config/thw_trace/incidents/`._
+          {% for it in items %}
+
+          ---
+
+          ### {{ loop.index }}. {{ it.dienst }} — {{ it.kategorie }}
+          **Beginn:** {{ it.beginn }}{% if it.status == 'behoben' %} · **Ende:** {{ it.ende }} · **Dauer:** {% if it.dauer >= 60 %}{{ it.dauer // 60 }} h {{ it.dauer % 60 }} min{% else %}{{ it.dauer }} min{% endif %} · ✅ behoben{% else %} · 🔴 noch offen{% endif %} · **Kanal:** {{ it.kanal }}
+
+          **Vermutliche Ursache:** {{ it.ursache }}
+
+          {{ it.detail }}
+          {% endfor %}
+          {% endif %}
+
+  # =========================================================================
+  # VIEW 3: Alarm-Details (Subview)
   # =========================================================================
   - title: Alarm-Details
     path: alarm-details
@@ -274,3 +577,633 @@ views:
           ---
             {% endfor %}
           {% endif %}
+  # ---- Detail/Verlauf: THW Web heroesday.de ----
+  - title: THW Web heroesday.de
+    path: dienst-heroesday
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW Web heroesday.de
+          {% set on = states('sensor.thw_web_heroesday_de_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_web_heroesday_de_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_web_heroesday_de','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_web_heroesday_de','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_web_heroesday_de.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_web_heroesday_de_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_heroesday_de') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_web_heroesday_de
+  # ---- Detail/Verlauf: THW Web herosbeach.de ----
+  - title: THW Web herosbeach.de
+    path: dienst-herosbeach
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW Web herosbeach.de
+          {% set on = states('sensor.thw_web_herosbeach_de_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_web_herosbeach_de_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_web_herosbeach_de','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_web_herosbeach_de','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_web_herosbeach_de.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_web_herosbeach_de_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_herosbeach_de') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_web_herosbeach_de
+  # ---- Detail/Verlauf: THW Web herosday.de ----
+  - title: THW Web herosday.de
+    path: dienst-herosday
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW Web herosday.de
+          {% set on = states('sensor.thw_web_herosday_de_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_web_herosday_de_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_web_herosday_de','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_web_herosday_de','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_web_herosday_de.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_web_herosday_de_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_herosday_de') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_web_herosday_de
+  # ---- Detail/Verlauf: THW Web riesenkicker.info ----
+  - title: THW Web riesenkicker.info
+    path: dienst-riesenkicker
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW Web riesenkicker.info
+          {% set on = states('sensor.thw_web_riesenkicker_info_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_web_riesenkicker_info_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_web_riesenkicker_info','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_web_riesenkicker_info','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_web_riesenkicker_info.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_web_riesenkicker_info_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_riesenkicker_info') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_web_riesenkicker_info
+  # ---- Detail/Verlauf: THW Web thwfv-muenchen-ost.de ----
+  - title: THW Web thwfv-muenchen-ost.de
+    path: dienst-thwfv
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW Web thwfv-muenchen-ost.de
+          {% set on = states('sensor.thw_web_thwfv_muenchen_ost_de_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_web_thwfv_muenchen_ost_de_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_web_thwfv_muenchen_ost_de','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_web_thwfv_muenchen_ost_de','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_web_thwfv_muenchen_ost_de.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_web_thwfv_muenchen_ost_de_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_thwfv_muenchen_ost_de') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_web_thwfv_muenchen_ost_de
+  # ---- Detail/Verlauf: THW Web weinfest ----
+  - title: THW Web weinfest
+    path: dienst-weinfest
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW Web weinfest
+          {% set on = states('sensor.thw_web_weinfest_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_web_weinfest_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_web_weinfest','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_web_weinfest','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_web_weinfest.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_web_weinfest_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_weinfest') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_web_weinfest
+  # ---- Detail/Verlauf: THW Web thw-muenchen-ost.de ----
+  - title: THW Web thw-muenchen-ost.de
+    path: dienst-thwmucost
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW Web thw-muenchen-ost.de
+          {% set on = states('sensor.thw_web_thw_muenchen_ost_de_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_web_thw_muenchen_ost_de_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_web_thw_muenchen_ost_de','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_web_thw_muenchen_ost_de','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_web_thw_muenchen_ost_de.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_web_thw_muenchen_ost_de_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_web_thw_muenchen_ost_de') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_web_thw_muenchen_ost_de
+  # ---- Detail/Verlauf: THW VPN Intranet ----
+  - title: THW VPN Intranet
+    path: dienst-vpn
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW VPN Intranet
+          {% set on = states('sensor.thw_vpn_intranet_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_vpn_intranet_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_vpn_intranet','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_vpn_intranet','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_vpn_intranet.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_vpn_intranet_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_vpn_intranet') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_vpn_intranet
+  # ---- Detail/Verlauf: THW Mail IMAPS ----
+  - title: THW Mail IMAPS
+    path: dienst-mailimaps
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW Mail IMAPS
+          {% set on = states('sensor.thw_mail_imaps_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_mail_imaps_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_mail_imaps','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_mail_imaps','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_mail_imaps.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_mail_imaps_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_mail_imaps') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_mail_imaps
+  # ---- Detail/Verlauf: THW Mail Submission ----
+  - title: THW Mail Submission
+    path: dienst-mailsmtp
+    icon: mdi:chart-line
+    subview: true
+    cards:
+      - type: markdown
+        content: |
+          ## THW Mail Submission
+          {% set on = states('sensor.thw_mail_submission_online_30t') | float(0) %}
+          {% set meas = states('sensor.thw_mail_submission_gemessen_30t') | float(0) %}
+          {% set pct = (on / meas * 100) if meas > 0 else none %}
+          **Aktueller Status:** {{ '🟢 Erreichbar' if is_state('binary_sensor.thw_mail_submission','on') else ('🔴 Gestört' if is_state('binary_sensor.thw_mail_submission','off') else '⚪ Unbekannt') }}
+
+          **Verfügbarkeit (letzte 30 Tage):** {{ (pct | round(3)) ~ ' %' if pct is not none else 'noch keine Daten' }}
+
+          **Gemessen:** {{ meas | round(1) }} h · davon erreichbar {{ on | round(1) }} h
+
+          **Status seit:** {{ as_timestamp(states.binary_sensor.thw_mail_submission.last_changed) | timestamp_custom('%d.%m.%Y %H:%M', true) }} Uhr
+      - type: custom:apexcharts-card
+        graph_span: 180d
+        span:
+          end: day
+        header:
+          show: true
+          title: Verfügbarkeit über die Zeit (Langzeit-Statistik)
+          show_states: false
+        yaxis:
+          - min: 0
+            max: 100
+            decimals: 0
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+        series:
+          - entity: sensor.thw_mail_submission_uptime
+            name: Verfügbarkeit %
+            type: area
+            curve: stepline
+            float_precision: 1
+            statistics:
+              type: mean
+              period: day
+      - type: markdown
+        title: Störungs-Diagnose (DNS · TLS · HTTP · Traceroute)
+        content: |
+          {% set d = (state_attr('sensor.thw_trace_log','data') or {}).get('thw_mail_submission') %}
+          {% if d %}
+          **{{ d.summary }}**
+
+          {{ d.detail }}
+
+          _Erstellt: {{ d.ts }}_
+          {% else %}
+          *Noch keine Störungs-Diagnose – wird bei einer Störung automatisch erstellt.*
+          {% endif %}
+      - type: history-graph
+        title: Status-Verlauf (Rohdaten, max. 30 Tage)
+        hours_to_show: 720
+        entities:
+          - entity: binary_sensor.thw_mail_submission

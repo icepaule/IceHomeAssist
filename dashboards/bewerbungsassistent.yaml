@@ -1,0 +1,143 @@
+# =============================================================================
+# BEWERBUNGSASSISTENT DASHBOARD
+# =============================================================================
+# Daten aus packages/bewerbungsassistent.yaml (REST-Sensor auf
+# http://10.10.0.100:18080/api/status).
+# =============================================================================
+
+title: Bewerbung
+views:
+  - title: Übersicht
+    path: home
+    icon: mdi:briefcase-search
+    cards:
+      # =====================================================================
+      # STÖRUNG (nur sichtbar, wenn etwas klemmt)
+      # =====================================================================
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.bewerbungsassistent_problem
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Bewerbungsassistent gestört"
+          secondary: "{{ states('sensor.bewerbung_stoerungstext') }}"
+          icon: mdi:alert-circle
+          icon_color: red
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 0, 0, 0.12) !important;
+                border: 2px solid red !important;
+              }
+
+      # =====================================================================
+      # KENNZAHLEN
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.bewerbung_neue_treffer_24h
+            name: Neu (24h)
+            icon: mdi:briefcase-search
+          - type: entity
+            entity: sensor.bewerbung_serioese_treffer
+            name: Seriös
+            icon: mdi:star-check
+          - type: entity
+            entity: sensor.bewerbung_treffer_zu_pruefen
+            name: Zu prüfen
+            icon: mdi:magnify
+
+      # =====================================================================
+      # NEUE TREFFER
+      # =====================================================================
+      - type: markdown
+        title: Neue Treffer der letzten 24 Stunden
+        content: |
+          {{ state_attr('sensor.bewerbung_neue_treffer_liste', 'markdown') }}
+
+          *Fett = von der Bewertung als seriös eingestuft.*
+
+      # =====================================================================
+      # BEWERBUNGSPROZESS
+      # =====================================================================
+      - type: entities
+        title: Bewerbungsprozess
+        entities:
+          - entity: sensor.bewerbung_unterlagen_in_arbeit
+            name: Unterlagen in Arbeit
+          - entity: sensor.bewerbung_versendet
+            name: Versendet
+          - entity: sensor.bewerbung_ruecklaeufer
+            name: Rückläufer
+
+      # =====================================================================
+      # FUNKTIONIERT ALLES?
+      # =====================================================================
+      - type: entities
+        title: Funktioniert alles?
+        entities:
+          - entity: sensor.bewerbung_ollama
+            name: Ollama (Analyse & Entwürfe)
+            secondary_info: last-changed
+          - entity: sensor.bewerbung_mail_import
+            name: Mail-Import (Jobagent-Mails)
+            secondary_info: last-changed
+          - entity: sensor.bewerbung_rss_feeds_aktiv
+            name: Aktive RSS-Feeds
+          - entity: sensor.bewerbung_status
+            name: Gesamtstatus
+          - type: attribute
+            entity: sensor.bewerbung_mail_import
+            attribute: naechster_lauf
+            name: Nächster Mail-Abruf
+          - type: attribute
+            entity: sensor.bewerbung_status
+            attribute: generated_at
+            name: Daten vom
+
+      # Detail nur im Fehlerfall
+      - type: conditional
+        conditions:
+          - entity: sensor.bewerbung_mail_import
+            state: "fehler"
+        card:
+          type: markdown
+          content: |
+            ### Mail-Import gestört
+            {{ state_attr('sensor.bewerbung_mail_import', 'fehler') }}
+
+      - type: conditional
+        conditions:
+          - entity: sensor.bewerbung_ollama
+            state: "fehler"
+        card:
+          type: markdown
+          content: |
+            ### Ollama nicht erreichbar
+            {{ state_attr('sensor.bewerbung_ollama', 'meldung') }}
+
+      # =====================================================================
+      # DIREKTLINKS IN DIE APP
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Treffer
+            icon: mdi:format-list-bulleted
+            tap_action:
+              action: url
+              url_path: http://10.10.0.100:18080/results
+          - type: button
+            name: Unterlagen
+            icon: mdi:file-document-edit
+            tap_action:
+              action: url
+              url_path: http://10.10.0.100:18080/
+          - type: button
+            name: Mail-Import
+            icon: mdi:email-sync
+            tap_action:
+              action: url
+              url_path: http://10.10.0.100:18080/mail

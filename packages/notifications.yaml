@@ -1,5 +1,5 @@
-# Notifications Package - Telegram, Pushover, Alexa
-# Migrated from ioBroker telegram-menu, pushover, alexa2 adapters
+# Notifications Package - Pushover (iPhone-Fallback), Alexa
+# Migrated from ioBroker pushover, alexa2 adapters (telegram-menu entfernt 26.07., nie fertig eingerichtet)
 #
 # This package consolidates all notification-related configuration.
 
@@ -55,8 +55,8 @@ script:
         description: "Priority: low, normal, high, critical"
         example: "normal"
       targets:
-        description: "Target services: telegram, pushover, alexa, all"
-        example: "telegram"
+        description: "Target services: pushover, alexa, all"
+        example: "pushover"
     sequence:
       - choose:
           # Critical - send to all
@@ -64,13 +64,9 @@ script:
               - condition: template
                 value_template: "{{ priority == 'critical' }}"
             sequence:
-              - service: script.notify_telegram
-                data:
-                  title: "🚨 {{ title }}"
-                  message: "{{ message }}"
               - service: script.notify_pushover
                 data:
-                  title: "{{ title }}"
+                  title: "🚨 {{ title }}"
                   message: "{{ message }}"
                   priority: 1
               - service: script.notify_alexa
@@ -82,7 +78,7 @@ script:
               - condition: template
                 value_template: "{{ priority == 'high' }}"
             sequence:
-              - service: script.notify_telegram
+              - service: script.notify_pushover
                 data:
                   title: "⚠️ {{ title }}"
                   message: "{{ message }}"
@@ -101,46 +97,16 @@ script:
               - condition: state
                 entity_id: input_boolean.notifications_enabled
                 state: "on"
-              - service: script.notify_telegram
+              - service: script.notify_pushover
                 data:
                   title: "{{ title }}"
                   message: "{{ message }}"
     mode: queued
 
-  # Telegram notification
-  notify_telegram:
-    alias: "Notify via Telegram"
-    fields:
-      title:
-        description: "Message title"
-      message:
-        description: "Message text"
-      image:
-        description: "Optional image URL"
-        example: "/local/camera/snapshot.jpg"
-    sequence:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ image is defined and image }}"
-            sequence:
-              - service: notify.telegram
-                data:
-                  title: "{{ title }}"
-                  message: "{{ message }}"
-                  data:
-                    photo:
-                      - url: "{{ image }}"
-        default:
-          - service: notify.telegram
-            data:
-              title: "{{ title }}"
-              message: "{{ message }}"
-    mode: queued
-
-  # Pushover notification
+  # Pushover notification (Integration deinstalliert 2026-05; fällt auf
+  # iPhone-Push zurück, damit notify.pushover-Repair verschwindet)
   notify_pushover:
-    alias: "Notify via Pushover"
+    alias: "Notify via Pushover (fallback iPhone)"
     fields:
       title:
         description: "Message title"
@@ -150,12 +116,10 @@ script:
         description: "Priority: -2 to 2"
         example: 0
     sequence:
-      - service: notify.pushover
+      - service: notify.mobile_app_iphone_von_marcus
         data:
           title: "{{ title }}"
           message: "{{ message }}"
-          data:
-            priority: "{{ priority | default(0) }}"
     mode: queued
 
   # Alexa announcement
@@ -179,148 +143,8 @@ script:
             type: announce
     mode: queued
 
-  telegram_send_status:
-    alias: "Telegram: Send Status"
-    sequence:
-      - service: notify.telegram
-        data:
-          message: |
-            🏠 *System Status*
-
-            🌡️ Temperatur: {{ states('sensor.temperature_wohnzimmer') }}°C
-            💡 Lichter an: {{ states.light | selectattr('state', 'eq', 'on') | list | count }}
-            🚪 Türen offen: {{ states.binary_sensor | selectattr('attributes.device_class', 'eq', 'door') | selectattr('state', 'eq', 'on') | list | count }}
-            ☀️ PV Leistung: {{ states('sensor.pv_leistung') }}W
-            💰 Tibber Preis: {{ states('sensor.tibber_current_price') }}€/kWh
-          data:
-            parse_mode: markdown
-    mode: single
-
-  telegram_send_pv_status:
-    alias: "Telegram: Send PV Status"
-    sequence:
-      - service: notify.telegram
-        data:
-          message: |
-            ☀️ *PV-Anlage Status*
-
-            Aktuelle Leistung: {{ states('sensor.pv_leistung') }}W
-            Heute erzeugt: {{ states('sensor.pv_energie_heute') }}kWh
-            Gesamt erzeugt: {{ states('sensor.pv_energie_gesamt') }}kWh
-
-            💰 Ersparnis heute: {{ states('sensor.pv_savings_daily') }}€
-            💰 Ersparnis Monat: {{ states('sensor.pv_savings_monthly') }}€
-            💰 Ersparnis Jahr: {{ states('sensor.pv_savings_yearly') }}€
-          data:
-            parse_mode: markdown
-    mode: single
-
-  telegram_toggle_alarm:
-    alias: "Telegram: Toggle Alarm Menu"
-    sequence:
-      - service: notify.telegram
-        data:
-          message: |
-            🔐 *Alarm System*
-
-            Status: {{ states('alarm_control_panel.home') }}
-          data:
-            parse_mode: markdown
-            inline_keyboard:
-              - - "🔒 Aktivieren:/alarm_on"
-                - "🔓 Deaktivieren:/alarm_off"
-    mode: single
-
-
-# =============================================================================
-# TELEGRAM MENU (migrated from telegram-menu adapter)
-# =============================================================================
-# Note: This requires custom implementation with telegram_bot events
 
 automation:
-  # Handle incoming Telegram commands
-  - id: telegram_command_handler
-    alias: "Telegram: Command Handler"
-    description: "Migrated from telegram-menu adapter"
-    trigger:
-      - platform: event
-        event_type: telegram_command
-    action:
-      - choose:
-          # /status command
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.command == '/status' }}"
-            sequence:
-              - service: script.telegram_send_status
-
-          # /pv command
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.command == '/pv' }}"
-            sequence:
-              - service: script.telegram_send_pv_status
-
-          # /alarm command
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.command == '/alarm' }}"
-            sequence:
-              - service: script.telegram_toggle_alarm
-
-          # /menu command - show available commands
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.command == '/menu' }}"
-            sequence:
-              - service: notify.telegram
-                data:
-                  message: |
-                    🏠 *Smart Home Menu*
-
-                    /status - Systemstatus
-                    /pv - PV-Anlage Status
-                    /alarm - Alarm ein/aus
-                    /wetter - Wetterbericht
-                    /muell - Nächste Abholung
-                    /hilfe - Alle Befehle
-                  data:
-                    parse_mode: markdown
-    mode: queued
-
-  # Handle Telegram callback (button presses)
-  - id: telegram_callback_handler
-    alias: "Telegram: Callback Handler"
-    trigger:
-      - platform: event
-        event_type: telegram_callback
-    action:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.data == 'alarm_on' }}"
-            sequence:
-              - service: alarm_control_panel.alarm_arm_away
-                target:
-                  entity_id: alarm_control_panel.home
-              - service: telegram_bot.answer_callback_query
-                data:
-                  callback_query_id: "{{ trigger.event.data.id }}"
-                  message: "✅ Alarm aktiviert"
-
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.data == 'alarm_off' }}"
-            sequence:
-              - service: alarm_control_panel.alarm_disarm
-                target:
-                  entity_id: alarm_control_panel.home
-              - service: telegram_bot.answer_callback_query
-                data:
-                  callback_query_id: "{{ trigger.event.data.id }}"
-                  message: "✅ Alarm deaktiviert"
-    mode: queued
-
   # Night mode schedule
   - id: notification_night_mode_on
     alias: "Notifications: Night Mode On"

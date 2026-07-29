@@ -1,0 +1,144 @@
+# Zigbee Energy Scan - RF energy detection on all 16 Zigbee channels
+# Shows activity from own and foreign Zigbee networks
+
+mqtt:
+  sensor:
+    # Summary sensor
+    - name: "Zigbee Energy Scan"
+      unique_id: zigbee_energy_scan_summary
+      state_topic: "homeassistant/sensor/zigbee_energy_scan/state"
+      value_template: "{{ value_json.active_foreign_channels }}"
+      unit_of_measurement: "channels"
+      icon: "mdi:zigbee"
+      json_attributes_topic: "homeassistant/sensor/zigbee_energy_scan/state"
+      json_attributes_template: >-
+        {{ value_json | tojson }}
+
+    # Per-channel sensors (Zigbee channels 11-26)
+    - name: "Zigbee Ch11 Energy"
+      unique_id: zigbee_energy_ch11
+      state_topic: "homeassistant/sensor/zigbee_energy_ch11/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch12 Energy"
+      unique_id: zigbee_energy_ch12
+      state_topic: "homeassistant/sensor/zigbee_energy_ch12/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch13 Energy"
+      unique_id: zigbee_energy_ch13
+      state_topic: "homeassistant/sensor/zigbee_energy_ch13/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch14 Energy"
+      unique_id: zigbee_energy_ch14
+      state_topic: "homeassistant/sensor/zigbee_energy_ch14/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch15 Energy"
+      unique_id: zigbee_energy_ch15
+      state_topic: "homeassistant/sensor/zigbee_energy_ch15/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch16 Energy"
+      unique_id: zigbee_energy_ch16
+      state_topic: "homeassistant/sensor/zigbee_energy_ch16/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch17 Energy"
+      unique_id: zigbee_energy_ch17
+      state_topic: "homeassistant/sensor/zigbee_energy_ch17/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch18 Energy"
+      unique_id: zigbee_energy_ch18
+      state_topic: "homeassistant/sensor/zigbee_energy_ch18/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch19 Energy"
+      unique_id: zigbee_energy_ch19
+      state_topic: "homeassistant/sensor/zigbee_energy_ch19/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch20 Energy"
+      unique_id: zigbee_energy_ch20
+      state_topic: "homeassistant/sensor/zigbee_energy_ch20/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch21 Energy"
+      unique_id: zigbee_energy_ch21
+      state_topic: "homeassistant/sensor/zigbee_energy_ch21/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch22 Energy"
+      unique_id: zigbee_energy_ch22
+      state_topic: "homeassistant/sensor/zigbee_energy_ch22/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch23 Energy"
+      unique_id: zigbee_energy_ch23
+      state_topic: "homeassistant/sensor/zigbee_energy_ch23/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch24 Energy"
+      unique_id: zigbee_energy_ch24
+      state_topic: "homeassistant/sensor/zigbee_energy_ch24/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch25 Energy"
+      unique_id: zigbee_energy_ch25
+      state_topic: "homeassistant/sensor/zigbee_energy_ch25/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}
+
+    - name: "Zigbee Ch26 Energy"
+      unique_id: zigbee_energy_ch26
+      state_topic: "homeassistant/sensor/zigbee_energy_ch26/state"
+      value_template: "{{ value_json.energy }}"
+      unit_of_measurement: "%"
+      icon: >-
+        {% if value_json.is_own_channel %}mdi:access-point{% else %}mdi:signal{% endif %}

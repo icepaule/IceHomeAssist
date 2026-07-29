@@ -1,0 +1,172 @@
+# =============================================================================
+# BLE PoC Control — Targeting + Action Picker für ESP32/ESP8266 Worker
+# =============================================================================
+
+input_select:
+  poc_target_mac:
+    name: PoC Ziel-MAC
+    icon: mdi:target
+    options:
+      - "(noch keine Findings)"
+
+  poc_action:
+    name: PoC Aktion
+    icon: mdi:flash
+    options:
+      - scan
+      - ble_replay
+      - ibeacon_spoof
+      - swift_pair_spoof
+      - continuity_flood
+      - gatt_fuzzer
+      - med_device_hijack
+      - stop
+
+  poc_worker:
+    name: Worker auswählen
+    icon: mdi:robot
+    options:
+      - esp32_worker1
+      - esp8266_wifi1
+
+input_text:
+  poc_target_uuid:
+    name: Char-UUID (für gatt_fuzzer / med_device_hijack)
+    initial: "0000ffe1-0000-1000-8000-00805f9b34fb"
+    max: 64
+
+  poc_payload_hex:
+    name: Adv-Payload Hex (ble_replay)
+    initial: "020106 0B09 5265706C61795465737410"
+    max: 128
+
+  poc_spoof_name:
+    name: Name (Swift-Pair / iBeacon)
+    initial: "TestBeacon"
+    max: 32
+
+  poc_ibeacon_uuid:
+    name: iBeacon UUID
+    initial: "12345678-1234-1234-1234-123456789abc"
+    max: 36
+
+input_number:
+  poc_ibeacon_major:
+    name: iBeacon Major
+    min: 0
+    max: 65535
+    step: 1
+    initial: 100
+  poc_ibeacon_minor:
+    name: iBeacon Minor
+    min: 0
+    max: 65535
+    step: 1
+    initial: 1
+  poc_intensity_min:
+    name: Med-Hijack Intensity MIN
+    min: 0
+    max: 60
+    step: 1
+    initial: 5
+  poc_intensity_max:
+    name: Med-Hijack Intensity MAX
+    min: 0
+    max: 60
+    step: 1
+    initial: 25
+
+# -----------------------------------------------------------------------------
+# Auto-Populate poc_target_mac aus Vuln-Findings
+# -----------------------------------------------------------------------------
+automation:
+  - id: poc_populate_targets
+    alias: "PoC: Populate target MAC list from Vuln-Scanner"
+    trigger:
+      - platform: state
+        entity_id: sensor.ubertooth_ble_monitor_ble_vuln_findings
+        for: "00:00:05"
+      - platform: homeassistant
+        event: start
+    action:
+      - service: input_select.set_options
+        target:
+          entity_id: input_select.poc_target_mac
+        data:
+          options: >
+            {% set devs = state_attr('sensor.ubertooth_ble_monitor_ble_vuln_findings', 'devices') or [] %}
+            {% if devs|length == 0 %}
+              {{ ['(noch keine Findings)'] }}
+            {% else %}
+              {{ devs | map(attribute='mac') | list | unique | list | sort }}
+            {% endif %}
+
+# -----------------------------------------------------------------------------
+# Script: PoC ausfuehren
+# -----------------------------------------------------------------------------
+script:
+  run_poc_action:
+    alias: PoC ausführen
+    icon: mdi:play-circle
+    sequence:
+      - variables:
+          target: "{{ states('input_select.poc_target_mac') }}"
+          action: "{{ states('input_select.poc_action') }}"
+          worker: "{{ states('input_select.poc_worker') }}"
+          uuid: "{{ states('input_text.poc_target_uuid') }}"
+          payload: "{{ states('input_text.poc_payload_hex') }}"
+          spoof_name: "{{ states('input_text.poc_spoof_name') }}"
+          ib_uuid: "{{ states('input_text.poc_ibeacon_uuid') }}"
+          ib_major: "{{ states('input_number.poc_ibeacon_major') | int(0) }}"
+          ib_minor: "{{ states('input_number.poc_ibeacon_minor') | int(0) }}"
+          int_min: "{{ states('input_number.poc_intensity_min') | int(0) }}"
+          int_max: "{{ states('input_number.poc_intensity_max') | int(0) }}"
+      - service: mqtt.publish
+        data:
+          topic: >
+            {% if worker.startswith('esp32_') %}
+            poc/esp32/{{ worker.split('_',1)[1] }}/cmd
+            {% else %}
+            poc/esp8266/{{ worker.split('_',1)[1] }}/cmd
+            {% endif %}
+          payload: >
+            {{
+              {
+                'action': action,
+                'target_mac': target,
+                'uuid': (uuid if action in ['gatt_fuzzer','med_device_hijack'] else (ib_uuid if action == 'ibeacon_spoof' else '')),
+                'payload_hex': (payload if action == 'ble_replay' else ''),
+                'name': (spoof_name if action in ['swift_pair_spoof','ibeacon_spoof'] else ''),
+                'major': ib_major,
+                'minor': ib_minor,
+                'intensity_min': int_min,
+                'intensity_max': int_max,
+              } | to_json
+            }}
+
+  run_poc_stop:
+    alias: PoC stoppen (alle Worker)
+    icon: mdi:stop-circle
+    sequence:
+      - service: mqtt.publish
+        data:
+          topic: poc/esp32/worker1/cmd
+          payload: '{"action":"stop"}'
+      - service: mqtt.publish
+        data:
+          topic: poc/esp8266/wifi1/cmd
+          payload: '{"action":"stop"}'
+
+# -----------------------------------------------------------------------------
+# MQTT-Status-Sensors (vom Worker selbst gepublisht — Discovery sollte greifen,
+# hier zusätzlich explizite Sensoren als Fallback)
+# -----------------------------------------------------------------------------
+mqtt:
+  sensor:
+    - name: "ESP32 Worker Last Result"
+      unique_id: esp32_worker1_last_result
+      state_topic: "poc/esp32/worker1/status"
+      json_attributes_topic: "poc/esp32/worker1/status"
+      value_template: "{{ value_json.msg | default('idle') }}"
+      icon: mdi:console-line
+      availability_topic: "poc/esp32/worker1/availability"

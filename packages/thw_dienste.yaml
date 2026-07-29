@@ -1,0 +1,418 @@
+# =============================================================================
+# THW DIENSTE-ÜBERWACHUNG (Webseiten, Mailserver, VPN/Intranet)
+# =============================================================================
+# Überwacht die öffentlichen Dienste des THW-Ortsverbandes.
+#
+# Logik (wie gefordert):
+#   - Reguläre Prüfung alle 5 Minuten (scan_interval: 300)
+#   - Bei erstem Fehler: 3x Neuprüfung im 1-Minuten-Takt (script.thw_dienst_recheck)
+#   - Nach 3 fehlgeschlagenen Neuprüfungen: Alarm in HA (persistent_notification)
+#     UND via Pushover (script.thw_send_push)
+#   - Erholt sich der Dienst zwischendurch -> kein Alarm
+#   - Kommt ein gestörter Dienst zurück -> Entwarnung + Notification gelöscht
+#
+# Prüf-Strenge:
+#   - STRENG (gültiges Zertifikat + HTTP 2xx/3xx): die gesunden Webseiten
+#   - TOLERANT (Server antwortet überhaupt, Zertifikatsfehler erlaubt):
+#       www.heroesday.de und weinfest.thwfv-muenchen-ost.de (Zert-/403-Problem)
+#       sowie das VPN/Intranet (Traefik liefert 404 = erreichbar)
+#   - Mailserver: TCP/TLS-Port-Erreichbarkeit (IMAPS 993, Submission 587)
+#
+# Pushover ("Beides"): ist input_boolean.thw_pushover_enabled = AN, wird die
+#   echte Pushover-API genutzt (Credentials aus secrets.yaml). Sonst Fallback
+#   auf notify.mobile_app_iphone_von_marcus. Default: AUS -> iPhone-Push.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Steuer-Schalter
+# -----------------------------------------------------------------------------
+input_boolean:
+  # Alarme stummschalten (AUS = Überwachung/Alarmierung aktiv = Standard).
+  # Als "Pause" umgesetzt, weil YAML-Helfer ohne 'initial' nach Erstellung auf
+  # AUS stehen -> Standard ist somit "aktiv".
+  thw_dienste_alarm_pause:
+    name: "THW Dienste-Alarme pausieren"
+    icon: mdi:bell-off
+
+  thw_pushover_enabled:
+    name: "THW Pushover (echte API) nutzen"
+    icon: mdi:cellphone-message
+
+# -----------------------------------------------------------------------------
+# Pushover REST-Befehl (echte Pushover-API)
+# -----------------------------------------------------------------------------
+rest_command:
+  thw_pushover_send:
+    url: "https://api.pushover.net/1/messages.json"
+    method: POST
+    content_type: "application/x-www-form-urlencoded"
+    payload: >-
+      token={{ token }}&user={{ user }}&title={{ title | urlencode }}&message={{ message | urlencode }}&priority={{ priority | default(1) }}
+
+# -----------------------------------------------------------------------------
+# Verfügbarkeits-Prüfungen (command_line binary_sensors)
+#   ON  = Dienst erreichbar / OK
+#   OFF = Dienst gestört
+# -----------------------------------------------------------------------------
+command_line:
+  # --- Webseiten: STRENG (gültiges Zert + HTTP 2xx/3xx) ---
+  - binary_sensor:
+      name: "THW Web herosbeach.de"
+      unique_id: thw_web_herosbeach_de
+      command: 'c=$(curl -o /dev/null -sS -m 15 -L -w "%{http_code}" https://herosbeach.de/ 2>/dev/null); case "$c" in 2*|3*) echo ON;; *) echo OFF;; esac'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+  - binary_sensor:
+      name: "THW Web herosday.de"
+      unique_id: thw_web_herosday_de
+      command: 'c=$(curl -o /dev/null -sS -m 15 -L -w "%{http_code}" https://herosday.de/ 2>/dev/null); case "$c" in 2*|3*) echo ON;; *) echo OFF;; esac'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+  - binary_sensor:
+      name: "THW Web riesenkicker.info"
+      unique_id: thw_web_riesenkicker_info
+      command: 'c=$(curl -o /dev/null -sS -m 15 -L -w "%{http_code}" https://riesenkicker.info/ 2>/dev/null); case "$c" in 2*|3*) echo ON;; *) echo OFF;; esac'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+  - binary_sensor:
+      name: "THW Web thwfv-muenchen-ost.de"
+      unique_id: thw_web_thwfv_muenchen_ost_de
+      command: 'c=$(curl -o /dev/null -sS -m 15 -L -w "%{http_code}" https://thwfv-muenchen-ost.de/ 2>/dev/null); case "$c" in 2*|3*) echo ON;; *) echo OFF;; esac'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+  - binary_sensor:
+      name: "THW Web thw-muenchen-ost.de"
+      unique_id: thw_web_thw_muenchen_ost_de
+      command: 'c=$(curl -o /dev/null -sS -m 15 -L -w "%{http_code}" https://www.thw-muenchen-ost.de/ 2>/dev/null); case "$c" in 2*|3*) echo ON;; *) echo OFF;; esac'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+  # --- Webseiten: TOLERANT (Server antwortet, Zertfehler erlaubt) ---
+  # www.heroesday.de: Zertifikat (SAN) passt nicht -> bis Fix tolerant
+  - binary_sensor:
+      name: "THW Web heroesday.de"
+      unique_id: thw_web_heroesday_de
+      command: 'c=$(curl -o /dev/null -sS -k -m 15 -L -w "%{http_code}" https://www.heroesday.de/ 2>/dev/null); if [ -n "$c" ] && [ "$c" != "000" ]; then echo ON; else echo OFF; fi'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+  # weinfest.thwfv-muenchen-ost.de: Zert-Mismatch + 403 -> bis Fix tolerant
+  - binary_sensor:
+      name: "THW Web weinfest"
+      unique_id: thw_web_weinfest
+      command: 'c=$(curl -o /dev/null -sS -k -m 15 -L -w "%{http_code}" https://weinfest.thwfv-muenchen-ost.de/ 2>/dev/null); if [ -n "$c" ] && [ "$c" != "000" ]; then echo ON; else echo OFF; fi'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+  # --- VPN / Intranet (Traefik via MyFritz, Port 443): Erreichbarkeit ---
+  - binary_sensor:
+      name: "THW VPN Intranet"
+      unique_id: thw_vpn_intranet
+      command: 'c=$(curl -o /dev/null -sS -k -m 15 -w "%{http_code}" https://intranet.thw-muenchen-ost.de/ 2>/dev/null); if [ -n "$c" ] && [ "$c" != "000" ]; then echo ON; else echo OFF; fi'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+  # --- Mailserver (188.40.219.140 / mail.heroesday.de): Port-Erreichbarkeit ---
+  - binary_sensor:
+      name: "THW Mail IMAPS"
+      unique_id: thw_mail_imaps
+      command: 'if nc -z -w 10 mail.heroesday.de 993; then echo ON; else echo OFF; fi'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+  - binary_sensor:
+      name: "THW Mail Submission"
+      unique_id: thw_mail_submission
+      command: 'if nc -z -w 10 mail.heroesday.de 587; then echo ON; else echo OFF; fi'
+      device_class: connectivity
+      payload_on: "ON"
+      payload_off: "OFF"
+      scan_interval: 300
+      command_timeout: 30
+
+# -----------------------------------------------------------------------------
+# Aggregat-Sensoren für das Dashboard
+# -----------------------------------------------------------------------------
+template:
+  - binary_sensor:
+      - name: "THW Dienste Gesamt"
+        unique_id: thw_dienste_gesamt
+        device_class: problem
+        icon: mdi:lan-disconnect
+        state: >
+          {% set downs = states.binary_sensor
+            | selectattr('entity_id','search','thw_(web|vpn|mail)_')
+            | selectattr('state','eq','off') | list %}
+          {{ downs | length > 0 }}
+
+  - sensor:
+      - name: "THW Dienste Gestört"
+        unique_id: thw_dienste_gestoert_anzahl
+        unit_of_measurement: "Dienste"
+        icon: mdi:lan-disconnect
+        state: >
+          {{ states.binary_sensor
+             | selectattr('entity_id','search','thw_(web|vpn|mail)_')
+             | selectattr('state','eq','off') | list | length }}
+
+  # Protokoll der letzten 5 Alarmierungen (gespeist vom Event thw_dienst_alarm)
+  - trigger:
+      - platform: event
+        event_type: thw_dienst_alarm
+    sensor:
+      - name: "THW Alarm Log"
+        unique_id: thw_alarm_log
+        icon: mdi:bell-alert
+        state: "{{ trigger.event.data.zeit }} – {{ trigger.event.data.dienst }}"
+        attributes:
+          eintraege: >
+            {% set prev = this.attributes.get('eintraege', []) if this is defined and this.attributes is defined else [] %}
+            {% set neu = {'zeit': trigger.event.data.zeit, 'dienst': trigger.event.data.dienst, 'kanal': trigger.event.data.kanal} %}
+            {{ ([neu] + prev)[:5] }}
+
+# -----------------------------------------------------------------------------
+# Skripte
+# -----------------------------------------------------------------------------
+script:
+  # Push-Versand: echte Pushover-API (wenn aktiviert) sonst iPhone-Fallback
+  thw_send_push:
+    alias: "THW: Push senden (Pushover/iPhone)"
+    description: "Sendet eine Push-Nachricht via Pushover-API oder iPhone-Fallback"
+    fields:
+      title:
+        description: "Titel"
+        example: "THW Dienst ausgefallen"
+      message:
+        description: "Nachrichtentext"
+      priority:
+        description: "Pushover-Priorität -2..2"
+        example: 1
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.thw_pushover_enabled
+                state: "on"
+            sequence:
+              - service: rest_command.thw_pushover_send
+                data:
+                  token: !secret pushover_api_token
+                  user: !secret pushover_user_key
+                  title: "{{ title }}"
+                  message: "{{ message }}"
+                  priority: "{{ priority | default(1) }}"
+                continue_on_error: true
+        default:
+          - service: notify.mobile_app_iphone_von_marcus
+            data:
+              title: "{{ title }}"
+              message: "{{ message }}"
+            continue_on_error: true
+    mode: queued
+    max: 20
+
+  # Neuprüfung eines ausgefallenen Dienstes + Alarmierung
+  thw_dienst_recheck:
+    alias: "THW: Dienst nachprüfen & alarmieren"
+    description: "Prüft einen ausgefallenen Dienst 3x im 1-Minuten-Takt; alarmiert bei dauerhaftem Ausfall"
+    fields:
+      entity_id:
+        description: "Binary-Sensor des Dienstes"
+        example: binary_sensor.thw_web_herosbeach_de
+      friendly:
+        description: "Anzeigename des Dienstes"
+        example: "THW Web herosbeach.de"
+    sequence:
+      # 3 Neuprüfungen im Minutentakt; sobald wieder ON -> Abbruch ohne Alarm
+      - repeat:
+          count: 3
+          sequence:
+            - delay: "00:01:00"
+            - service: homeassistant.update_entity
+              target:
+                entity_id: "{{ entity_id }}"
+            - delay: "00:00:10"
+            - if:
+                - condition: template
+                  value_template: "{{ is_state(entity_id, 'on') }}"
+              then:
+                - stop: "Dienst wieder erreichbar – kein Alarm"
+      # Hierher nur, wenn alle 3 Neuprüfungen fehlschlugen -> ALARM
+      - service: persistent_notification.create
+        data:
+          title: "⚠️ THW Dienst ausgefallen: {{ friendly }}"
+          message: >-
+            Der Dienst **{{ friendly }}** ist nicht erreichbar.
+
+            Erste Störung erkannt, danach 3 erfolglose Neuprüfungen im Minutentakt.
+
+            Stand: {{ now().strftime('%d.%m.%Y %H:%M') }} Uhr.
+          notification_id: "{{ entity_id | replace('binary_sensor.','') }}"
+      - service: script.thw_send_push
+        data:
+          title: "🚨 THW Dienst ausgefallen"
+          message: "{{ friendly }} ist nicht erreichbar (nach 3 Neuprüfungen). Stand {{ now().strftime('%H:%M') }} Uhr."
+          priority: 1
+      # Alarm protokollieren (für "Letzte Alarmierungen" auf dem Dashboard)
+      - event: thw_dienst_alarm
+        event_data:
+          dienst: "{{ friendly }}"
+          zeit: "{{ now().strftime('%d.%m.%Y %H:%M') }}"
+          kanal: "{{ 'Pushover' if is_state('input_boolean.thw_pushover_enabled','on') else 'iPhone-Push' }}"
+      # Vollständige Best-Practice-Diagnose (DNS/TCP/TLS/HTTP/Traceroute)
+      - service: shell_command.thw_diag
+        data:
+          slug: "{{ entity_id | replace('binary_sensor.','') }}"
+        response_variable: dr
+      - variables:
+          diag_out: "{{ dr.stdout if dr is defined and dr.stdout is defined else '' }}"
+          diag_head: "{{ diag_out.split('===DETAIL===')[0] }}"
+          diag_detail: >-
+            {{ (diag_out.split('===DETAIL===')[1] | trim) if '===DETAIL===' in diag_out else '' }}
+          diag_summary: >-
+            {{ diag_head.split('\n') | select('match','SUMMARY: ') | list | first
+               | default('SUMMARY: Diagnose nicht verfügbar') | replace('SUMMARY: ','') | trim }}
+          diag_kategorie: >-
+            {{ diag_head.split('\n') | select('match','KATEGORIE: ') | list | first
+               | default('KATEGORIE: Unbekannt') | replace('KATEGORIE: ','') | trim }}
+          diag_ursache: >-
+            {{ diag_head.split('\n') | select('match','URSACHE: ') | list | first
+               | default('URSACHE: -') | replace('URSACHE: ','') | trim }}
+      # Diagnose an die Dienst-Kachel / Detailansicht melden
+      - event: thw_trace_result
+        event_data:
+          slug: "{{ entity_id | replace('binary_sensor.','') }}"
+          summary: "{{ diag_summary }}"
+          detail: "{{ diag_detail }}"
+          ts: "{{ now().strftime('%d.%m.%Y %H:%M') }}"
+      # Störung dauerhaft in die Historie schreiben
+      - event: thw_incident
+        event_data:
+          slug: "{{ entity_id | replace('binary_sensor.','') }}"
+          dienst: "{{ friendly }}"
+          beginn: "{{ now().strftime('%d.%m.%Y %H:%M') }}"
+          beginn_ts: "{{ now().timestamp() | int }}"
+          kategorie: "{{ diag_kategorie }}"
+          ursache: "{{ diag_ursache }}"
+          summary: "{{ diag_summary }}"
+          detail: "{{ diag_detail }}"
+          kanal: "{{ 'Pushover' if is_state('input_boolean.thw_pushover_enabled','on') else 'iPhone-Push' }}"
+    mode: parallel
+    max: 15
+
+# -----------------------------------------------------------------------------
+# Automationen
+# -----------------------------------------------------------------------------
+automation:
+  # Ausfall erkannt -> Neuprüfung starten
+  - id: thw_dienst_ausfall_erkannt
+    alias: "THW: Dienst-Ausfall erkannt"
+    description: "Startet bei Ausfall eines überwachten THW-Dienstes die Neuprüfung"
+    mode: parallel
+    max: 15
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.thw_web_herosbeach_de
+          - binary_sensor.thw_web_herosday_de
+          - binary_sensor.thw_web_riesenkicker_info
+          - binary_sensor.thw_web_thwfv_muenchen_ost_de
+          - binary_sensor.thw_web_thw_muenchen_ost_de
+          - binary_sensor.thw_web_heroesday_de
+          - binary_sensor.thw_web_weinfest
+          - binary_sensor.thw_vpn_intranet
+          - binary_sensor.thw_mail_imaps
+          - binary_sensor.thw_mail_submission
+        to: "off"
+    condition:
+      - condition: state
+        entity_id: input_boolean.thw_dienste_alarm_pause
+        state: "off"
+      # Nur echte Übergänge ON -> OFF (kein Neustart-Rauschen unknown -> off)
+      - condition: template
+        value_template: "{{ trigger.from_state.state == 'on' }}"
+    action:
+      - service: script.thw_dienst_recheck
+        data:
+          entity_id: "{{ trigger.entity_id }}"
+          friendly: "{{ state_attr(trigger.entity_id, 'friendly_name') or trigger.entity_id }}"
+
+  # Dienst wieder erreichbar -> Entwarnung
+  - id: thw_dienst_wieder_ok
+    alias: "THW: Dienst wieder erreichbar"
+    description: "Entwarnung wenn ein gestörter Dienst zurückkommt (nur nach echter Alarmphase)"
+    mode: parallel
+    max: 15
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.thw_web_herosbeach_de
+          - binary_sensor.thw_web_herosday_de
+          - binary_sensor.thw_web_riesenkicker_info
+          - binary_sensor.thw_web_thwfv_muenchen_ost_de
+          - binary_sensor.thw_web_thw_muenchen_ost_de
+          - binary_sensor.thw_web_heroesday_de
+          - binary_sensor.thw_web_weinfest
+          - binary_sensor.thw_vpn_intranet
+          - binary_sensor.thw_mail_imaps
+          - binary_sensor.thw_mail_submission
+        from: "off"
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.thw_dienste_alarm_pause
+        state: "off"
+      # Nur wenn der Ausfall lange genug war, dass alarmiert wurde (~Neuprüf-Fenster)
+      - condition: template
+        value_template: >-
+          {{ (as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed)) > 200 }}
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: "{{ trigger.entity_id | replace('binary_sensor.','') }}"
+      - service: script.thw_send_push
+        data:
+          title: "✅ THW Dienst wieder erreichbar"
+          message: "{{ state_attr(trigger.entity_id,'friendly_name') or trigger.entity_id }} ist wieder erreichbar. Stand {{ now().strftime('%H:%M') }} Uhr."
+          priority: 0
+      # Referenz-Traceroute direkt nach Wiederherstellung erneuern
+      - service: shell_command.thw_trace_capture
+        data:
+          slug: "{{ trigger.entity_id | replace('binary_sensor.','') }}"
+      # Offene Störung in der Historie schließen (Status -> behoben + Dauer)
+      - event: thw_incident_ende
+        event_data:
+          slug: "{{ trigger.entity_id | replace('binary_sensor.','') }}"
+          ende: "{{ now().strftime('%d.%m.%Y %H:%M') }}"
+          ende_ts: "{{ now().timestamp() | int }}"

@@ -1,0 +1,456 @@
+title: Spülmaschine
+icon: mdi:dishwasher
+views:
+  - title: Spüler
+    path: spuler
+    icon: mdi:dishwasher
+    theme: Backend-selected
+    badges: []
+    cards:
+      # =====================================================================
+      # 1) Header: Großer Status mit Programm + Restzeit
+      # =====================================================================
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.siemens_405100396089025945_bsh_common_status_operationstate
+            primary: >-
+              {%- set rest = states('sensor.spuler_restzeit') -%}
+              {%- set prog = states('sensor.spuler_fortschritt') -%}
+              {{ states('sensor.spuler_status') }}
+              {%- if is_state('binary_sensor.spuler_lauft','on') and rest not in ['—','unknown','unavailable'] %}
+                 · noch {{ rest }} h · {{ prog }}%
+              {%- endif %}
+            secondary: >-
+              {%- set p = states('sensor.spuler_programm') -%}
+              {%- set opts = [] -%}
+              {%- if is_state('binary_sensor.siemens_405100396089025945_dishcare_dishwasher_option_variospeedplus','on') -%}
+                {%- set opts = opts + ['VarioSpeed+'] -%}
+              {%- endif -%}
+              {%- if is_state('binary_sensor.siemens_405100396089025945_dishcare_dishwasher_option_hygieneplus','on') -%}
+                {%- set opts = opts + ['Hygiene+'] -%}
+              {%- endif -%}
+              {%- if is_state('binary_sensor.siemens_405100396089025945_dishcare_dishwasher_option_intensivzone','on') -%}
+                {%- set opts = opts + ['IntensivZone'] -%}
+              {%- endif -%}
+              {%- if is_state('binary_sensor.siemens_405100396089025945_dishcare_dishwasher_option_halfload','on') -%}
+                {%- set opts = opts + ['Halbe Beladung'] -%}
+              {%- endif -%}
+              {{ p }}{% if opts %} · {{ opts | join(', ') }}{% endif %}
+            icon: >-
+              {%- set s = states('sensor.siemens_405100396089025945_bsh_common_status_operationstate') -%}
+              {%- if s == 'BSH.Common.EnumType.OperationState.Run' -%}mdi:dishwasher
+              {%- elif s == 'BSH.Common.EnumType.OperationState.Finished' -%}mdi:dishwasher-alert
+              {%- elif s in ['BSH.Common.EnumType.OperationState.Error','BSH.Common.EnumType.OperationState.ActionRequired'] -%}mdi:alert-circle
+              {%- else -%}mdi:dishwasher-off
+              {%- endif %}
+            icon_color: >-
+              {%- set s = states('sensor.siemens_405100396089025945_bsh_common_status_operationstate') -%}
+              {%- if s == 'BSH.Common.EnumType.OperationState.Run' -%}blue
+              {%- elif s == 'BSH.Common.EnumType.OperationState.Finished' -%}green
+              {%- elif s in ['BSH.Common.EnumType.OperationState.Error','BSH.Common.EnumType.OperationState.ActionRequired'] -%}red
+              {%- elif s == 'BSH.Common.EnumType.OperationState.Pause' -%}orange
+              {%- else -%}grey
+              {%- endif %}
+            multiline_secondary: true
+            tap_action:
+              action: more-info
+
+          # Fortschrittsbalken (nur sichtbar wenn läuft) - mini-graph zeigt Verlauf
+          - type: conditional
+            conditions:
+              - entity: binary_sensor.spuler_lauft
+                state: "on"
+            card:
+              type: custom:mini-graph-card
+              entities:
+                - entity: sensor.spuler_fortschritt
+                  name: Fortschritt
+                  color: "#3498db"
+              hours_to_show: 3
+              points_per_hour: 60
+              line_width: 3
+              show:
+                name: false
+                icon: false
+                state: true
+                legend: false
+                fill: true
+                extrema: false
+              align_state: center
+              decimals: 0
+
+          # Status-Chips
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: entity
+                entity: binary_sensor.spuler_online
+                icon: mdi:wifi
+                icon_color: green
+                content_info: none
+              - type: entity
+                entity: binary_sensor.spuler_bereit_fur_remote_start
+                icon: mdi:remote
+                icon_color: blue
+                content_info: none
+              - type: entity
+                entity: binary_sensor.spuler_tur_offen
+                icon: mdi:door
+                icon_color: orange
+                content_info: none
+              - type: entity
+                entity: binary_sensor.siemens_405100396089025945_bsh_common_setting_childlock
+                icon: mdi:lock
+                icon_color: red
+                content_info: none
+
+      # =====================================================================
+      # 2) Live-Werte: Energie / Wasser / Kosten dieses Spülgangs
+      # =====================================================================
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.spuler_energie_aktueller_lauf
+            primary: "{{ states('sensor.spuler_energie_aktueller_lauf') }} kWh"
+            secondary: Energie (Lauf)
+            icon: mdi:lightning-bolt
+            icon_color: amber
+            tap_action:
+              action: more-info
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {%- set p = states('sensor.siemens_405100396089025945_selected_program') -%}
+              {%- set water_map = {
+                'Dishcare.Dishwasher.Program.Eco50': 9.5,
+                'Dishcare.Dishwasher.Program.Auto1': 11.0,
+                'Dishcare.Dishwasher.Program.Intensiv70': 14.0,
+                'Dishcare.Dishwasher.Program.Normal65': 10.0,
+                'Dishcare.Dishwasher.Program.Quick45': 9.0,
+                'Dishcare.Dishwasher.Program.NightWash': 11.0,
+                'Dishcare.Dishwasher.Program.Glas40': 13.0,
+                'Dishcare.Dishwasher.Program.PreRinse': 5.0,
+                'Dishcare.Dishwasher.Program.MachineCare': 13.0
+              } -%}
+              {{ water_map.get(p, 10.0) }} L
+            secondary: Wasser (Lauf)
+            icon: mdi:water
+            icon_color: blue
+
+          - type: custom:mushroom-template-card
+            entity: sensor.spuler_kosten_aktueller_lauf
+            primary: "{{ states('sensor.spuler_kosten_aktueller_lauf') }} €"
+            secondary: >-
+              @ {{ states('sensor.tibber_current_price_2') | float(0) | round(3) }} €/kWh
+            icon: mdi:cash
+            icon_color: green
+            tap_action:
+              action: more-info
+
+      # =====================================================================
+      # 3) BSH Energie-/Wasser-Effizienz (Prozent vom Maximum)
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.spuler_energie_prognose
+            name: Energie-Effizienz
+            unit: "%"
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 40
+              red: 70
+            needle: true
+          - type: gauge
+            entity: sensor.spuler_wasser_prognose
+            name: Wasser-Effizienz
+            unit: "%"
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 40
+              red: 70
+            needle: true
+
+      # =====================================================================
+      # 4) Kosten-Übersicht Tag/Woche/Monat/Jahr (große Tiles)
+      # =====================================================================
+      - type: heading
+        heading: Kosten-Übersicht
+        icon: mdi:cash-clock
+      - type: grid
+        columns: 4
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.spuler_kosten_tag
+            primary: "{{ states('sensor.spuler_kosten_tag') | float(0) | round(2) }} €"
+            secondary: heute
+            icon: mdi:calendar-today
+            icon_color: blue
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.spuler_kosten_woche
+            primary: "{{ states('sensor.spuler_kosten_woche') | float(0) | round(2) }} €"
+            secondary: diese Woche
+            icon: mdi:calendar-week
+            icon_color: cyan
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.spuler_kosten_monat
+            primary: "{{ states('sensor.spuler_kosten_monat') | float(0) | round(2) }} €"
+            secondary: diesen Monat
+            icon: mdi:calendar-month
+            icon_color: teal
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.spuler_kosten_jahr
+            primary: "{{ states('sensor.spuler_kosten_jahr') | float(0) | round(2) }} €"
+            secondary: dieses Jahr
+            icon: mdi:calendar
+            icon_color: green
+            tap_action:
+              action: more-info
+
+      # =====================================================================
+      # 5) Kumulativer Kostenverlauf (sofort sichtbar aus state-history)
+      # =====================================================================
+      - type: custom:mini-graph-card
+        name: Spülkosten kumuliert
+        entities:
+          - entity: sensor.spuler_gesamtkosten
+            name: € gesamt
+            color: "#16a085"
+            show_state: true
+        hours_to_show: 24
+        points_per_hour: 12
+        line_width: 3
+        decimals: 2
+        smoothing: false
+        show:
+          fill: fade
+          state: false
+          legend: false
+          extrema: true
+          labels: true
+          icon: false
+          name: true
+        font_size: 75
+
+      # =====================================================================
+      # 6) Tages-Bars aus state-History (sofort sichtbar, kein Statistics-Wait)
+      # =====================================================================
+      - type: custom:mini-graph-card
+        name: Spülkosten je Tag (30 Tage)
+        entities:
+          - entity: sensor.spuler_gesamtkosten
+            name: €
+            color: "#3498db"
+        hours_to_show: 720
+        aggregate_func: diff
+        group_by: date
+        decimals: 2
+        show:
+          graph: bar
+          state: false
+          legend: false
+          labels: true
+          icon: false
+          name: true
+
+      # =====================================================================
+      # 7) Verbrauch (Energie + Wasser) je Tag — beide als mini-graph diff
+      # =====================================================================
+      - type: heading
+        heading: Verbrauch
+        icon: mdi:chart-bar
+      - type: horizontal-stack
+        cards:
+          - type: custom:mini-graph-card
+            name: Energie je Tag (kWh)
+            entities:
+              - entity: sensor.spuler_gesamtenergie
+                name: kWh
+                color: "#f39c12"
+            hours_to_show: 720
+            aggregate_func: diff
+            group_by: date
+            decimals: 2
+            show:
+              graph: bar
+              state: false
+              legend: false
+              labels: true
+              icon: false
+              name: true
+          - type: custom:mini-graph-card
+            name: Wasser je Tag (L)
+            entities:
+              - entity: sensor.spuler_gesamtwasser
+                name: L
+                color: "#3498db"
+            hours_to_show: 720
+            aggregate_func: diff
+            group_by: date
+            decimals: 1
+            show:
+              graph: bar
+              state: false
+              legend: false
+              labels: true
+              icon: false
+              name: true
+
+      # =====================================================================
+      # 8) Native Statistics-Graphs (Long-Term, kommen mit Zeit, sauberer)
+      # =====================================================================
+      - type: heading
+        heading: Statistik-Verläufe (long-term)
+        icon: mdi:chart-timeline-variant
+      - type: statistics-graph
+        title: Spülkosten je Monat (12 Monate)
+        entities:
+          - sensor.spuler_gesamtkosten
+        stat_types:
+          - change
+        chart_type: bar
+        period: month
+        days_to_show: 365
+      - type: statistics-graph
+        title: Spülkosten je Tag (Statistics-Variante)
+        entities:
+          - sensor.spuler_gesamtkosten
+        stat_types:
+          - change
+        chart_type: bar
+        period: day
+        days_to_show: 30
+
+      # =====================================================================
+      # 8) Counter + Service-Indikatoren + Auto-Start-Helper
+      # =====================================================================
+      - type: heading
+        heading: Service & Automation
+        icon: mdi:tools
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: tile
+            entity: counter.dishwasher_runs_total
+            name: Läufe gesamt
+            icon: mdi:counter
+            color: indigo
+            tap_action:
+              action: more-info
+          - type: tile
+            entity: counter.dishwasher_runs_since_salt
+            name: seit Salz
+            icon: mdi:shaker-outline
+            color: blue-grey
+            tap_action:
+              action: none
+            hold_action:
+              action: call-service
+              service: counter.reset
+              target:
+                entity_id: counter.dishwasher_runs_since_salt
+          - type: tile
+            entity: counter.dishwasher_runs_since_rinse_aid
+            name: seit Klarspüler
+            icon: mdi:bottle-tonic-outline
+            color: cyan
+            tap_action:
+              action: none
+            hold_action:
+              action: call-service
+              service: counter.reset
+              target:
+                entity_id: counter.dishwasher_runs_since_rinse_aid
+
+      - type: entities
+        title: Smart-Start (Auto)
+        show_header_toggle: false
+        entities:
+          - entity: input_boolean.dishwasher_pv_auto_start
+            name: PV-Auto-Start
+            secondary_info: last-changed
+          - entity: input_number.dishwasher_pv_min_watts
+            name: PV-Schwelle
+          - entity: input_boolean.dishwasher_tibber_auto_start
+            name: Tibber-Auto-Start
+            secondary_info: last-changed
+          - entity: input_number.dishwasher_tibber_max_ct
+            name: Tibber-Schwelle
+
+      # =====================================================================
+      # 9) Programm steuern + Optionen
+      # =====================================================================
+      - type: heading
+        heading: Steuerung
+        icon: mdi:remote
+      - type: entities
+        show_header_toggle: false
+        entities:
+          - entity: select.siemens_405100396089025945_programs
+            name: Programm wählen
+          - entity: switch.siemens_405100396089025945_dishcare_dishwasher_option_variospeedplus
+            name: VarioSpeed+
+          - entity: switch.siemens_405100396089025945_dishcare_dishwasher_option_hygieneplus
+            name: Hygiene+
+          - entity: switch.siemens_405100396089025945_dishcare_dishwasher_option_intensivzone
+            name: IntensivZone
+          - entity: switch.siemens_405100396089025945_dishcare_dishwasher_option_halfload
+            name: Halbe Beladung
+          - entity: button.siemens_405100396089025945_start_pause
+            name: Start / Pause
+          - entity: button.siemens_405100396089025945_stop
+            name: Stop / Abbrechen
+          - entity: switch.siemens_405100396089025945_bsh_common_setting_childlock
+            name: Kindersicherung
+
+      # =====================================================================
+      # 10) kWh-Lookup tunen (klappbar)
+      # =====================================================================
+      - type: entities
+        title: kWh-Werte pro Programm (tunbar)
+        icon: mdi:tune
+        state_color: false
+        entities:
+          - entity: input_number.dishwasher_kwh_eco50
+            name: Eco 50°
+          - entity: input_number.dishwasher_kwh_auto
+            name: Auto 45-65°
+          - entity: input_number.dishwasher_kwh_intensiv70
+            name: Intensiv 70°
+          - entity: input_number.dishwasher_kwh_speed65
+            name: Speed 65°
+          - entity: input_number.dishwasher_kwh_quick45
+            name: Quick 45°
+          - entity: input_number.dishwasher_kwh_night
+            name: Nacht
+          - entity: input_number.dishwasher_kwh_glas40
+            name: Glas 40°
+          - entity: input_number.dishwasher_kwh_prerinse
+            name: Vorspülen
+          - entity: input_number.dishwasher_kwh_machinecare
+            name: Maschinenpflege
+          - entity: input_number.dishwasher_kwh_fallback
+            name: Fallback (unbekannt)
+          - type: section
+            label: Kumulative Werte (Stats-Basis, manuell editierbar)
+          - entity: input_number.dishwasher_total_cost
+            name: Gesamtkosten
+          - entity: input_number.dishwasher_total_energy
+            name: Gesamtenergie
+          - entity: input_number.dishwasher_total_water
+            name: Gesamtwasser

@@ -84,6 +84,62 @@ views:
               yellow: 60
               red: 80
             needle: true
+          - type: custom:mushroom-template-card
+            primary: "Luftdruck-Trend"
+            secondary: >-
+              {% if is_state('binary_sensor.luftdruck_steigend', 'on') %}Steigt
+              {% elif is_state('binary_sensor.luftdruck_fallend', 'on') %}Fällt
+              {% else %}Stabil{% endif %}
+            icon: >-
+              {% if is_state('binary_sensor.luftdruck_steigend', 'on') %}mdi:trending-up
+              {% elif is_state('binary_sensor.luftdruck_fallend', 'on') %}mdi:trending-down
+              {% else %}mdi:trending-neutral{% endif %}
+            icon_color: >-
+              {% if is_state('binary_sensor.luftdruck_steigend', 'on') %}green
+              {% elif is_state('binary_sensor.luftdruck_fallend', 'on') %}red
+              {% else %}grey{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.tasmota_bme280_pressure
+
+      - type: custom:apexcharts-card
+        header:
+          title: Luftdruck - Tag
+          show: true
+        graph_span: 24h
+        yaxis:
+          - id: hpa
+            decimals: 1
+            apex_config:
+              title:
+                text: "hPa"
+        series:
+          - entity: sensor.tasmota_bme280_pressure
+            name: Luftdruck
+            yaxis_id: hpa
+            curve: smooth
+            color: "#009688"
+
+      - type: custom:apexcharts-card
+        header:
+          title: Luftdruck - Monat
+          show: true
+        graph_span: 30d
+        yaxis:
+          - id: hpa
+            decimals: 1
+            apex_config:
+              title:
+                text: "hPa"
+        series:
+          - entity: sensor.tasmota_bme280_pressure
+            name: Luftdruck
+            yaxis_id: hpa
+            curve: smooth
+            color: "#009688"
+            group_by:
+              func: avg
+              duration: 2h
 
       # -----------------------------------------------------------------
       # WARNUNGEN OBEN (nur wenn aktiv)

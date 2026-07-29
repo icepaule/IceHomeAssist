@@ -1,7 +1,7 @@
 # =============================================================================
 # HEIZUNG PAKET - BSB-LAN Sensoren (LMU7 Controller)
 # =============================================================================
-# BSB-LAN auf 10.10.12.15 (ESP32, IoT VLAN)
+# BSB-LAN auf 10.10.12.57 (ESP32, IoT VLAN)
 # REST API: /JQ=param1,param2,... liefert JSON
 # WICHTIG: ESP32 ist langsam (~1s pro Parameter ueber BSB-Bus).
 #   Requests in kleine Batches aufteilen und timeout erhoehen!
@@ -12,7 +12,7 @@
 # -----------------------------------------------------------------------------
 rest:
   # --- Batch 1: Temperaturen (alle 60s) ---
-  - resource: "http://10.10.12.15/JQ=8743,8744,8314,8310,8311,8830,8831"
+  - resource: "http://10.10.12.57/JQ=8743,8744,8314,8310,8311,8830,8831"
     scan_interval: 60
     timeout: 30
     sensor:
@@ -70,7 +70,7 @@ rest:
         icon: mdi:water-thermometer-outline
 
   # --- Batch 2: Betrieb & Status (alle 60s) ---
-  - resource: "http://10.10.12.15/JQ=8750,8326,8324,8000,8003,8005,700"
+  - resource: "http://10.10.12.57/JQ=8750,8326,8324,8000,8003,8005,700"
     scan_interval: 60
     timeout: 30
     sensor:
@@ -116,7 +116,7 @@ rest:
         icon: mdi:cog
 
   # --- Batch 3: Konfiguration (alle 300s, aendert sich selten) ---
-  - resource: "http://10.10.12.15/JQ=720,730,710,712,714,1610,1612,1640,1645"
+  - resource: "http://10.10.12.57/JQ=720,730,710,712,714,1610,1612,1640,1645"
     scan_interval: 300
     timeout: 30
     sensor:
@@ -179,6 +179,72 @@ rest:
         device_class: temperature
         icon: mdi:shield-bug
 
+  # --- Batch 4: Brenner-Statistik + Raumsollwert (alle 300s, aendert sich selten) ---
+  - resource: "http://10.10.12.57/JQ=8337,8336,8338,8339,8340,8741"
+    scan_interval: 300
+    timeout: 30
+    sensor:
+      - name: "Heizung Brenner Startzaehler"
+        unique_id: heizung_brenner_startzaehler
+        value_template: "{{ value_json['8337'].value }}"
+        state_class: total_increasing
+        icon: mdi:counter
+
+      - name: "Heizung Brenner Betriebsstunden"
+        unique_id: heizung_brenner_betriebsstunden
+        value_template: "{{ value_json['8336'].value }}"
+        unit_of_measurement: "h"
+        state_class: total_increasing
+        icon: mdi:timer-outline
+
+      - name: "Heizung Betriebsstunden Heizbetrieb"
+        unique_id: heizung_betriebsstunden_heizbetrieb
+        value_template: "{{ value_json['8338'].value }}"
+        unit_of_measurement: "h"
+        state_class: total_increasing
+        icon: mdi:radiator
+
+      - name: "Heizung Betriebsstunden TWW"
+        unique_id: heizung_betriebsstunden_tww
+        value_template: "{{ value_json['8339'].value }}"
+        unit_of_measurement: "h"
+        state_class: total_increasing
+        icon: mdi:water-boiler
+
+      - name: "Heizung Betriebsstunden Zonen"
+        unique_id: heizung_betriebsstunden_zonen
+        value_template: "{{ value_json['8340'].value }}"
+        unit_of_measurement: "h"
+        state_class: total_increasing
+        icon: mdi:home-thermometer
+
+      - name: "Heizung Raumsollwert"
+        unique_id: heizung_raumsollwert
+        value_template: "{{ value_json['8741'].value }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        icon: mdi:home-thermometer-outline
+
+  # --- Batch 5: Fehler-/Wartungscode (bereits im Firmware-Kern kompiliert) ---
+  - resource: "http://10.10.12.57/JQ=10196,10197,10199"
+    scan_interval: 300
+    timeout: 30
+    sensor:
+      - name: "Heizung Fehlercode"
+        unique_id: heizung_fehlercode
+        value_template: "{{ value_json['10196'].value }}"
+        icon: mdi:alert-circle-outline
+
+      - name: "Heizung Fehler Prioritaet"
+        unique_id: heizung_fehler_prioritaet
+        value_template: "{{ value_json['10197'].value }}"
+        icon: mdi:priority-high
+
+      - name: "Heizung Wartungscode"
+        unique_id: heizung_wartungscode
+        value_template: "{{ value_json['10199'].value }}"
+        icon: mdi:wrench-outline
+
 # -----------------------------------------------------------------------------
 # Template Sensoren
 # -----------------------------------------------------------------------------
@@ -213,3 +279,28 @@ template:
           {{ states('sensor.heizung_leistung') not in ['unknown', 'unavailable'] }}
         device_class: running
         icon: mdi:fire
+
+  - sensor:
+      # Geschaetzte Heizkosten heute (Brennstunden x Gaskosten)
+      - name: "Heizkosten Schaetzung Heute"
+        unique_id: heizkosten_schaetzung_heute
+        unit_of_measurement: "EUR"
+        device_class: monetary
+        state: >
+          {{ (states('sensor.heizung_brenner_laufzeit_heute') | float(0) * 2.40) | round(2) }}
+        icon: mdi:fire-circle
+        availability: >
+          {{ states('sensor.heizung_brenner_laufzeit_heute') not in ['unknown', 'unavailable'] }}
+
+# -----------------------------------------------------------------------------
+# History Stats - Brenner Laufzeit
+# -----------------------------------------------------------------------------
+sensor:
+  - platform: history_stats
+    name: "Heizung Brenner Laufzeit Heute"
+    unique_id: heizung_brenner_laufzeit_heute
+    entity_id: binary_sensor.heizung_brenner
+    state: "on"
+    type: time
+    start: "{{ today_at('00:00') }}"
+    end: "{{ now() }}"

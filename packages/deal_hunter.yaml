@@ -1,0 +1,264 @@
+# =============================================================================
+# DEAL HUNTER PAKET — User-konfigurierbare Suchaufträge via HA
+# =============================================================================
+# Eigene Suchaufträge im Format: query|target|max_price
+# Mehrere getrennt durch '||', Felder durch '|'.
+# Beispiel: RPi 4 8GB Set|rpi4_8gb_kit|100||HP Z440 32GB|workstation_salvage|280
+# =============================================================================
+
+input_text:
+  deal_hunter_new_query:
+    name: "🔍 Such-Query"
+    icon: mdi:magnify
+    max: 255
+    initial: ""
+  deal_hunter_new_target:
+    name: "🎯 Target"
+    icon: mdi:tag
+    max: 32
+    initial: "generic"
+  deal_hunter_new_maxprice:
+    name: "💰 Max-Preis (EUR)"
+    icon: mdi:currency-eur
+    max: 6
+    initial: "200"
+  deal_hunter_user_searches_raw:
+    name: "📋 User-Suchen (Komplett-Liste, RO)"
+    icon: mdi:format-list-bulleted
+    max: 255
+    initial: ""
+  deal_hunter_manage_id:
+    name: "🆔 Such-ID (zum Verwalten)"
+    icon: mdi:identifier
+    max: 12
+    initial: ""
+  deal_hunter_edit_q:
+    name: "✏️ Neue Query (optional)"
+    icon: mdi:pencil
+    max: 255
+    initial: ""
+  deal_hunter_edit_target:
+    name: "✏️ Neues Target (optional)"
+    icon: mdi:tag-edit
+    max: 32
+    initial: ""
+  deal_hunter_edit_max:
+    name: "✏️ Neuer Max-Preis (optional)"
+    icon: mdi:currency-eur
+    max: 6
+    initial: ""
+
+input_number:
+  deal_hunter_pickup_radius_km:
+    name: "📍 Pickup-Radius um Ottobrunn (km)"
+    icon: mdi:map-marker-radius
+    min: 0
+    max: 300
+    step: 5
+    initial: 25
+    unit_of_measurement: "km"
+    mode: slider
+
+input_button:
+  deal_hunter_force_run:
+    name: "▶️ Jetzt suchen"
+    icon: mdi:refresh
+  deal_hunter_add_search:
+    name: "➕ Suche hinzufügen"
+    icon: mdi:plus-circle
+  deal_hunter_clear_searches:
+    name: "🗑️ Alle eigenen Suchen löschen"
+    icon: mdi:delete-sweep
+  deal_hunter_toggle_search:
+    name: "⏯️ An/Aus (per ID)"
+    icon: mdi:toggle-switch
+  deal_hunter_delete_search:
+    name: "🗑️ Eine Suche löschen (per ID)"
+    icon: mdi:close-circle
+  deal_hunter_save_edit:
+    name: "💾 Edit speichern (per ID)"
+    icon: mdi:content-save-edit
+
+rest_command:
+  deal_hunter_run_ka:
+    url: "http://10.10.0.100:5678/webhook/deal-hunter-trigger-ka"
+    method: POST
+    timeout: 10
+  deal_hunter_run_ebay:
+    url: "http://10.10.0.100:5678/webhook/deal-hunter-trigger-ebay"
+    method: POST
+    timeout: 10
+  deal_hunter_add_search:
+    url: "http://10.10.0.100:5678/webhook/dh-add-search"
+    method: POST
+    content_type: "application/json"
+    payload: >
+      {"query": "{{ states('input_text.deal_hunter_new_query') }}",
+       "target": "{{ states('input_text.deal_hunter_new_target') }}",
+       "max": {{ states('input_text.deal_hunter_new_maxprice') | int(200) }},
+       "added_by": "ha-ui"}
+  deal_hunter_clear_searches:
+    url: "http://10.10.0.100:5678/webhook/dh-clear-searches"
+    method: POST
+    timeout: 10
+  deal_hunter_toggle_search:
+    url: "http://10.10.0.100:5678/webhook/dh-add-search"
+    method: POST
+    content_type: "application/json"
+    payload: >
+      {"action": "toggle",
+       "id": "{{ states('input_text.deal_hunter_manage_id') | trim }}"}
+  deal_hunter_delete_search:
+    url: "http://10.10.0.100:5678/webhook/dh-add-search"
+    method: POST
+    content_type: "application/json"
+    payload: >
+      {"action": "delete",
+       "id": "{{ states('input_text.deal_hunter_manage_id') | trim }}"}
+  deal_hunter_save_edit:
+    url: "http://10.10.0.100:5678/webhook/dh-add-search"
+    method: POST
+    content_type: "application/json"
+    payload: >
+      {"action": "edit",
+       "id": "{{ states('input_text.deal_hunter_manage_id') | trim }}",
+       "q": "{{ states('input_text.deal_hunter_edit_q') }}",
+       "target": "{{ states('input_text.deal_hunter_edit_target') }}",
+       "max": "{{ states('input_text.deal_hunter_edit_max') }}"}
+
+automation:
+  - alias: "Deal Hunter — Such-Button"
+    id: deal_hunter_manual_trigger
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.deal_hunter_force_run
+    action:
+      - service: rest_command.deal_hunter_run_ka
+
+  - alias: "Deal Hunter — Add Search Button"
+    id: deal_hunter_add_search_btn
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.deal_hunter_add_search
+    condition:
+      - condition: template
+        value_template: "{{ states('input_text.deal_hunter_new_query') | length > 2 }}"
+    action:
+      - service: rest_command.deal_hunter_add_search
+      - delay: "00:00:01"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.deal_hunter_new_query
+        data:
+          value: ""
+      - service: persistent_notification.create
+        data:
+          title: "Deal Hunter"
+          message: "Suche hinzugefügt — wird beim nächsten Run berücksichtigt."
+
+  - alias: "Deal Hunter — Clear Searches Button"
+    id: deal_hunter_clear_btn
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.deal_hunter_clear_searches
+    action:
+      - service: rest_command.deal_hunter_clear_searches
+      - service: persistent_notification.create
+        data:
+          title: "Deal Hunter"
+          message: "Alle eigenen Suchen gelöscht."
+
+  - alias: "Deal Hunter — Toggle Search"
+    id: deal_hunter_toggle_btn
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.deal_hunter_toggle_search
+    condition:
+      - condition: template
+        value_template: "{{ states('input_text.deal_hunter_manage_id') | trim | length >= 4 }}"
+    action:
+      - service: rest_command.deal_hunter_toggle_search
+      - service: persistent_notification.create
+        data:
+          title: "Deal Hunter"
+          message: "Suche {{ states('input_text.deal_hunter_manage_id') }} umgeschaltet."
+
+  - alias: "Deal Hunter — Delete Search"
+    id: deal_hunter_delete_btn
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.deal_hunter_delete_search
+    condition:
+      - condition: template
+        value_template: "{{ states('input_text.deal_hunter_manage_id') | trim | length >= 4 }}"
+    action:
+      - service: rest_command.deal_hunter_delete_search
+      - delay: "00:00:01"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.deal_hunter_manage_id
+        data:
+          value: ""
+      - service: persistent_notification.create
+        data:
+          title: "Deal Hunter"
+          message: "Suche gelöscht."
+
+  - alias: "Deal Hunter — Save Edit"
+    id: deal_hunter_save_edit_btn
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.deal_hunter_save_edit
+    condition:
+      - condition: template
+        value_template: "{{ states('input_text.deal_hunter_manage_id') | trim | length >= 4 }}"
+    action:
+      - service: rest_command.deal_hunter_save_edit
+      - delay: "00:00:01"
+      - service: input_text.set_value
+        target:
+          entity_id:
+            - input_text.deal_hunter_edit_q
+            - input_text.deal_hunter_edit_target
+            - input_text.deal_hunter_edit_max
+            - input_text.deal_hunter_manage_id
+        data:
+          value: ""
+      - service: persistent_notification.create
+        data:
+          title: "Deal Hunter"
+          message: "Suche aktualisiert."
+
+# Aggregated recent_hits across all marketplaces
+# Each workflow publishes its own per-source hits via MQTT discovery,
+# this template sensor merges them and sorts by found_at.
+template:
+  - sensor:
+      - name: "Deal Hunter All Recent Hits 7d"
+        unique_id: deal_hunter_all_recent_hits_7d
+        icon: mdi:format-list-bulleted
+        state: >
+          {% set sources = ['ka','ebay','mydealz','preisjaeger','dealabs','markt_de','quoka_de','shpock','rebuy','refurbed'] %}
+          {% set ns = namespace(total=0) %}
+          {%- for s in sources -%}
+            {%- set hits = state_attr('sensor.deal_hunter_hits_' ~ s, 'hits') or [] -%}
+            {%- set ns.total = ns.total + hits|length -%}
+          {%- endfor -%}
+          {{ ns.total }}
+        attributes:
+          hits: >
+            {% set sources = ['ka','ebay','mydealz','preisjaeger','dealabs','markt_de','quoka_de','shpock','rebuy','refurbed'] %}
+            {% set ns = namespace(all=[]) %}
+            {%- for s in sources -%}
+              {%- set hits = state_attr('sensor.deal_hunter_hits_' ~ s, 'hits') or [] -%}
+              {%- set ns.all = ns.all + hits -%}
+            {%- endfor -%}
+            {{ (ns.all | sort(attribute='found_at', reverse=true))[:60] }}
+          icon: mdi:format-list-bulleted
+          friendly_name: "Deal Hunter Hits (alle Marktplätze, 7d)"

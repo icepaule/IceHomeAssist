@@ -1,0 +1,129 @@
+# =============================================================================
+# Erweiterte Energie-Automationen
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 4a. Verbrauchsanomalie-Erkennung
+# Trigger: Pulse > 3000W fuer 30 Min UND Waschmaschine/Trockner inaktiv
+# -----------------------------------------------------------------------------
+- id: energie_anomalie_erkennung
+  alias: "Energie: Verbrauchsanomalie"
+  description: "Warnt bei unerwartet hohem Verbrauch (>3000W, 30 Min)"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.tibber_pulse_paule_power
+      above: 3000
+      for:
+        minutes: 30
+  condition:
+    - condition: numeric_state
+      entity_id: sensor.waschmaschine_leistung
+      below: 50
+    - condition: numeric_state
+      entity_id: sensor.trockner_leistung
+      below: 50
+  action:
+    - service: notify.mobile_app_iphone_von_marcus
+      data:
+        title: "Hoher Stromverbrauch"
+        message: >
+          Seit 30 Min ueber 3000W (aktuell {{ states('sensor.tibber_pulse_paule_power') }}W).
+          Waschmaschine und Trockner sind inaktiv.
+          Gemessene Geraete: {{ states('sensor.gesamtverbrauch_gemessen') }}W,
+          Sonstiger: {{ states('sensor.sonstiger_verbrauch') }}W.
+        data:
+          push:
+            sound: default
+    - service: persistent_notification.create
+      data:
+        title: "Verbrauchsanomalie erkannt"
+        message: >
+          Netzverbrauch seit 30 Min ueber 3000W.
+          Aktuell: {{ states('sensor.tibber_pulse_paule_power') }}W
+          Gemessene Geraete: {{ states('sensor.gesamtverbrauch_gemessen') }}W
+          Unbekannte Last: {{ states('sensor.sonstiger_verbrauch') }}W
+        notification_id: energie_anomalie
+  mode: single
+
+# -----------------------------------------------------------------------------
+# 4b. Wochenreport (Sonntag 20:00)
+# -----------------------------------------------------------------------------
+- id: energie_wochenreport
+  alias: "Energie: Wochenreport"
+  description: "Sendet sonntags um 20:00 einen Energie-Wochenbericht"
+  trigger:
+    - platform: time
+      at: "20:00:00"
+  condition:
+    - condition: time
+      weekday:
+        - sun
+  action:
+    - service: notify.mobile_app_iphone_von_marcus
+      data:
+        title: "Energie Wochenbericht"
+        message: >
+          Kosten Monat bisher: {{ states('sensor.paule_monthly_cost') }} EUR
+          Prognose Monat: {{ states('sensor.stromkosten_hochrechnung_monat') }} EUR
+          Prognose Jahr: {{ states('sensor.stromkosten_hochrechnung_jahr') }} EUR
+          PV Heute: {{ states('sensor.pv_energie_heute') }} kWh
+          Heizkosten Heute: {{ states('sensor.heizkosten_schaetzung_heute') }} EUR
+  mode: single
+
+# -----------------------------------------------------------------------------
+# 4c. Morgenpreis-Optimierung
+# Trigger: Morgendaten verfuegbar (ca. 13:00)
+# -----------------------------------------------------------------------------
+- id: energie_morgenpreis_analyse
+  alias: "Energie: Morgenpreis-Analyse"
+  description: "Analysiert und meldet morgige Strompreise mit Empfehlungen"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.paule_tomorrow_s_data_available
+      to: "on"
+  action:
+    - service: notify.mobile_app_iphone_von_marcus
+      data:
+        title: "Strompreise Morgen verfuegbar"
+        message: >
+          {% set avg = states('sensor.tibber_durchschnittspreis_morgen') | float(0) %}
+          {% set min_p = states('sensor.paule_tomorrow_s_lowest_price') | float(0) %}
+          {% set max_p = states('sensor.paule_tomorrow_s_highest_price') | float(0) %}
+          {% set level = states('sensor.paule_tomorrow_s_price_level') %}
+          Durchschnitt: {{ avg | round(1) }} ct/kWh
+          Min: {{ min_p | round(1) }} ct | Max: {{ max_p | round(1) }} ct
+          Bewertung: {{ level }}
+          {% if avg < 25 %}
+          Morgen guenstig - Grossverbraucher einplanen!
+          {% elif avg > 35 %}
+          Morgen teuer - Verbrauch moeglichst verschieben.
+          {% else %}
+          Morgen normales Preisniveau.
+          {% endif %}
+  mode: single
+
+# -----------------------------------------------------------------------------
+# 4d. Heizung bei guenstigem Strom (nur Benachrichtigung)
+# Trigger: Guenstiger Strom UND Aussentemperatur < 5C
+# -----------------------------------------------------------------------------
+- id: energie_heizung_empfehlung
+  alias: "Energie: Heizung-Empfehlung bei guenstigem Strom"
+  description: "Empfiehlt Heizung hochzufahren wenn Strom guenstig und kalt"
+  trigger:
+    - platform: state
+      entity_id: sensor.tibber_preis_status
+      to: "günstig"
+  condition:
+    - condition: numeric_state
+      entity_id: weather.forecast_zuhause
+      attribute: temperature
+      below: 5
+  action:
+    - service: notify.mobile_app_iphone_von_marcus
+      data:
+        title: "Heiz-Empfehlung"
+        message: >
+          Strom ist gerade guenstig ({{ states('sensor.paule_current_electricity_price') }} ct/kWh)
+          und es ist kalt ({{ state_attr('weather.forecast_zuhause', 'temperature') }}C).
+          Ggf. Heizung jetzt hochfahren oder Warmwasser laden.
+  mode: single

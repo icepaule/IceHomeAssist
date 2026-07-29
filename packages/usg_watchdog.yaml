@@ -1,0 +1,64 @@
+# =============================================================================
+# USG-3P Watchdog — Alarm bei Gateway-Ausfall
+# Quelle: MQTT-Discovery via /opt/usg-watchdog/usg_watchdog.py (systemd-Timer)
+# Entity: binary_sensor.usg_3p_watchdog_usg_3p_watchdog (device_class connectivity)
+#   on  = online | off = offline | unavailable = Controller/Watchdog gestört
+# =============================================================================
+automation:
+  - id: usg_watchdog_offline
+    alias: "USG-3P Watchdog: Gateway OFFLINE"
+    description: "Alarmiert wenn die USG-3P laut Controller >3 Min offline ist."
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.usg_3p_watchdog_usg_3p_watchdog
+        to: "off"
+        for: "00:03:00"
+    action:
+      - service: script.send_notification
+        data:
+          title: "USG-3P OFFLINE"
+          message: >-
+            ⚠️ Die USG-3P ist laut UniFi-Controller seit >3 Min offline.
+            Zuletzt: Uptime {{ state_attr('binary_sensor.usg_3p_watchdog_usg_3p_watchdog','uptime_h') }} h,
+            CPU {{ state_attr('binary_sensor.usg_3p_watchdog_usg_3p_watchdog','cpu') }}%,
+            MEM {{ state_attr('binary_sensor.usg_3p_watchdog_usg_3p_watchdog','mem') }}%.
+          priority: high
+
+  - id: usg_watchdog_unavailable
+    alias: "USG-3P Watchdog: Sensor UNAVAILABLE"
+    description: "Watchdog-Script oder Controller (192.168.1.7) liefert >6 Min keine Daten."
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.usg_3p_watchdog_usg_3p_watchdog
+        to: "unavailable"
+        for: "00:06:00"
+    action:
+      - service: script.send_notification
+        data:
+          title: "USG-3P Watchdog gestört"
+          message: >-
+            ❓ Der USG-Watchdog liefert keine Daten mehr (>6 Min).
+            Controller 192.168.1.7 erreichbar? systemd-Timer usg-watchdog auf NUC-HA prüfen.
+          priority: high
+
+  - id: usg_watchdog_recovery
+    alias: "USG-3P Watchdog: Gateway WIEDER ONLINE"
+    description: "Entwarnung wenn die USG-3P zurück ist."
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.usg_3p_watchdog_usg_3p_watchdog
+        from:
+          - "off"
+          - "unavailable"
+        to: "on"
+    action:
+      - service: script.send_notification
+        data:
+          title: "USG-3P wieder online"
+          message: >-
+            ✅ Die USG-3P ist wieder online
+            (Uptime {{ state_attr('binary_sensor.usg_3p_watchdog_usg_3p_watchdog','uptime_h') }} h).
+          priority: normal

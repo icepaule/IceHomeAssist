@@ -1,14 +1,21 @@
 # Staubsauger Zeitplan-Automatisierung
 - id: vacuum_daily_schedule
   alias: "Staubsauger Täglicher Zeitplan"
-  description: "Startet den Dreame F9 täglich"
+  description: "Startet Willy werktags abends"
   trigger:
     - platform: time
-      at: "10:00:00"
+      at: "19:00:00"
   condition:
     - condition: state
       entity_id: vacuum.willi_robby
       state: "docked"
+    - condition: time
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
   action:
     - service: vacuum.start
       target:
