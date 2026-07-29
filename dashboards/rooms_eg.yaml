@@ -75,6 +75,127 @@ views:
               - entity: vacuum.conga_1790
                 name: Conga
 
+      # ===== WOHNZIMMER - LUFTQUALITAET (Luft2) =====
+      # 27.07.2026: Luft2 stand faelschlich als "Buero"-Sensor in der Karte unten
+      # (Annahme "gleicher Raum wie Luft3" war falsch) - Luft2 steht tatsaechlich
+      # im Wohnzimmer, HA-Area war bereits korrekt "living_room".
+      - type: vertical-stack
+        title: Wohnzimmer - Luftqualität (Luft2)
+        cards:
+          - type: entities
+            title: Luft2
+            show_header_toggle: false
+            entities:
+              - entity: sensor.luft2_sensor_luft2_temperatur
+                name: Temperatur
+              - entity: sensor.luft2_sensor_luft2_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+              - entity: sensor.luft2_sensor_luft2_luftqualitaet_ppm
+                name: CO2 (äquiv.)
+              - entity: sensor.luft2_sensor_luft2_luftqualitaet_bewertung
+                name: Bewertung
+          - type: custom:apexcharts-card
+            header:
+              title: Klima Wohnzimmer - Tag
+              show: true
+            graph_span: 24h
+            yaxis:
+              - id: temp
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "°C"
+              - id: pct
+                opposite: true
+                min: 0
+                max: 100
+                apex_config:
+                  title:
+                    text: "%"
+            series:
+              - entity: sensor.luft2_sensor_luft2_temperatur
+                name: Temperatur
+                yaxis_id: temp
+                curve: smooth
+                color: "#F44336"
+              - entity: sensor.luft2_sensor_luft2_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+                yaxis_id: pct
+                curve: smooth
+                color: "#2196F3"
+          - type: custom:apexcharts-card
+            header:
+              title: Klima Wohnzimmer - Monat
+              show: true
+            graph_span: 30d
+            yaxis:
+              - id: temp
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "°C"
+              - id: pct
+                opposite: true
+                min: 0
+                max: 100
+                apex_config:
+                  title:
+                    text: "%"
+            series:
+              - entity: sensor.luft2_sensor_luft2_temperatur
+                name: Temperatur
+                yaxis_id: temp
+                curve: smooth
+                color: "#F44336"
+                group_by:
+                  func: avg
+                  duration: 2h
+              - entity: sensor.luft2_sensor_luft2_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+                yaxis_id: pct
+                curve: smooth
+                color: "#2196F3"
+                group_by:
+                  func: avg
+                  duration: 2h
+          - type: custom:apexcharts-card
+            header:
+              title: CO2-äquiv. Wohnzimmer - Tag
+              show: true
+            graph_span: 24h
+            yaxis:
+              - id: ppm
+                decimals: 0
+                apex_config:
+                  title:
+                    text: "ppm"
+            series:
+              - entity: sensor.luft2_sensor_luft2_luftqualitaet_ppm
+                name: CO2 (äquiv.)
+                yaxis_id: ppm
+                curve: smooth
+                color: "#9C27B0"
+          - type: custom:apexcharts-card
+            header:
+              title: CO2-äquiv. Wohnzimmer - Monat
+              show: true
+            graph_span: 30d
+            yaxis:
+              - id: ppm
+                decimals: 0
+                apex_config:
+                  title:
+                    text: "ppm"
+            series:
+              - entity: sensor.luft2_sensor_luft2_luftqualitaet_ppm
+                name: CO2 (äquiv.)
+                yaxis_id: ppm
+                curve: smooth
+                color: "#9C27B0"
+                group_by:
+                  func: avg
+                  duration: 2h
+
       # ===== KUECHE =====
       - type: grid
         title: "🍳 Kueche"
@@ -137,6 +258,125 @@ views:
                 name: Heute
               - entity: sensor.arbeitszimmer_kosten_pro_stunde
                 name: Kosten/h
+
+      # ===== BUERO - LUFTQUALITAET (Luft3) =====
+      # 27.07.2026: Luft2 hierhin ausgelagert, siehe "WOHNZIMMER - LUFTQUALITAET" oben
+      - type: vertical-stack
+        title: Buero - Luftqualität (Luft3)
+        cards:
+          - type: entities
+            title: Luft3
+            show_header_toggle: false
+            entities:
+              - entity: sensor.luft3_sensor_luft3_temperatur
+                name: Temperatur
+              - entity: sensor.luft3_sensor_luft3_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+              - entity: sensor.luft3_sensor_luft3_luftqualitaet_ppm
+                name: CO2 (äquiv.)
+              - entity: sensor.luft3_sensor_luft3_luftqualitaet_bewertung
+                name: Bewertung
+          - type: custom:apexcharts-card
+            header:
+              title: Klima Büro - Tag
+              show: true
+            graph_span: 24h
+            yaxis:
+              - id: temp
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "°C"
+              - id: pct
+                opposite: true
+                min: 0
+                max: 100
+                apex_config:
+                  title:
+                    text: "%"
+            series:
+              - entity: sensor.luft3_sensor_luft3_temperatur
+                name: Temperatur
+                yaxis_id: temp
+                curve: smooth
+                color: "#FF9800"
+              - entity: sensor.luft3_sensor_luft3_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+                yaxis_id: pct
+                curve: smooth
+                color: "#03A9F4"
+          - type: custom:apexcharts-card
+            header:
+              title: Klima Büro - Monat
+              show: true
+            graph_span: 30d
+            yaxis:
+              - id: temp
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "°C"
+              - id: pct
+                opposite: true
+                min: 0
+                max: 100
+                apex_config:
+                  title:
+                    text: "%"
+            series:
+              - entity: sensor.luft3_sensor_luft3_temperatur
+                name: Temperatur
+                yaxis_id: temp
+                curve: smooth
+                color: "#FF9800"
+                group_by:
+                  func: avg
+                  duration: 2h
+              - entity: sensor.luft3_sensor_luft3_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+                yaxis_id: pct
+                curve: smooth
+                color: "#03A9F4"
+                group_by:
+                  func: avg
+                  duration: 2h
+          - type: custom:apexcharts-card
+            header:
+              title: CO2-äquiv. Büro - Tag
+              show: true
+            graph_span: 24h
+            yaxis:
+              - id: ppm
+                decimals: 0
+                apex_config:
+                  title:
+                    text: "ppm"
+            series:
+              - entity: sensor.luft3_sensor_luft3_luftqualitaet_ppm
+                name: CO2 (äquiv.)
+                yaxis_id: ppm
+                curve: smooth
+                color: "#E91E63"
+          - type: custom:apexcharts-card
+            header:
+              title: CO2-äquiv. Büro - Monat
+              show: true
+            graph_span: 30d
+            yaxis:
+              - id: ppm
+                decimals: 0
+                apex_config:
+                  title:
+                    text: "ppm"
+            series:
+              - entity: sensor.luft3_sensor_luft3_luftqualitaet_ppm
+                name: CO2 (äquiv.)
+                yaxis_id: ppm
+                curve: smooth
+                color: "#E91E63"
+                group_by:
+                  func: avg
+                  duration: 2h
 
       # ===== GARTEN =====
       - type: grid

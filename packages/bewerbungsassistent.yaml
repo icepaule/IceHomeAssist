@@ -1,0 +1,188 @@
+# =============================================================================
+# BEWERBUNGSASSISTENT PAKET
+# =============================================================================
+# Quelle: http://10.10.0.100:18080/api/status  (Docker-Container auf NUC-HA)
+#
+# Liefert Trefferzahlen, Stand des Bewerbungsprozesses und die Gesundheit der
+# drei Zulieferer: RSS-Feeds, Mail-Import (IMAP) und Ollama.
+#
+# Der Endpunkt fragt Ollama aktiv an, deshalb ein grosszuegiger Timeout.
+# scan_interval 300s reicht: Suchen laufen stuendlich, Mails alle 3h.
+# =============================================================================
+
+rest:
+  - resource: "http://10.10.0.100:18080/api/status"
+    scan_interval: 300
+    timeout: 30
+    sensor:
+      # -- Gesamtstatus -------------------------------------------------------
+      - name: "Bewerbung Status"
+        unique_id: bewerbung_status
+        value_template: "{{ value_json.status }}"
+        icon: >-
+          {% if value_json.status == 'ok' %}mdi:check-circle{% else %}mdi:alert-circle{% endif %}
+        json_attributes:
+          - probleme
+          - generated_at
+
+      # -- Neue Treffer der letzten 24h --------------------------------------
+      - name: "Bewerbung Neue Treffer 24h"
+        unique_id: bewerbung_neue_treffer_24h
+        unit_of_measurement: "Treffer"
+        state_class: measurement
+        value_template: "{{ value_json.neue_treffer.anzahl }}"
+        icon: mdi:briefcase-search
+        json_attributes_path: "$.neue_treffer"
+        json_attributes:
+          - liste
+          - stunden
+
+      # -- Trefferbestand -----------------------------------------------------
+      - name: "Bewerbung Serioese Treffer"
+        unique_id: bewerbung_serioese_treffer
+        unit_of_measurement: "Treffer"
+        state_class: measurement
+        value_template: "{{ value_json.treffer.serioes }}"
+        icon: mdi:star-check
+
+      - name: "Bewerbung Treffer zu pruefen"
+        unique_id: bewerbung_treffer_pruefen
+        unit_of_measurement: "Treffer"
+        state_class: measurement
+        value_template: "{{ value_json.treffer.pruefen }}"
+        icon: mdi:magnify
+
+      # -- Bewerbungsprozess --------------------------------------------------
+      - name: "Bewerbung Unterlagen in Arbeit"
+        unique_id: bewerbung_unterlagen_entwurf
+        unit_of_measurement: "Stellen"
+        value_template: "{{ value_json.jobs.entwurf }}"
+        icon: mdi:file-document-edit
+
+      - name: "Bewerbung Versendet"
+        unique_id: bewerbung_versendet
+        unit_of_measurement: "Stellen"
+        value_template: "{{ value_json.jobs.versendet }}"
+        icon: mdi:send
+
+      - name: "Bewerbung Ruecklaeufer"
+        unique_id: bewerbung_ruecklaeufer
+        unit_of_measurement: "Stellen"
+        value_template: "{{ value_json.jobs.ruecklauf }}"
+        icon: mdi:email-open
+
+      # -- Zulieferer ---------------------------------------------------------
+      - name: "Bewerbung RSS Feeds aktiv"
+        unique_id: bewerbung_rss_feeds_aktiv
+        unit_of_measurement: "Feeds"
+        value_template: "{{ value_json.rss.aktiv }}"
+        icon: mdi:rss
+
+      - name: "Bewerbung Mail Import"
+        unique_id: bewerbung_mail_import
+        # Kurzer Zustand; der Fehlertext steht im Attribut (State max. 255 Zeichen).
+        value_template: >-
+          {% if not value_json.mail.aktiv %}deaktiviert
+          {%- elif value_json.mail.fehler %}fehler
+          {%- else %}ok{% endif %}
+        icon: mdi:email-sync
+        json_attributes_path: "$.mail"
+        json_attributes:
+          - letzter_lauf
+          - naechster_lauf
+          - fehler
+          - konfiguriert
+
+      - name: "Bewerbung Ollama"
+        unique_id: bewerbung_ollama
+        value_template: "{{ 'ok' if value_json.ollama.ok else 'fehler' }}"
+        icon: mdi:brain
+        json_attributes_path: "$.ollama"
+        json_attributes:
+          - meldung
+
+    binary_sensor:
+      # Achtung: 'json_attributes' ist beim rest-binary_sensor nicht erlaubt und
+      # macht den kompletten rest:-Block ungueltig. Der Klartext steht in
+      # sensor.bewerbung_stoerungstext.
+      - name: "Bewerbungsassistent Stoerung"
+        unique_id: bewerbungsassistent_stoerung
+        device_class: problem
+        value_template: "{{ value_json.status != 'ok' }}"
+
+# -----------------------------------------------------------------------------
+# Aufbereitete Texte fuer die Karten
+# -----------------------------------------------------------------------------
+template:
+  # Trigger-basiert und nicht rein zustandsbasiert: Der REST-Sensor aendert
+  # seinen Wert oft tagelang nicht. Ohne 'homeassistant start' und den
+  # Zeittakt blieben diese Sensoren nach einem Neustart dauerhaft 'unknown'
+  # und die Kiosk-Meldung leer.
+  - trigger:
+      - platform: homeassistant
+        event: start
+      - platform: state
+        entity_id: sensor.bewerbung_neue_treffer_24h
+      - platform: state
+        entity_id: sensor.bewerbung_status
+      - platform: time_pattern
+        minutes: "/5"
+    sensor:
+      # Einzeiler fuer die Kiosk-Meldung
+      - name: "Bewerbung Neue Treffer Text"
+        unique_id: bewerbung_neue_treffer_text
+        state: >-
+          {% set n = states('sensor.bewerbung_neue_treffer_24h') | int(0) %}
+          {% if n == 0 %}Keine neuen Treffer
+          {%- elif n == 1 %}1 neuer Stellentreffer
+          {%- else %}{{ n }} neue Stellentreffer{% endif %}
+
+      # Zweizeiler: die stärksten Treffer als Kurztext
+      - name: "Bewerbung Neue Treffer Kurz"
+        unique_id: bewerbung_neue_treffer_kurz
+        state: >-
+          {% set liste = state_attr('sensor.bewerbung_neue_treffer_24h', 'liste') or [] %}
+          {% if liste | count == 0 %}Nichts Neues
+          {%- else %}
+          {{- liste[:2] | map(attribute='titel') | join(' · ') }}
+          {%- if liste | count > 2 %} · +{{ (liste | count) - 2 }} weitere{% endif %}
+          {%- endif %}
+
+      # Markdown-Liste fuer das grosse Dashboard
+      - name: "Bewerbung Neue Treffer Liste"
+        unique_id: bewerbung_neue_treffer_liste
+        state: "{{ states('sensor.bewerbung_neue_treffer_24h') }}"
+        attributes:
+          # Literalblock '|-' statt '>-': nur so bleiben echte Zeilenumbrueche
+          # erhalten. Ein '\n' in einem Jinja-String wird hier NICHT als
+          # Escape ausgewertet, die Liste stuende sonst in einer Zeile.
+          markdown: |-
+            {%- set liste = state_attr('sensor.bewerbung_neue_treffer_24h', 'liste') or [] %}
+            {%- if liste | count == 0 %}
+            Keine neuen Treffer in den letzten 24 Stunden.
+            {%- else %}
+            {%- for t in liste[:8] %}
+            - {{ ('**' ~ t.titel ~ '**') if t.bewertung == 'serioes' else t.titel }} — {{ t.firma }}
+            {%- endfor %}
+            {%- endif %}
+
+      # Klartext der Stoerungen
+      - name: "Bewerbung Stoerungstext"
+        unique_id: bewerbung_stoerungstext
+        state: >-
+          {% set s = states('sensor.bewerbung_status') %}
+          {% set p = state_attr('sensor.bewerbung_status', 'probleme') or [] %}
+          {% if s in ['unavailable', 'unknown'] %}App nicht erreichbar (10.10.0.100:18080)
+          {%- elif p | count == 0 %}Alles in Ordnung
+          {%- else %}{{ p | join(', ') }}{% endif %}
+
+    binary_sensor:
+      # Der rest-binary_sensor wird 'unavailable', wenn die App weg ist — dann
+      # ist er nicht 'on' und die Kiosk-Karte bliebe stumm. Genau dann muss sie
+      # aber erscheinen. Diese Huelle macht daraus ein echtes Problem-Signal.
+      - name: "Bewerbungsassistent Problem"
+        unique_id: bewerbungsassistent_problem
+        device_class: problem
+        state: >-
+          {{ states('sensor.bewerbung_status') in ['unavailable', 'unknown']
+             or is_state('binary_sensor.bewerbungsassistent_stoerung', 'on') }}

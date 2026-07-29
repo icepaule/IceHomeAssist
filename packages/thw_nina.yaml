@@ -76,95 +76,84 @@ rest:
       - name: "DWD München Warnungen"
         unique_id: dwd_muenchen_warnungen
         value_template: >
-          {% set warnings = value_json.warnings | default({}) %}
-          {% set ns = namespace(count=0) %}
-          {% for cell_id, warns in warnings.items() %}
-            {% if warns is iterable and warns is not string %}
-              {% for w in warns %}
-                {% if 'München' in (w.regionName | default('')) or cell_id == '809162000' %}
-                  {% set ns.count = ns.count + 1 %}
-                {% endif %}
-              {% endfor %}
-            {% endif %}
-          {% endfor %}
-          {{ ns.count }}
+          {% if value_json is defined and value_json is not none %}
+            {% set warnings = value_json.warnings | default({}) %}
+            {% set ns = namespace(count=0) %}
+            {% for cell_id, warns in warnings.items() %}
+              {% if warns is iterable and warns is not string %}
+                {% for w in warns %}
+                  {% if 'München' in (w.regionName | default('')) or cell_id == '809162000' %}
+                    {% set ns.count = ns.count + 1 %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.count }}
+          {% else %}
+            0
+          {% endif %}
         icon: mdi:weather-lightning-rainy
 
-  # Pegelstände Isar
-  # URLs: HND Bayern Hauptseiten (alte graphik_pegel.php API ist offline)
-  # Regex: Wert steht in <b>XX</b> cm Format
-  - resource: "https://www.hnd.bayern.de/pegel/isar/muenchen-16005701"
-    scan_interval: 900
-    headers:
-      Accept: "text/html,application/xhtml+xml"
-      User-Agent: "HomeAssistant"
-    sensor:
-      - name: "Pegel Isar München"
-        unique_id: pegel_isar_muenchen
-        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
-        unit_of_measurement: "cm"
-        icon: mdi:waves
+  # Pegelstände werden jetzt als command_line Sensoren definiert (s.u.)
+  # REST-Scraping war unzuverlässig wegen HTML-Parsing und Rate-Limiting
 
-  - resource: "https://www.hnd.bayern.de/pegel/isar/freising-16006500"
-    scan_interval: 900
-    headers:
-      Accept: "text/html,application/xhtml+xml"
-      User-Agent: "HomeAssistant"
-    sensor:
-      - name: "Pegel Isar Freising"
-        unique_id: pegel_isar_freising
-        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
-        unit_of_measurement: "cm"
-        icon: mdi:waves
+# -----------------------------------------------------------------------------
+# Pegelstände als Command-Line Sensoren (robuster als REST für HTML-Scraping)
+# -----------------------------------------------------------------------------
+command_line:
+  - sensor:
+      name: "Pegel Isar München"
+      unique_id: pegel_isar_muenchen
+      command: "curl -s -H 'User-Agent: HomeAssistant' 'https://www.hnd.bayern.de/pegel/isar/muenchen-16005701' | grep -oP '([0-9]+)</b> cm' | head -1 | grep -oP '[0-9]+'"
+      unit_of_measurement: "cm"
+      value_template: "{{ value | int(0) }}"
+      scan_interval: 900
+      icon: mdi:waves
 
-  - resource: "https://www.hnd.bayern.de/pegel/isar/bad-toelz-bruecke-16003502"
-    scan_interval: 900
-    headers:
-      Accept: "text/html,application/xhtml+xml"
-      User-Agent: "HomeAssistant"
-    sensor:
-      - name: "Pegel Isar Bad Tölz"
-        unique_id: pegel_isar_bad_toelz
-        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
-        unit_of_measurement: "cm"
-        icon: mdi:waves
+  - sensor:
+      name: "Pegel Isar Freising"
+      unique_id: pegel_isar_freising
+      command: "curl -s -H 'User-Agent: HomeAssistant' 'https://www.hnd.bayern.de/pegel/isar/freising-16006500' | grep -oP '([0-9]+)</b> cm' | head -1 | grep -oP '[0-9]+'"
+      unit_of_measurement: "cm"
+      value_template: "{{ value | int(0) }}"
+      scan_interval: 900
+      icon: mdi:waves
 
-  - resource: "https://www.hnd.bayern.de/pegel/isar/puppling-16004403"
-    scan_interval: 900
-    headers:
-      Accept: "text/html,application/xhtml+xml"
-      User-Agent: "HomeAssistant"
-    sensor:
-      - name: "Pegel Isar Puppling"
-        unique_id: pegel_isar_puppling
-        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
-        unit_of_measurement: "cm"
-        icon: mdi:waves
+  - sensor:
+      name: "Pegel Isar Bad Tölz"
+      unique_id: pegel_isar_bad_toelz
+      command: "curl -s -H 'User-Agent: HomeAssistant' 'https://www.hnd.bayern.de/pegel/isar/bad-toelz-bruecke-16003502' | grep -oP '([0-9]+)</b> cm' | head -1 | grep -oP '[0-9]+'"
+      unit_of_measurement: "cm"
+      value_template: "{{ value | int(0) }}"
+      scan_interval: 900
+      icon: mdi:waves
 
-  # Pegelstände Amper (korrigierte Station-IDs)
-  - resource: "https://www.hnd.bayern.de/pegel/isar/fuerstenfeldbruck-16605006"
-    scan_interval: 900
-    headers:
-      Accept: "text/html,application/xhtml+xml"
-      User-Agent: "HomeAssistant"
-    sensor:
-      - name: "Pegel Amper Fürstenfeldbruck"
-        unique_id: pegel_amper_fuerstenfeldbruck
-        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
-        unit_of_measurement: "cm"
-        icon: mdi:waves
+  - sensor:
+      name: "Pegel Isar Puppling"
+      unique_id: pegel_isar_puppling
+      command: "curl -s -H 'User-Agent: HomeAssistant' 'https://www.hnd.bayern.de/pegel/isar/puppling-16004403' | grep -oP '([0-9]+)</b> cm' | head -1 | grep -oP '[0-9]+'"
+      unit_of_measurement: "cm"
+      value_template: "{{ value | int(0) }}"
+      scan_interval: 900
+      icon: mdi:waves
 
-  - resource: "https://www.hnd.bayern.de/pegel/donau_bis_passau/inkofen-16607001"
-    scan_interval: 900
-    headers:
-      Accept: "text/html,application/xhtml+xml"
-      User-Agent: "HomeAssistant"
-    sensor:
-      - name: "Pegel Amper Inkofen"
-        unique_id: pegel_amper_inkofen
-        value_template: "{{ value | regex_findall_index('([0-9]+)</b>\\s*cm', 0) | default('?') }}"
-        unit_of_measurement: "cm"
-        icon: mdi:waves
+  - sensor:
+      name: "Pegel Amper Fürstenfeldbruck"
+      unique_id: pegel_amper_fuerstenfeldbruck
+      command: "curl -s -H 'User-Agent: HomeAssistant' 'https://www.hnd.bayern.de/pegel/isar/fuerstenfeldbruck-16605006' | grep -oP '([0-9]+)</b> cm' | head -1 | grep -oP '[0-9]+'"
+      unit_of_measurement: "cm"
+      value_template: "{{ value | int(0) }}"
+      scan_interval: 900
+      icon: mdi:waves
+
+  - sensor:
+      name: "Pegel Amper Inkofen"
+      unique_id: pegel_amper_inkofen
+      command: "curl -s -H 'User-Agent: HomeAssistant' 'https://www.hnd.bayern.de/pegel/donau_bis_passau/inkofen-16607001' | grep -oP '([0-9]+)</b> cm' | head -1 | grep -oP '[0-9]+'"
+      unit_of_measurement: "cm"
+      value_template: "{{ value | int(0) }}"
+      scan_interval: 900
+      icon: mdi:waves
 
 # -----------------------------------------------------------------------------
 # Template Sensoren für THW-relevante Aufbereitung
@@ -245,7 +234,12 @@ automation:
         entity_id: sensor.nina_munchen_warnungen_anzahl
     condition:
       - condition: template
-        value_template: "{{ trigger.to_state.state | int > trigger.from_state.state | int }}"
+        value_template: >
+          {% set new = trigger.to_state.state %}
+          {% set old = trigger.from_state.state %}
+          {{ new not in ['unknown', 'unavailable']
+             and old not in ['unknown', 'unavailable']
+             and (new | int(0)) > (old | int(0)) }}
     action:
       - service: persistent_notification.create
         data:
@@ -290,7 +284,9 @@ automation:
         to: "0"
     condition:
       - condition: template
-        value_template: "{{ trigger.from_state.state | int > 0 }}"
+        value_template: >
+          {% set old = trigger.from_state.state %}
+          {{ old not in ['unknown', 'unavailable'] and (old | int(0)) > 0 }}
     action:
       - service: persistent_notification.create
         data:

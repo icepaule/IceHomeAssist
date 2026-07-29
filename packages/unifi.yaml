@@ -43,16 +43,17 @@ template:
         unique_id: network_overall_status
         state: >-
           {% set ctrl = states('binary_sensor.unifi_controller_online') %}
-          {% set gw = states('sensor.usg_3p_state') %}
-          {% set ap1 = states('sensor.u6_1_og_state') %}
-          {% set ap2 = states('sensor.u6_keller_state') %}
-          {% set aps_ok = (ap1 not in ['unavailable','unknown','offline']) | int + (ap2 not in ['unavailable','unknown','offline']) | int %}
-          {% if ctrl == 'on' and gw not in ['unavailable','unknown','offline'] and aps_ok >= 2 %}
+          {% set ap1 = states('sensor.ap_1og_clients') %}
+          {% set ap2 = states('sensor.ap_wz_clients') %}
+          {% set ap1_ok = ap1 not in ['unavailable','unknown','none'] and ap1|int(0) > 0 %}
+          {% set ap2_ok = ap2 not in ['unavailable','unknown','none'] and ap2|int(0) > 0 %}
+          {% set aps_ok = (ap1_ok|int) + (ap2_ok|int) %}
+          {% if ctrl == 'on' and aps_ok >= 2 %}
             Alles OK
-          {% elif ctrl == 'on' and gw not in ['unavailable','unknown','offline'] %}
+          {% elif ctrl == 'on' and aps_ok >= 1 %}
             Eingeschraenkt
           {% elif ctrl == 'on' %}
-            Gateway Offline
+            APs Offline
           {% else %}
             Controller Offline
           {% endif %}
@@ -72,9 +73,11 @@ template:
       - name: "UniFi APs Online"
         unique_id: unifi_aps_online_tpl
         state: >-
-          {% set ap1 = states('sensor.u6_1_og_state') %}
-          {% set ap2 = states('sensor.u6_keller_state') %}
-          {{ (ap1 not in ['unavailable','unknown','offline']) | int + (ap2 not in ['unavailable','unknown','offline']) | int }}
+          {% set ap1 = states('sensor.ap_1og_clients') %}
+          {% set ap2 = states('sensor.ap_wz_clients') %}
+          {% set ap1_ok = ap1 not in ['unavailable','unknown','none'] and ap1|int(0) > 0 %}
+          {% set ap2_ok = ap2 not in ['unavailable','unknown','none'] and ap2|int(0) > 0 %}
+          {{ (ap1_ok|int) + (ap2_ok|int) }}
         unit_of_measurement: "APs"
         icon: mdi:access-point
 
@@ -93,8 +96,8 @@ template:
         unit_of_measurement: "Clients"
         icon: mdi:wifi
 
-      - name: "AP Keller Clients"
-        unique_id: ap_keller_clients_radar
+      - name: "AP WZ Clients"
+        unique_id: ap_wz_clients_radar
         state: >-
           {% set aps = state_attr('sensor.unifi_radar', 'aps') %}
           {% if aps and aps | length > 1 %}{{ aps[1].clients | length }}{% else %}0{% endif %}
@@ -110,8 +113,8 @@ template:
       - name: "UniFi Gateway Status"
         unique_id: unifi_gw_status_tpl
         state: >-
-          {% set s = states('sensor.usg_3p_state') %}
-          {% if s in ['unavailable','unknown'] %}unknown{% elif s == 'offline' %}offline{% else %}online{% endif %}
+          {% set s = states('sensor.unifi_gateway_status_2') %}
+          {% if s in ['unavailable','unknown','none'] %}unknown{% elif s == 'offline' %}offline{% else %}online{% endif %}
         icon: mdi:router-network
 
       - name: "UniFi Radar Nearby Total"
@@ -143,6 +146,6 @@ automation:
           message: >-
             Netzwerk-Status: {{ states('sensor.netzwerk_status') }}
             Controller: {{ states('binary_sensor.unifi_controller_online') }}
-            Gateway: {{ states('sensor.usg_3p_state') }}
-            APs: U6+ 1.OG={{ states('sensor.u6_1_og_state') }}, Keller={{ states('sensor.u6_keller_state') }}
+            Gateway: {{ states('sensor.unifi_gateway_status_2') }}
+            APs: 1.OG Clients={{ states('sensor.ap_1og_clients') }}, WZ Clients={{ states('sensor.ap_wz_clients') }}
           notification_id: icewifi_network

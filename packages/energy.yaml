@@ -6,10 +6,13 @@
 # =============================================================================
 # TEMPLATE SENSORS
 # FIX: Updated entity references:
-#   sensor.pv_inverter_power -> sensor.pv_leistung (configuration.yaml MQTT sensor)
-#   sensor.pv_inverter_energy_today -> sensor.pv_energie_heute (configuration.yaml)
+#   sensor.pv_inverter_power -> sensor.pv_leistung (Tasmota ENERGY Power)
+#   sensor.pv_inverter_energy_today -> sensor.pv_energie_heute (Tasmota ENERGY Today)
 #   sensor.electricity_price -> sensor.paule_electricity_price (Tibber integration)
 #   sensor.grid_power -> sensor.netzverbrauch_aktuell (template in energie_kosten.yaml)
+#   sensor.grid_import -> sensor.tibber_pulse_paule_accumulated_consumption (Tibber Pulse)
+#   sensor.grid_export -> sensor.tibber_pulse_paule_accumulated_production (Tibber Pulse)
+#   number.pv_panel_angle -> does not exist; automation/script commented out
 # =============================================================================
 template:
   - sensor:
@@ -34,12 +37,9 @@ template:
         state: >
           {{ states('sensor.pv_energie_heute')|float(0) | round(2) }}
 
-      # Tibber current price
-      - name: "Tibber Current Price"
-        unique_id: tibber_current_price
-        unit_of_measurement: "EUR/kWh"
-        state: >
-          {{ states('sensor.paule_electricity_price')|float(0) | round(4) }}
+      # NOTE: Tibber Current Price removed here - defined in
+      # automations/tibber_next24h.yaml (unique_id: tibber_current_price) and
+      # templates/energie_kosten.yaml (unique_id: tibber_current_price_eur)
 
       # Daily savings from PV
       - name: "PV Daily Savings"
@@ -69,7 +69,6 @@ template:
           {{ [0, [optimal, 60]|min]|max | round(0) }}
 
       # Grid export/import indicator
-      # FIX: sensor.grid_power -> sensor.netzverbrauch_aktuell
       - name: "Grid Direction"
         unique_id: grid_direction
         state: >
@@ -93,6 +92,9 @@ template:
 
 # =============================================================================
 # UTILITY METERS
+# FIX: Updated sources to actual Tibber Pulse sensors:
+#   sensor.grid_import -> sensor.tibber_pulse_paule_accumulated_consumption
+#   sensor.grid_export -> sensor.tibber_pulse_paule_accumulated_production
 # =============================================================================
 utility_meter:
   pv_energy_daily:
@@ -108,12 +110,58 @@ utility_meter:
     cycle: yearly
 
   grid_import_daily:
-    source: sensor.grid_import
+    source: sensor.tibber_pulse_paule_accumulated_consumption
     cycle: daily
 
   grid_export_daily:
-    source: sensor.grid_export
+    source: sensor.tibber_pulse_paule_accumulated_production
     cycle: daily
+
+  # --- Grid Import monthly/yearly ---
+  grid_import_monthly:
+    source: sensor.tibber_pulse_paule_accumulated_consumption
+    cycle: monthly
+
+  grid_import_yearly:
+    source: sensor.tibber_pulse_paule_accumulated_consumption
+    cycle: yearly
+
+  # --- Server ---
+  server_energy_daily:
+    source: sensor.server_energie_gesamt
+    cycle: daily
+
+  server_energy_monthly:
+    source: sensor.server_energie_gesamt
+    cycle: monthly
+
+  # --- Kueche ---
+  kueche_energy_daily:
+    source: sensor.kueche_energie_gesamt
+    cycle: daily
+
+  kueche_energy_monthly:
+    source: sensor.kueche_energie_gesamt
+    cycle: monthly
+
+  # --- Waschmaschine ---
+  waschmaschine_energy_monthly:
+    source: sensor.waschmaschine_energie_gesamt
+    cycle: monthly
+
+  # --- Trockner ---
+  trockner_energy_monthly:
+    source: sensor.trockner_energie_gesamt
+    cycle: monthly
+
+  # --- Arbeitszimmer ---
+  arbeitszimmer_energy_daily:
+    source: sensor.arbeitszimmer_energie_gesamt
+    cycle: daily
+
+  arbeitszimmer_energy_monthly:
+    source: sensor.arbeitszimmer_energie_gesamt
+    cycle: monthly
 
 # =============================================================================
 # INPUT HELPERS
@@ -127,6 +175,33 @@ input_boolean:
     name: "PV Manual Override"
     icon: mdi:hand-back-left
 
+  # Strompreis notification toggle
+  guenstiger_strom_benachrichtigung:
+    name: "Günstig-Strom Benachrichtigung"
+    icon: mdi:cash-check
+
+  # Waschmaschine waiting for cheap electricity
+  waschmaschine_warten:
+    name: "Waschmaschine wartet auf günstigen Strom"
+    icon: mdi:washing-machine
+
+  # Trockner waiting for cheap electricity
+  trockner_warten:
+    name: "Trockner wartet auf günstigen Strom"
+    icon: mdi:tumble-dryer
+
+# Strompreis threshold
+input_number:
+  strompreis_schwelle:
+    name: "Strompreis-Schwelle günstig"
+    icon: mdi:currency-eur
+    unit_of_measurement: "ct/kWh"
+    min: 15
+    max: 50
+    step: 0.5
+    initial: 25
+    mode: slider
+
 # FIX: Removed duplicate input_number.pv_manual_angle - it is already defined
 # in pv_follow_the_sun.yaml with the correct min:20/max:70 range.
 
@@ -134,33 +209,36 @@ input_boolean:
 # AUTOMATIONS
 # =============================================================================
 automation:
-  # Auto-adjust panel angle based on sun position (follow_the_sun)
-  - id: pv_auto_tracking
-    alias: "PV: Auto Panel Tracking"
-    description: "Migrated from follow_the_sun script"
-    trigger:
-      - platform: time_pattern
-        minutes: "/15"
-      - platform: state
-        entity_id: input_boolean.pv_auto_tracking
-        to: "on"
-    condition:
-      - condition: state
-        entity_id: input_boolean.pv_auto_tracking
-        state: "on"
-      - condition: state
-        entity_id: input_boolean.pv_manual_override
-        state: "off"
-      - condition: sun
-        after: sunrise
-        before: sunset
-    action:
-      - service: number.set_value
-        target:
-          entity_id: number.pv_panel_angle
-        data:
-          value: "{{ states('sensor.optimal_panel_angle')|int }}"
-    mode: single
+  # FIX: Commented out pv_auto_tracking automation because number.pv_panel_angle
+  # does not exist. The PV panel is controlled via MQTT-based distance control.
+  # Uncomment and update entity_id if a panel angle number entity is created.
+  #
+  # - id: pv_auto_tracking
+  #   alias: "PV: Auto Panel Tracking"
+  #   description: "Migrated from follow_the_sun script"
+  #   trigger:
+  #     - platform: time_pattern
+  #       minutes: "/15"
+  #     - platform: state
+  #       entity_id: input_boolean.pv_auto_tracking
+  #       to: "on"
+  #   condition:
+  #     - condition: state
+  #       entity_id: input_boolean.pv_auto_tracking
+  #       state: "on"
+  #     - condition: state
+  #       entity_id: input_boolean.pv_manual_override
+  #       state: "off"
+  #     - condition: sun
+  #       after: sunrise
+  #       before: sunset
+  #   action:
+  #     - service: number.set_value
+  #       target:
+  #         entity_id: number.pv_panel_angle
+  #       data:
+  #         value: "{{ states('sensor.optimal_panel_angle')|int }}"
+  #   mode: single
 
   # Notify on high production
   - id: pv_high_production_notification
@@ -194,9 +272,9 @@ automation:
         after: "06:00:00"
         before: "22:00:00"
     action:
-      - service: notify.telegram
+      - service: notify.mobile_app_iphone_von_marcus
         data:
-          title: "💰 Günstiger Strompreis"
+          title: "Günstiger Strompreis"
           message: >
             Aktueller Tibber-Preis: {{ states('sensor.tibber_current_price') }}€/kWh
             Guter Zeitpunkt zum Laden/Waschen!
@@ -205,25 +283,56 @@ automation:
 # =============================================================================
 # SCRIPTS
 # =============================================================================
-script:
-  pv_set_angle:
-    alias: "PV: Set Panel Angle"
-    description: "Set PV panel to specific angle"
-    fields:
-      angle:
-        description: "Target angle in degrees"
-        example: 30
-    sequence:
-      - service: number.set_value
-        target:
-          entity_id: number.pv_panel_angle
-        data:
-          value: "{{ angle }}"
-      - service: logbook.log
-        data:
-          name: "PV System"
-          message: "Panel angle set to {{ angle }}°"
-    mode: single
+# script:
+#   All scripts commented out - number.pv_panel_angle does not exist.
+  # FIX: Commented out pv_set_angle script because number.pv_panel_angle
+  # does not exist. The PV panel is controlled via MQTT-based distance control.
+  # Uncomment and update entity_id if a panel angle number entity is created.
+  #
+  # pv_set_angle:
+  #   alias: "PV: Set Panel Angle"
+  #   description: "Set PV panel to specific angle"
+  #   fields:
+  #     angle:
+  #       description: "Target angle in degrees"
+  #       example: 30
+  #   sequence:
+  #     - service: number.set_value
+  #       target:
+  #         entity_id: number.pv_panel_angle
+  #       data:
+  #         value: "{{ angle }}"
+  #     - service: logbook.log
+  #       data:
+  #         name: "PV System"
+  #         message: "Panel angle set to {{ angle }}°"
+  #   mode: single
 
   # FIX: Removed duplicate pv_emergency_flat script - it is already defined in
   # pv_follow_the_sun.yaml which uses the correct MQTT-based distance control.
+
+# =============================================================================
+# EXTERNAL DATA SOURCES (Phase 5)
+# =============================================================================
+rest:
+  # --- EPEX Spot Price from Energy-Charts.info (kostenlos, kein API-Key) ---
+  - resource: "https://api.energy-charts.info/price?bzn=DE-LU&resolution=hour"
+    scan_interval: 3600
+    timeout: 30
+    sensor:
+      - name: "EPEX Spot Preis"
+        unique_id: epex_spot_preis
+        value_template: >
+          {% set prices = value_json.price %}
+          {% set timestamps = value_json.unix_seconds %}
+          {% set now_ts = as_timestamp(now()) | int %}
+          {% set ns = namespace(price=0) %}
+          {% for i in range(timestamps | length - 1) %}
+            {% if timestamps[i] <= now_ts < timestamps[i+1] %}
+              {% set ns.price = prices[i] %}
+            {% endif %}
+          {% endfor %}
+          {{ (ns.price / 10) | round(2) }}
+        unit_of_measurement: "ct/kWh"
+        device_class: monetary
+        icon: mdi:chart-areaspline

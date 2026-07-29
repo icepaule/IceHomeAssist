@@ -1,0 +1,78 @@
+# =============================================================================
+# THW DIENSTE - STÖRUNGSHISTORIE (Incidents)
+# =============================================================================
+# Bei einer bestätigten Störung (nach 3 erfolglosen Neuprüfungen) wird über
+# shell_command.thw_diag eine vollständige Best-Practice-Diagnose erstellt
+# (DNS, TCP, TLS-Zertifikat, HTTP-Timing, Traceroute -> wahrscheinliche Ursache).
+#
+# Das Ergebnis wird hier dauerhaft festgehalten:
+#   - Event  thw_incident       -> legt einen neuen Eintrag an (Status "offen")
+#   - Event  thw_incident_ende  -> schließt den Eintrag (Status "behoben" + Dauer)
+# Die letzten 8 Störungen samt Detailbericht stehen in sensor.thw_stoerungs_log
+# (Attribut "eintraege") und sind im Dashboard nachträglich einsehbar.
+# Zusätzlich archiviert diag.sh jede Störung als Datei unter
+# /config/thw_trace/incidents/ + Indexzeile in incidents.jsonl (unbegrenzt).
+# =============================================================================
+
+shell_command:
+  # Vollständige Störungs-Diagnose (Ausgabe: SUMMARY/KATEGORIE/URSACHE + ===DETAIL===)
+  thw_diag: "sh /config/thw_trace/diag.sh {{ slug }}"
+
+template:
+  - trigger:
+      - platform: event
+        event_type: thw_incident
+        id: open
+      - platform: event
+        event_type: thw_incident_ende
+        id: close
+    sensor:
+      # Friendly-Name frei; Entity-ID wird in der Registry auf
+      # sensor.thw_stoerungs_log gesetzt (Slug aus "Störungs" wäre sonst "storungs").
+      - name: "THW Störungs-Historie"
+        unique_id: thw_stoerungs_log
+        icon: mdi:clipboard-pulse-outline
+        state: >
+          {% if trigger.id == 'open' %}
+            {{ trigger.event.data.beginn }} – {{ trigger.event.data.dienst }} [{{ trigger.event.data.kategorie }}]
+          {% else %}
+            {{ this.state if this is defined else 'unbekannt' }}
+          {% endif %}
+        attributes:
+          eintraege: >
+            {% set prev = this.attributes.get('eintraege', []) if this is defined and this.attributes is defined else [] %}
+            {% if trigger.id == 'open' %}
+              {% set d = trigger.event.data %}
+              {% set neu = {
+                   'beginn': d.beginn,
+                   'beginn_ts': d.beginn_ts | int,
+                   'dienst': d.dienst,
+                   'slug': d.slug,
+                   'kategorie': d.kategorie,
+                   'ursache': d.ursache,
+                   'summary': d.summary,
+                   'detail': d.detail,
+                   'kanal': d.kanal,
+                   'ende': '',
+                   'dauer': 0,
+                   'status': 'offen' } %}
+              {{ ([neu] + prev)[:8] }}
+            {% else %}
+              {% set slug = trigger.event.data.slug %}
+              {% set ende = trigger.event.data.ende %}
+              {% set ende_ts = trigger.event.data.ende_ts | int %}
+              {% set ns = namespace(done=false, out=[]) %}
+              {% for e in prev %}
+                {% if not ns.done and e.slug == slug and e.status == 'offen' %}
+                  {% set dauer = ((ende_ts - (e.beginn_ts | int(ende_ts))) / 60) | round(0) | int %}
+                  {% set upd = e | combine({'ende': ende, 'status': 'behoben', 'dauer': dauer}) %}
+                  {% set ns.out = ns.out + [upd] %}
+                  {% set ns.done = true %}
+                {% else %}
+                  {% set ns.out = ns.out + [e] %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.out }}
+            {% endif %}
+# Hinweis: Recorder-Ausschluss von sensor.thw_stoerungs_log/thw_trace_log
+# erfolgt zentral in configuration.yaml (recorder.exclude.entities).

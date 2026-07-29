@@ -1,0 +1,255 @@
+# =============================================================================
+# Meshtastic Automations
+# =============================================================================
+# WICHTIG: In MQTT JSON ist "sender" immer der GW (Uplink-Node).
+#          "from" ist die dezimale Node-Nummer des tatsaechlichen Absenders.
+#          475036064 = !1c5079a0 (GW)
+#          1129993620 = !435a5594 (Supreme)
+#          1322481608 = !4ed377c8 (Deck)
+#          860261236  = !33468b74 (OTN TDeck)
+
+# -----------------------------------------------------------------------------
+# Eingehende Mesh-Nachricht als Benachrichtigung
+# -----------------------------------------------------------------------------
+- alias: "Meshtastic - Neue Nachricht"
+  id: meshtastic_message_notify
+  description: "Persistent Notification bei eingehender Meshtastic Nachricht (dedupliziert)"
+  mode: queued
+  max: 10
+  triggers:
+    - trigger: mqtt
+      topic: "msh/EU_868/2/json/+/+"
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ trigger.payload_json.type == 'text'
+           and trigger.payload_json.payload.text is defined
+           and trigger.payload_json.from != 475036064
+           and trigger.payload_json.from != 1129993620
+           and trigger.payload_json.id | string != states('input_text.meshtastic_last_msg_id') }}
+  actions:
+    - variables:
+        channels:
+          0: "LongFast"
+          1: "IceMesh"
+          2: "THW-OMUO"
+        node_names:
+          1322481608: "Deck"
+          860261236: "OTN"
+        channel_name: "{{ channels.get(trigger.payload_json.channel, 'Kanal ' ~ trigger.payload_json.channel) }}"
+        sender_name: "{{ node_names.get(trigger.payload_json.from, '!' ~ '%08x' | format(trigger.payload_json.from)) }}"
+        text: "{{ trigger.payload_json.payload.text }}"
+    - action: persistent_notification.create
+      data:
+        title: "Mesh [{{ channel_name }}] {{ sender_name }}"
+        message: "{{ text }}"
+        notification_id: "meshtastic_{{ trigger.payload_json.id }}"
+
+# -----------------------------------------------------------------------------
+# Chat-Log: Eingehende Nachrichten -> Event fuer Chat History Sensor
+# -----------------------------------------------------------------------------
+- alias: "Meshtastic - Chat Log Empfangen"
+  id: meshtastic_chat_log_in
+  description: "Feuert Chat-Event fuer eingehende Mesh-Nachrichten (dedupliziert)"
+  mode: queued
+  max: 10
+  triggers:
+    - trigger: mqtt
+      topic: "msh/EU_868/2/json/+/+"
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ trigger.payload_json.type == 'text'
+           and trigger.payload_json.payload.text is defined
+           and trigger.payload_json.from != 475036064
+           and trigger.payload_json.from != 1129993620
+           and trigger.payload_json.id | string != states('input_text.meshtastic_last_msg_id') }}
+  actions:
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.meshtastic_last_msg_id
+      data:
+        value: "{{ trigger.payload_json.id }}"
+    - variables:
+        channels:
+          0: "LongFast"
+          1: "IceMesh"
+          2: "THW-OMUO"
+        node_names:
+          1322481608: "Deck"
+          860261236: "OTN"
+    - event: meshtastic_chat_message
+      event_data:
+        text: "{{ trigger.payload_json.payload.text[:200] }}"
+        sender: "{{ node_names.get(trigger.payload_json.from, '!' ~ '%08x' | format(trigger.payload_json.from)) }}"
+        channel: "{{ channels.get(trigger.payload_json.channel, 'Ch' ~ trigger.payload_json.channel) }}"
+        time: "{{ now().strftime('%H:%M') }}"
+        dir: "in"
+
+# -----------------------------------------------------------------------------
+# GW Batterie niedrig Warnung
+# -----------------------------------------------------------------------------
+- alias: "Meshtastic - GW Batterie niedrig"
+  id: meshtastic_battery_low
+  description: "Warnung wenn T-Beam GW Batterie unter 20%"
+  mode: single
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.mesh_gw_battery
+      below: 20
+  actions:
+    - action: persistent_notification.create
+      data:
+        title: "Meshtastic GW Batterie niedrig!"
+        message: >-
+          T-Beam Gateway Batterie bei {{ states('sensor.mesh_gw_battery') }}%
+          ({{ states('sensor.mesh_gw_voltage') }}V)
+        notification_id: meshtastic_battery_low
+
+# -----------------------------------------------------------------------------
+# GPS Position als device_tracker updaten
+# -----------------------------------------------------------------------------
+- alias: "Meshtastic - GPS Tracker Update"
+  id: meshtastic_gps_tracker
+  description: "GPS-Position Updates fuer alle Meshtastic Geraete"
+  mode: queued
+  max: 10
+  triggers:
+    - trigger: mqtt
+      topic: "msh/EU_868/2/json/+/+"
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ trigger.payload_json.type == 'position'
+           and trigger.payload_json.payload.latitude_i is defined
+           and trigger.payload_json.payload.longitude_i is defined }}
+  actions:
+    - variables:
+        lat: "{{ (trigger.payload_json.payload.latitude_i / 10000000) | round(6) }}"
+        lon: "{{ (trigger.payload_json.payload.longitude_i / 10000000) | round(6) }}"
+        from_node: "{{ trigger.payload_json.from }}"
+        tracker_names:
+          475036064: "meshtastic_gw"
+          1129993620: "meshtastic_supreme"
+          1322481608: "meshtastic_deck"
+          860261236: "meshtastic_otn"
+        tracker_id: "{{ tracker_names.get(from_node, 'meshtastic_' ~ from_node) }}"
+        gps_accuracy: "{{ trigger.payload_json.payload.precision_bits | default(0) }}"
+        altitude: "{{ trigger.payload_json.payload.altitude | default(0) }}"
+    - action: device_tracker.see
+      data:
+        dev_id: "{{ tracker_id }}"
+        gps:
+          - "{{ lat }}"
+          - "{{ lon }}"
+        gps_accuracy: "{{ gps_accuracy }}"
+        battery: >-
+          {% if from_node == 475036064 %}{{ states('sensor.mesh_gw_battery') }}
+          {% elif from_node == 1129993620 %}{{ states('sensor.mesh_supreme_battery') }}
+          {% elif from_node == 1322481608 %}{{ states('sensor.mesh_deck_battery') }}
+          {% elif from_node == 860261236 %}{{ states('sensor.mesh_otn_battery') }}
+          {% else %}0{% endif %}
+
+# -----------------------------------------------------------------------------
+# GPS Init bei HA-Start (Devices anlegen falls noch nicht vorhanden)
+# -----------------------------------------------------------------------------
+- alias: "Meshtastic - GPS Init Startup"
+  id: meshtastic_gps_init
+  description: "Erstellt device_tracker Entities bei HA-Start mit Ottobrunn als Standardposition"
+  mode: single
+  triggers:
+    - trigger: homeassistant
+      event: start
+  actions:
+    - delay: "00:00:05"
+    - action: device_tracker.see
+      data:
+        dev_id: meshtastic_gw
+        gps:
+          - 48.064
+          - 11.665
+        gps_accuracy: 5000
+    - action: device_tracker.see
+      data:
+        dev_id: meshtastic_supreme
+        gps:
+          - 48.064
+          - 11.665
+        gps_accuracy: 5000
+    - action: device_tracker.see
+      data:
+        dev_id: meshtastic_deck
+        gps:
+          - 48.064
+          - 11.665
+        gps_accuracy: 5000
+    - action: device_tracker.see
+      data:
+        dev_id: meshtastic_otn
+        gps:
+          - 48.064
+          - 11.665
+        gps_accuracy: 5000
+
+# -----------------------------------------------------------------------------
+# Schnellnachrichten-Buttons
+# -----------------------------------------------------------------------------
+- alias: "Meshtastic - Schnellnachricht Ping"
+  id: meshtastic_quick_ping
+  description: "Sendet 'Ping' auf IceMesh via HTTP API Bridge"
+  mode: single
+  triggers:
+    - trigger: event
+      event_type: meshtastic_quick_ping
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: "meshtastic/send"
+        payload: '{"text": "Ping", "channel": "IceMesh"}'
+    - event: meshtastic_chat_message
+      event_data:
+        text: "Ping"
+        sender: "Ich"
+        channel: "IceMesh"
+        time: "{{ now().strftime('%H:%M') }}"
+        dir: "out"
+
+- alias: "Meshtastic - Schnellnachricht Status OK"
+  id: meshtastic_quick_ok
+  description: "Sendet 'Status OK' auf IceMesh via HTTP API Bridge"
+  mode: single
+  triggers:
+    - trigger: event
+      event_type: meshtastic_quick_ok
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: "meshtastic/send"
+        payload: '{"text": "Status OK - alles gut!", "channel": "IceMesh"}'
+    - event: meshtastic_chat_message
+      event_data:
+        text: "Status OK - alles gut!"
+        sender: "Ich"
+        channel: "IceMesh"
+        time: "{{ now().strftime('%H:%M') }}"
+        dir: "out"
+
+- alias: "Meshtastic - Schnellnachricht Komme heim"
+  id: meshtastic_quick_home
+  description: "Sendet 'Komme heim' auf IceMesh via HTTP API Bridge"
+  mode: single
+  triggers:
+    - trigger: event
+      event_type: meshtastic_quick_home
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: "meshtastic/send"
+        payload: '{"text": "Komme heim!", "channel": "IceMesh"}'
+    - event: meshtastic_chat_message
+      event_data:
+        text: "Komme heim!"
+        sender: "Ich"
+        channel: "IceMesh"
+        time: "{{ now().strftime('%H:%M') }}"
+        dir: "out"

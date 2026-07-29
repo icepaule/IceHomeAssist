@@ -1,9 +1,12 @@
 # =============================================================================
 # NETZWERK SWITCHES - SNMP MONITORING
 # =============================================================================
-# Switch Keller: CSS326-24G-2S+ (192.168.178.165) - SwOS v2.18
-# Switch Arbeitszimmer: CSS326-24G-2S+ (192.168.178.8) - SwOS v2.18
-# Switch NUC: CRS305-1G-4S+ (192.168.178.191) - SNMP nicht erreichbar
+# MikroTik:
+#   Switch Keller: CSS326-24G-2S+ (192.168.178.101) - SwOS v2.18
+#   Switch Arbeitszimmer: CSS326-24G-2S+ (192.168.178.164) - SwOS v2.18 (war .168, korrigiert auf .164)
+#   Backbone: CRS305-1G-4S+ (192.168.178.9) - Ping only
+# Cisco:
+#   Switch WiFi-WZ: 3560C (192.168.178.193) - IOS 15.2(2)E6, SNMP s3cr3t
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -12,7 +15,7 @@
 sensor:
   # --- Keller ---
   - platform: snmp
-    host: 192.168.178.165
+    host: 192.168.178.101
     community: public
     baseoid: .1.3.6.1.2.1.1.3.0
     name: "SW Keller Uptime"
@@ -27,7 +30,7 @@ sensor:
     scan_interval: 300
 
   - platform: snmp
-    host: 192.168.178.165
+    host: 192.168.178.101
     community: public
     baseoid: .1.3.6.1.4.1.14988.1.1.3.11.0
     name: "SW Keller Temperatur"
@@ -39,7 +42,7 @@ sensor:
 
   # --- Arbeitszimmer ---
   - platform: snmp
-    host: 192.168.178.8
+    host: 192.168.178.164
     community: public
     baseoid: .1.3.6.1.2.1.1.3.0
     name: "SW AZ Uptime"
@@ -54,7 +57,7 @@ sensor:
     scan_interval: 300
 
   - platform: snmp
-    host: 192.168.178.8
+    host: 192.168.178.164
     community: public
     baseoid: .1.3.6.1.4.1.14988.1.1.3.11.0
     name: "SW AZ Temperatur"
@@ -63,6 +66,34 @@ sensor:
     unit_of_measurement: "°C"
     icon: mdi:thermometer
     scan_interval: 300
+
+  # --- Cisco WiFi-AZ (192.168.178.193) ---
+  - platform: snmp
+    host: 192.168.178.193
+    community: s3cr3t
+    baseoid: .1.3.6.1.2.1.1.3.0
+    name: "SW Cisco AZ Uptime"
+    unique_id: cisco_az_uptime
+    value_template: >
+      {% set ticks = value | int(0) %}
+      {% set days = ticks // 8640000 %}
+      {% set hours = (ticks % 8640000) // 360000 %}
+      {% set minutes = (ticks % 360000) // 6000 %}
+      {{ days }}d {{ hours }}h {{ minutes }}m
+    icon: mdi:clock-outline
+    scan_interval: 300
+
+  - platform: snmp
+    host: 192.168.178.193
+    community: s3cr3t
+    baseoid: .1.3.6.1.4.1.9.9.109.1.1.1.1.7.1
+    name: "SW Cisco AZ CPU"
+    unique_id: cisco_az_cpu
+    value_template: "{{ value | int(0) }}"
+    unit_of_measurement: "%"
+    icon: mdi:cpu-32-bit
+    scan_interval: 300
+
 
 # -----------------------------------------------------------------------------
 # Command Line Sensoren
@@ -74,33 +105,56 @@ command_line:
   - sensor:
       name: "SW Keller Ports"
       unique_id: css326_keller_port_details
-      command: "python3 /config/scripts/snmp_switch_ports.py 192.168.178.165"
+      command: "python3 /config/scripts/snmp_switch_ports.py 192.168.178.101"
       value_template: "{{ value_json.count }}"
       unit_of_measurement: "Ports"
       json_attributes:
         - ports
       scan_interval: 120
-      command_timeout: 20
+      command_timeout: 45
       icon: mdi:lan
 
   # --- Arbeitszimmer Port Details + Auslastung ---
   - sensor:
       name: "SW AZ Ports"
       unique_id: css326_az_port_details
-      command: "python3 /config/scripts/snmp_switch_ports.py 192.168.178.8"
+      command: "python3 /config/scripts/snmp_switch_ports.py 192.168.178.164"
       value_template: "{{ value_json.count }}"
       unit_of_measurement: "Ports"
       json_attributes:
         - ports
       scan_interval: 120
-      command_timeout: 20
+      command_timeout: 45
       icon: mdi:lan
+
+  # --- Cisco Port Details ---
+  - sensor:
+      name: "SW Cisco AZ Ports"
+      unique_id: cisco_az_port_details
+      command: "python3 /config/scripts/snmp_switch_ports.py 192.168.178.193 s3cr3t 10"
+      value_template: "{{ value_json.count }}"
+      unit_of_measurement: "Ports"
+      json_attributes:
+        - ports
+      scan_interval: 120
+      command_timeout: 45
+      icon: mdi:lan
+
+  # --- Network Admin Page Update ---
+  - sensor:
+      name: "Network Admin Update"
+      unique_id: network_admin_update
+      command: "python3 /config/scripts/network_admin.py"
+      value_template: "{{ value }}"
+      scan_interval: 300
+      command_timeout: 120
+      icon: mdi:web
 
   # --- Erreichbarkeit ---
   - binary_sensor:
       name: "SW Keller Online"
       unique_id: css326_keller_online
-      command: "ping -c 1 -W 2 192.168.178.165 > /dev/null 2>&1 && echo ON || echo OFF"
+      command: "ping -c 1 -W 2 192.168.178.101 > /dev/null 2>&1 && echo ON || echo OFF"
       payload_on: "ON"
       payload_off: "OFF"
       device_class: connectivity
@@ -109,7 +163,7 @@ command_line:
   - binary_sensor:
       name: "SW AZ Online"
       unique_id: css326_az_online
-      command: "ping -c 1 -W 2 192.168.178.8 > /dev/null 2>&1 && echo ON || echo OFF"
+      command: "ping -c 1 -W 2 192.168.178.164 > /dev/null 2>&1 && echo ON || echo OFF"
       payload_on: "ON"
       payload_off: "OFF"
       device_class: connectivity
@@ -118,11 +172,21 @@ command_line:
   - binary_sensor:
       name: "SW NUC Online"
       unique_id: crs305_backbone_online
-      command: "ping -c 1 -W 2 192.168.178.191 > /dev/null 2>&1 && echo ON || echo OFF"
+      command: "ping -c 1 -W 2 192.168.178.9 > /dev/null 2>&1 && echo ON || echo OFF"
       payload_on: "ON"
       payload_off: "OFF"
       device_class: connectivity
       scan_interval: 60
+
+  - binary_sensor:
+      name: "SW Cisco AZ Online"
+      unique_id: cisco_az_online
+      command: "ping -c 1 -W 2 192.168.178.193 > /dev/null 2>&1 && echo ON || echo OFF"
+      payload_on: "ON"
+      payload_off: "OFF"
+      device_class: connectivity
+      scan_interval: 60
+
 
 # -----------------------------------------------------------------------------
 # Template Sensoren
@@ -170,3 +234,25 @@ template:
           {% else %}
             mdi:lan-disconnect
           {% endif %}
+
+      - name: "SW Cisco AZ Status"
+        unique_id: cisco_az_status
+        state: >
+          {% if is_state('binary_sensor.cisco_az_online', 'on') %}
+            {% set ports = states('sensor.cisco_az_port_details') | int(0) %}
+            {% set cpu = states('sensor.cisco_az_cpu') | int(0) %}
+            {% if cpu > 80 %}
+              Warnung (CPU {{ cpu }}%)
+            {% else %}
+              OK ({{ ports }} Ports, CPU {{ cpu }}%)
+            {% endif %}
+          {% else %}
+            Offline
+          {% endif %}
+        icon: >
+          {% if is_state('binary_sensor.cisco_az_online', 'on') %}
+            mdi:lan-check
+          {% else %}
+            mdi:lan-disconnect
+          {% endif %}
+

@@ -32,6 +32,20 @@ homeassistant:
 # Default Config (empfohlen)
 default_config:
 
+# =============================================================================
+# Reverse-Proxy / SSO (Authentik Outpost @ ha.mpauli.de)
+# Header-Auto-Login via auth_header (BeryJu). Trusted-Proxy = pfSense-SNAT-IP,
+# über die der Outpost (auth01) HA erreicht. Nur .154 darf den Username-Header setzen.
+# =============================================================================
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 192.168.178.154/32
+
+auth_header:
+  username_header: X-authentik-username
+  allow_bypass_login: true
+
 # Frontend Themes
 frontend:
   themes: !include_dir_merge_named themes
@@ -205,6 +219,14 @@ lovelace:
       show_in_sidebar: true
       filename: dashboards/charly_tracker.yaml
 
+    # === BEWERBUNG ===
+    lovelace-bewerbung:
+      mode: yaml
+      title: Bewerbung
+      icon: mdi:briefcase-search
+      show_in_sidebar: true
+      filename: dashboards/bewerbungsassistent.yaml
+
     # === KIOSK TABLET ===
     lovelace-kiosk:
       mode: yaml
@@ -236,6 +258,14 @@ lovelace:
       icon: mdi:dishwasher
       show_in_sidebar: true
       filename: dashboards/spuelmaschine.yaml
+
+    # === ALEXA-MONITOR (IceAlexaSecure VLAN14) ===
+    lovelace-alexa-monitor:
+      mode: yaml
+      title: Alexa-Monitor
+      icon: mdi:shield-search
+      show_in_sidebar: true
+      filename: dashboards/alexa_monitor.yaml
 
 # =============================================================================
 # REST COMMANDS (für Tasmota Displays)

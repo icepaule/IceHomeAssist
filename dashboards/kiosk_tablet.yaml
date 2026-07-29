@@ -27,6 +27,27 @@ views:
       # =============================================
       # WARNUNGEN (nur wenn aktiv)
       # =============================================
+      # Gaswarner Heizungskeller (MQ-2, hoechste Prioritaet)
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.gasleck_heizungskeller
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Gasleck Heizungskeller!"
+          secondary: "{{ states('sensor.luft4_sensor_luft4_luftqualitaet_ppm') }} ppm (Alarm ab 2000ppm)"
+          icon: mdi:gas-cylinder
+          icon_color: red
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace-heizung/heizung
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(244, 67, 54, 0.15) !important;
+                border: 2px solid red !important;
+              }
+
       - type: conditional
         conditions:
           - entity: sensor.nina_munchen_warnungen_anzahl
@@ -82,7 +103,7 @@ views:
       # Integration offline
       - type: conditional
         conditions:
-          - entity: sensor.freddy_shitkit_state
+          - entity: sensor.freddy_shitkit_state_2
             state: "unavailable"
         card:
           type: custom:mushroom-template-card
@@ -100,7 +121,7 @@ views:
       # Katzenklo: Abfallbehälter voll
       - type: conditional
         conditions:
-          - entity: binary_sensor.freddy_shitkit_wastebin
+          - entity: binary_sensor.freddy_shitkit_wastebin_filled
             state: "on"
         card:
           type: custom:mushroom-template-card
@@ -120,18 +141,67 @@ views:
                 50% { opacity: 0.7; }
               }
 
+      # =============================================
+      # BEWERBUNGSASSISTENT
+      # =============================================
+      # Neue Stellentreffer der letzten 24h (Information, kein Alarm)
+      - type: conditional
+        conditions:
+          - entity: sensor.bewerbung_neue_treffer_24h
+            state_not: "0"
+          - entity: sensor.bewerbung_neue_treffer_24h
+            state_not: "unavailable"
+          - entity: sensor.bewerbung_neue_treffer_24h
+            state_not: "unknown"
+        card:
+          type: custom:mushroom-template-card
+          primary: "{{ states('sensor.bewerbung_neue_treffer_text') }} für Gabriele"
+          secondary: "{{ states('sensor.bewerbung_neue_treffer_kurz') }}"
+          icon: mdi:briefcase-search
+          icon_color: blue
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace-bewerbung/home
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(33, 150, 243, 0.12) !important;
+                border: 2px solid #2196f3 !important;
+              }
+
+      # Bewerbungsassistent gestoert (Ollama, Mail-Import oder RSS)
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.bewerbungsassistent_problem
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Bewerbungsassistent gestört"
+          secondary: "{{ states('sensor.bewerbung_stoerungstext') }}"
+          icon: mdi:briefcase-remove
+          icon_color: orange
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace-bewerbung/home
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 165, 0, 0.15) !important;
+                border: 2px solid orange !important;
+              }
+
       # Katzenklo: Streu niedrig
       - type: conditional
         conditions:
-          - entity: binary_sensor.freddy_shitkit_litter
+          - entity: binary_sensor.freddy_shitkit_sand_lack
             state: "on"
         card:
           type: custom:mushroom-template-card
           primary: "Katzenstreu nachfüllen!"
           secondary: >
             Streu in Freddy ShitKit ist niedrig
-            {% if states('sensor.freddy_shitkit_litter_level') != 'unavailable' %}
-            ({{ states('sensor.freddy_shitkit_litter_level') }}%)
+            {% if states('sensor.freddy_shitkit_litter_level_2') != 'unavailable' %}
+            ({{ states('sensor.freddy_shitkit_litter_level_2') }}%)
             {% endif %}
           icon: mdi:grain
           icon_color: orange
@@ -146,11 +216,11 @@ views:
       - type: custom:mushroom-template-card
         primary: "Katzenklo Störung!"
         secondary: >
-          {% set err = states('sensor.freddy_shitkit_error') %}
-          {% set st = states('sensor.freddy_shitkit_state') %}
+          {% set err = states('sensor.freddy_shitkit_error_2') %}
+          {% set st = states('sensor.freddy_shitkit_state_2') %}
           {% if 'system_error' in st %}Reinigung gestoppt - Systemfehler
           {% elif 'paused' in st and 'pet' not in st %}Reinigung blockiert ({{ st | replace('_', ' ') }})
-          {% elif err != 'no_error' and err != 'unavailable' %}Fehler: {{ err }}
+          {% elif err != 'no_error' and err != 'unavailable' and err != 'No error' %}Fehler: {{ err }}
           {% else %}Katzenklo prüfen!
           {% endif %}
         icon: mdi:alert-octagon
@@ -158,8 +228,8 @@ views:
         card_mod:
           style: |
             ha-card {
-              {% set err = states('sensor.freddy_shitkit_error') %}
-              {% set st = states('sensor.freddy_shitkit_state') %}
+              {% set err = states('sensor.freddy_shitkit_error_2') %}
+              {% set st = states('sensor.freddy_shitkit_state_2') %}
               {% if ('system_error' in st) or ('paused' in st and 'pet' not in st and st != 'idle') or (err not in ['no_error', 'unavailable', 'unknown', 'No error']) %}
               background-color: rgba(255, 0, 0, 0.15) !important;
               border: 2px solid red !important;
@@ -176,7 +246,7 @@ views:
       # Trinkbrunnen: Wasser niedrig
       - type: conditional
         conditions:
-          - entity: binary_sensor.trinkbrunnen_water_level
+          - entity: binary_sensor.trinkbrunnen_water_lack_warning
             state: "on"
         card:
           type: custom:mushroom-template-card
@@ -192,13 +262,80 @@ views:
               }
 
       # =============================================
+      # GESCHIRRSPÜLER WARNUNGEN (nur wenn Handlung nötig)
+      # =============================================
+      # Spüler offline
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.spuler_online
+            state: "off"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Spüler offline!"
+          secondary: "Geschirrspüler nicht über Home Connect erreichbar"
+          icon: mdi:dishwasher-off
+          icon_color: orange
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 165, 0, 0.15) !important;
+                border: 2px solid orange !important;
+              }
+
+      # Spüler fertig - Erinnerung Ausräumen
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.spuler_fertig
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Spüler ausräumen"
+          secondary: >
+            Programm fertig — bitte Geschirr ausräumen
+            ({{ states('sensor.spuler_energie_prognose') }} kWh /
+             {{ states('sensor.spuler_wasser_prognose') }} L verbraucht)
+          icon: mdi:dishwasher-alert
+          icon_color: blue
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(33, 150, 243, 0.15) !important;
+                border: 2px solid #2196F3 !important;
+              }
+
+      # Spüler Fehler / Aktion nötig
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.spuler_fehler
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Spüler Störung!"
+          secondary: >
+            {{ states('sensor.spuler_status') }} — am Gerät prüfen
+            (Tür, Wasser, Filter)
+          icon: mdi:alert-octagon
+          icon_color: red
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 0, 0, 0.15) !important;
+                border: 2px solid red !important;
+                animation: pulse 2s infinite;
+              }
+              @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+              }
+
+      # =============================================
       # ENERGIE ÜBERSICHT
       # =============================================
       - type: horizontal-stack
         cards:
           - type: custom:mushroom-template-card
-            primary: Strompreis
-            secondary: "{{ states('sensor.tibber_preis_aktuell') }} ct"
+            primary: "Strom {{ states('sensor.tibber_preis_aktuell') }} ct"
+            secondary: "{{ states('sensor.tibber_preis_status') }}"
             icon: mdi:currency-eur
             icon_color: >
               {% set s = states('sensor.tibber_preis_status') %}
@@ -209,27 +346,80 @@ views:
               action: navigate
               navigation_path: /lovelace-energie/preise
           - type: custom:mushroom-template-card
-            primary: PV
-            secondary: "{{ states('sensor.pv_leistung') }} W"
+            primary: "PV {{ states('sensor.pv_leistung') }} W"
+            secondary: "Netz {{ states('sensor.tibber_pulse_paule_power') }} W"
             icon: mdi:solar-power
             icon_color: yellow
             tap_action:
               action: navigate
               navigation_path: /lovelace-energie/pv
           - type: custom:mushroom-template-card
-            primary: Netz
-            secondary: "{{ states('sensor.tibber_pulse_paule_power') }} W"
-            icon: mdi:transmission-tower
-            icon_color: blue
-          - type: custom:mushroom-template-card
-            primary: Kosten
-            secondary: "{{ states('sensor.stromkosten_heute') }} €"
+            primary: "Heute {{ states('sensor.stromkosten_heute') }} €"
+            secondary: >
+              {% set pv = states('sensor.pv_leistung')|float(0) %}
+              {% if pv > 0 %}Einspeisung{% else %}—{% endif %}
             icon: mdi:cash-multiple
             icon_color: green
             tap_action:
               action: navigate
               navigation_path: /lovelace-energie/preise
 
+
+      # =============================================
+      # SONG-INFO (Hitster-Training)
+      # =============================================
+      - type: conditional
+        conditions:
+          - entity: sensor.aktueller_song
+            state_not: "unknown"
+          - entity: sensor.aktueller_song
+            state_not: "unavailable"
+        card:
+          type: vertical-stack
+          cards:
+            - type: custom:mushroom-template-card
+              primary: "{{ states('sensor.aktueller_song') }}"
+              secondary: "{{ state_attr('sensor.aktueller_song', 'source') }}"
+              icon: mdi:music-note
+              icon_color: purple
+            - type: markdown
+              content: "**Song-Ansage** ein/aus je Alexa:"
+              card_mod:
+                style: |
+                  ha-card {
+                    background: none;
+                    box-shadow: none;
+                    padding: 0 0 0 8px !important;
+                    margin: -8px 0 -12px 0;
+                    font-size: 0.85em;
+                    opacity: 0.7;
+                  }
+            - type: horizontal-stack
+              cards:
+                - type: custom:mushroom-entity-card
+                  entity: input_boolean.song_info_echo_show
+                  name: Show
+                  icon: mdi:tablet
+                  layout: horizontal
+                  fill_container: true
+                  tap_action:
+                    action: toggle
+                - type: custom:mushroom-entity-card
+                  entity: input_boolean.song_info_echo_dot
+                  name: Dot
+                  icon: mdi:circle-small
+                  layout: horizontal
+                  fill_container: true
+                  tap_action:
+                    action: toggle
+                - type: custom:mushroom-entity-card
+                  entity: input_boolean.song_info_echo_plus
+                  name: Plus
+                  icon: mdi:speaker
+                  layout: horizontal
+                  fill_container: true
+                  tap_action:
+                    action: toggle
       # =============================================
       # SCHNELLSCHALTER
       # =============================================
@@ -271,10 +461,10 @@ views:
       - type: horizontal-stack
         cards:
           - type: custom:mushroom-template-card
-            primary: Staubsauger
+            primary: >
+              Sauger — {{ states('sensor.willi_robby_status') }}
             secondary: >
-              {{ states('sensor.willi_robby_status') }}
-              ({{ states('sensor.willi_robby_battery_level') }}%)
+              Akku {{ states('sensor.willi_robby_battery_level') }}%
             icon: mdi:robot-vacuum
             icon_color: >
               {% set s = states('vacuum.willi_robby') %}
@@ -320,55 +510,212 @@ views:
                     entity_id: vacuum.willi_robby
 
       # =============================================
+      # SPÜLMASCHINE (Tibber-Farbe: cheap/normal/expensive)
+      # =============================================
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.spuler_status
+            primary: >-
+              {%- set s = states('sensor.spuler_status') -%}
+              {%- set rest = states('sensor.spuler_restzeit') -%}
+              Spüler — {{ s }}
+              {%- if is_state('binary_sensor.spuler_lauft','on') and rest not in ['—','unknown','unavailable'] %} · {{ rest }} h{% endif %}
+            secondary: >-
+              {%- set p = states('sensor.spuler_programm') -%}
+              {%- set k = states('sensor.spuler_kosten_aktueller_lauf') -%}
+              {%- set tp = states('sensor.tibber_preis_aktuell') -%}
+              {%- if is_state('binary_sensor.spuler_lauft','on') -%}
+                {{ p }} · {{ k }} € · Strom {{ tp }} ct
+              {%- elif is_state('binary_sensor.spuler_fertig','on') -%}
+                Fertig — ausräumen! ({{ k }} €)
+              {%- else -%}
+                Strom {{ tp }} ct/kWh
+              {%- endif %}
+            icon: >-
+              {%- set s = states('sensor.spuler_status') -%}
+              {%- if s == 'Fertig' -%}mdi:dishwasher-alert
+              {%- elif s in ['Fehler','Aktion nötig'] -%}mdi:alert-circle
+              {%- elif is_state('binary_sensor.spuler_lauft','on') -%}mdi:dishwasher
+              {%- else -%}mdi:dishwasher-off
+              {%- endif %}
+            icon_color: >-
+              {%- set t = states('sensor.paule_current_hour_price_level') -%}
+              {%- if t in ['cheap','very_cheap'] -%}green
+              {%- elif t in ['expensive','very_expensive'] -%}red
+              {%- else -%}orange
+              {%- endif %}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-spuelmaschine/spuler
+            card_mod:
+              style: |
+                ha-card {
+                  {% set t = states('sensor.paule_current_hour_price_level') %}
+                  {% if t in ['cheap','very_cheap'] %}
+                    background-color: rgba(76, 175, 80, 0.15) !important;
+                    border: 2px solid #4caf50 !important;
+                  {% elif t in ['expensive','very_expensive'] %}
+                    background-color: rgba(244, 67, 54, 0.15) !important;
+                    border: 2px solid #f44336 !important;
+                  {% else %}
+                    background-color: rgba(255, 152, 0, 0.15) !important;
+                    border: 2px solid #ff9800 !important;
+                  {% endif %}
+                }
+
+          # Programm-Kosten-Kacheln (Zeile 1)
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                entity: input_number.dishwasher_kwh_eco50
+                primary: >-
+                  {{ ((states('input_number.dishwasher_kwh_eco50')|float(0))
+                     * (states('sensor.tibber_current_price_2')|float(0))) | round(2) }} €
+                secondary: "Eco 50°"
+                icon: mdi:leaf
+                icon_color: green
+                layout: vertical
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-spuelmaschine/spuler
+              - type: custom:mushroom-template-card
+                entity: input_number.dishwasher_kwh_auto
+                primary: >-
+                  {{ ((states('input_number.dishwasher_kwh_auto')|float(0))
+                     * (states('sensor.tibber_current_price_2')|float(0))) | round(2) }} €
+                secondary: "Auto 45-65°"
+                icon: mdi:auto-mode
+                icon_color: blue
+                layout: vertical
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-spuelmaschine/spuler
+              - type: custom:mushroom-template-card
+                entity: input_number.dishwasher_kwh_speed65
+                primary: >-
+                  {{ ((states('input_number.dishwasher_kwh_speed65')|float(0))
+                     * (states('sensor.tibber_current_price_2')|float(0))) | round(2) }} €
+                secondary: "Speed 65°"
+                icon: mdi:run-fast
+                icon_color: cyan
+                layout: vertical
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-spuelmaschine/spuler
+              - type: custom:mushroom-template-card
+                entity: input_number.dishwasher_kwh_intensiv70
+                primary: >-
+                  {{ ((states('input_number.dishwasher_kwh_intensiv70')|float(0))
+                     * (states('sensor.tibber_current_price_2')|float(0))) | round(2) }} €
+                secondary: "Intensiv 70°"
+                icon: mdi:fire
+                icon_color: red
+                layout: vertical
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-spuelmaschine/spuler
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                entity: input_number.dishwasher_kwh_quick45
+                primary: >-
+                  {{ ((states('input_number.dishwasher_kwh_quick45')|float(0))
+                     * (states('sensor.tibber_current_price_2')|float(0))) | round(2) }} €
+                secondary: "Quick 45°"
+                icon: mdi:fast-forward
+                icon_color: amber
+                layout: vertical
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-spuelmaschine/spuler
+              - type: custom:mushroom-template-card
+                entity: input_number.dishwasher_kwh_glas40
+                primary: >-
+                  {{ ((states('input_number.dishwasher_kwh_glas40')|float(0))
+                     * (states('sensor.tibber_current_price_2')|float(0))) | round(2) }} €
+                secondary: "Glas 40°"
+                icon: mdi:glass-tulip
+                icon_color: teal
+                layout: vertical
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-spuelmaschine/spuler
+              - type: custom:mushroom-template-card
+                entity: input_number.dishwasher_kwh_night
+                primary: >-
+                  {{ ((states('input_number.dishwasher_kwh_night')|float(0))
+                     * (states('sensor.tibber_current_price_2')|float(0))) | round(2) }} €
+                secondary: "Nacht"
+                icon: mdi:weather-night
+                icon_color: indigo
+                layout: vertical
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-spuelmaschine/spuler
+              - type: custom:mushroom-template-card
+                entity: input_number.dishwasher_kwh_prerinse
+                primary: >-
+                  {{ ((states('input_number.dishwasher_kwh_prerinse')|float(0))
+                     * (states('sensor.tibber_current_price_2')|float(0))) | round(2) }} €
+                secondary: "Vorspülen"
+                icon: mdi:water
+                icon_color: blue-grey
+                layout: vertical
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-spuelmaschine/spuler
+
+          # =============================================
       # PETKIT STATUS (Katzenklo & Trinkbrunnen)
       # =============================================
       - type: horizontal-stack
         cards:
           - type: custom:mushroom-template-card
-            primary: Katzenklo
+            primary: >
+              {% set st = states('sensor.freddy_shitkit_state_2') %}
+              {% set wb = states('binary_sensor.freddy_shitkit_wastebin_filled') %}
+              {% if st == 'unavailable' %}Klo — Offline
+              {% elif wb == 'on' %}Klo — Leeren!
+              {% elif st == 'idle' %}Klo — OK
+              {% else %}Klo — {{ st | replace('_',' ') | truncate(12) }}{% endif %}
             secondary: >
-              {% set state = states('sensor.freddy_shitkit_state') %}
-              {% set wastebin = states('binary_sensor.freddy_shitkit_wastebin') %}
-              {% set litter_lvl = states('sensor.freddy_shitkit_litter_level') %}
-              {% set last_event = states('sensor.freddy_shitkit_last_event') %}
-              {% if state == 'unavailable' %}Offline
-              {% elif wastebin == 'on' %}Bitte leeren!
-              {% else %}{{ state }}{% endif %}
-              {% if litter_lvl != 'unavailable' %} — {{ litter_lvl }}% Streu{% endif %}
+              {% set lvl = states('sensor.freddy_shitkit_litter_level_2') %}
+              {% if lvl != 'unavailable' %}Streu {{ lvl }}%{% endif %}
             icon: mdi:cat
             icon_color: >
-              {% set wastebin = states('binary_sensor.freddy_shitkit_wastebin') %}
-              {% set litter = states('binary_sensor.freddy_shitkit_litter') %}
-              {% set state = states('sensor.freddy_shitkit_state') %}
+              {% set wastebin = states('binary_sensor.freddy_shitkit_wastebin_filled') %}
+              {% set litter = states('binary_sensor.freddy_shitkit_sand_lack') %}
+              {% set state = states('sensor.freddy_shitkit_state_2') %}
               {% if wastebin == 'on' %}red
               {% elif litter == 'on' %}orange
               {% elif state == 'unavailable' %}grey
               {% else %}green{% endif %}
           - type: custom:mushroom-template-card
-            primary: Trinkbrunnen
+            primary: >
+              {% set w = states('binary_sensor.trinkbrunnen_water_lack_warning') %}
+              {% if w == 'unavailable' %}Brunnen — Offline
+              {% elif w == 'on' %}Brunnen — Leer!
+              {% else %}Brunnen — OK{% endif %}
             secondary: >
-              {% set water = states('binary_sensor.trinkbrunnen_water_level') %}
-              {% set filter = states('sensor.trinkbrunnen_filter') %}
-              {% if water == 'unavailable' %}Offline
-              {% elif water == 'on' %}Wasser niedrig!
-              {% else %}OK{% endif %}
-              {% if filter != 'unavailable' %} — Filter {{ filter }}%{% endif %}
+              {% set f = states('sensor.trinkbrunnen_filter_remaining') %}
+              {% if f != 'unavailable' %}Filter {{ f }}%{% endif %}
             icon: mdi:cup-water
             icon_color: >
-              {% set water = states('binary_sensor.trinkbrunnen_water_level') %}
+              {% set water = states('binary_sensor.trinkbrunnen_water_lack_warning') %}
               {% if water == 'on' %}orange
               {% elif water == 'unavailable' %}grey
               {% else %}cyan{% endif %}
           - type: custom:mushroom-template-card
-            primary: Freddy
+            primary: >
+              {% set w = states('sensor.freddy_last_weight_measurement') %}
+              Freddy{% if w != 'unavailable' %} {{ w }}kg{% endif %}
             secondary: >
-              {% set weight = states('sensor.freddy_latest_weight') %}
-              {% set duration = states('sensor.freddy_last_use_duration') %}
-              {% if weight != 'unavailable' %}{{ weight }} kg{% else %}—{% endif %}
-              {% if duration != 'unavailable' %} / {{ duration }}s{% endif %}
+              {% set d = states('sensor.freddy_last_use_duration_2') %}
+              {% if d != 'unavailable' %}Letzte: {{ d }}s{% else %}—{% endif %}
             icon: mdi:paw
             icon_color: >
-              {% if states('sensor.freddy_latest_weight') == 'unavailable' %}grey{% else %}teal{% endif %}
+              {% if states('sensor.freddy_last_weight_measurement') == 'unavailable' %}grey{% else %}teal{% endif %}
 
       # =============================================
       # WASCHRAUM & KÜCHE
@@ -376,20 +723,53 @@ views:
       - type: horizontal-stack
         cards:
           - type: custom:mushroom-template-card
-            primary: Waschmaschine
-            secondary: "{{ states('sensor.waschmaschine_leistung') }} W"
+            primary: "Waschen {{ states('sensor.waschmaschine_leistung') }}W"
+            secondary: >
+              {% if states('sensor.waschmaschine_leistung')|float(0) > 10 %}Läuft{% else %}Aus{% endif %}
             icon: mdi:washing-machine
             icon_color: >
               {% if states('sensor.waschmaschine_leistung')|float(0) > 10 %}green{% else %}grey{% endif %}
           - type: custom:mushroom-template-card
-            primary: Trockner
-            secondary: "{{ states('sensor.trockner_leistung') }} W"
+            primary: "Trockner {{ states('sensor.trockner_leistung') }}W"
+            secondary: >
+              {% if states('sensor.trockner_leistung')|float(0) > 10 %}Läuft{% else %}Aus{% endif %}
             icon: mdi:tumble-dryer
             icon_color: >
               {% if states('sensor.trockner_leistung')|float(0) > 10 %}green{% else %}grey{% endif %}
           - type: custom:mushroom-template-card
-            primary: Küche
-            secondary: "{{ states('sensor.kueche_leistung') }} W"
+            primary: >
+              {% set s = states('sensor.spuler_status') %}
+              {% if s == 'Läuft' %}Spüler läuft
+              {% elif s == 'Fertig' %}Spüler fertig
+              {% elif s in ['Fehler','Aktion nötig','Abgebrochen'] %}Spüler {{ s }}
+              {% elif s == 'Verzögerter Start' %}Spüler wartet
+              {% else %}Spüler {{ s }}{% endif %}
+            secondary: >
+              {% set s = states('sensor.spuler_status') %}
+              {% set p = states('sensor.spuler_programm') %}
+              {% if s == 'Läuft' %}{{ p }} • {{ states('sensor.spuler_energie_prognose') }} kWh
+              {% elif s == 'Fertig' %}Ausräumen!
+              {% elif p not in ['—','unknown','unavailable'] %}{{ p }}
+              {% else %}—{% endif %}
+            icon: >
+              {% set s = states('sensor.spuler_status') %}
+              {% if s == 'Fertig' %}mdi:dishwasher-alert
+              {% elif s in ['Fehler','Aktion nötig'] %}mdi:alert-circle
+              {% else %}mdi:dishwasher{% endif %}
+            icon_color: >
+              {% set s = states('sensor.spuler_status') %}
+              {% if s == 'Läuft' %}green
+              {% elif s == 'Fertig' %}blue
+              {% elif s in ['Fehler','Aktion nötig','Abgebrochen'] %}red
+              {% elif s == 'Verzögerter Start' %}orange
+              {% else %}grey{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.spuler_status
+          - type: custom:mushroom-template-card
+            primary: "Küche {{ states('sensor.kueche_leistung') }}W"
+            secondary: >
+              {% if states('sensor.kueche_leistung')|float(0) > 10 %}Aktiv{% else %}Aus{% endif %}
             icon: mdi:countertop
             icon_color: >
               {% if states('sensor.kueche_leistung')|float(0) > 10 %}green{% else %}grey{% endif %}
@@ -403,8 +783,8 @@ views:
             entity: person.marcus
             layout: horizontal
           - type: custom:mushroom-template-card
-            primary: Einkaufsliste
-            secondary: "{{ states('sensor.einkaufsliste_anzahl') }} Artikel"
+            primary: "Einkauf ({{ states('sensor.einkaufsliste_anzahl') }})"
+            secondary: "Artikel auf der Liste"
             icon: mdi:cart
             icon_color: >
               {% if states('sensor.einkaufsliste_anzahl')|int(0) > 0 %}orange{% else %}green{% endif %}
@@ -487,27 +867,38 @@ views:
           navigation_path: /lovelace-thw/uebersicht
 
       # =============================================
-      # SCHUPPEN WETTER (Außensensor)
+      # SCHUPPEN WETTER (Außensensor Luft1)
       # =============================================
       - type: horizontal-stack
         cards:
           - type: custom:mushroom-template-card
-            primary: Außen
-            secondary: "{{ states('sensor.luft1_wetterstation_schuppen_temperatur') }}°C"
+            primary: "Außen {{ states('sensor.luft1_wetterstation_schuppen_temperatur_dht') }}°C"
+            secondary: "Schuppen"
             icon: mdi:thermometer
             icon_color: >
-              {% set t = states('sensor.luft1_wetterstation_schuppen_temperatur')|float(0) %}
+              {% set t = states('sensor.luft1_wetterstation_schuppen_temperatur_dht')|float(0) %}
               {% if t > 25 %}red{% elif t > 10 %}green{% else %}blue{% endif %}
           - type: custom:mushroom-template-card
-            primary: Feuchte
-            secondary: "{{ states('sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit') }}%"
+            primary: "Feuchte {{ states('sensor.luft1_wetterstation_schuppen_luftfeuchtigkeit') }}%"
+            secondary: "Schuppen"
             icon: mdi:water-percent
             icon_color: cyan
           - type: custom:mushroom-template-card
-            primary: Druck
-            secondary: "{{ states('sensor.luft1_wetterstation_schuppen_luftdruck') }} hPa"
-            icon: mdi:gauge
-            icon_color: purple
+            primary: >
+              {% set e = states('sensor.tasmota_as3935_event_2') %}
+              {% if e == '8' %}Blitz!
+              {% elif e == '4' %}Störer
+              {% elif e == '1' %}Rauschen
+              {% else %}Blitz —{% endif %}
+            secondary: >
+              {% set d = states('sensor.tasmota_as3935_distance_2') %}
+              {% if d not in ['unavailable', 'unknown', '0'] %}{{ d }} km{% else %}Kein Blitz{% endif %}
+            icon: mdi:weather-lightning
+            icon_color: >
+              {% set e = states('sensor.tasmota_as3935_event_2') %}
+              {% if e == '8' %}yellow
+              {% elif e == '4' %}orange
+              {% else %}grey{% endif %}
 
       # =============================================
       # INTERNET & FRITZ!BOX
@@ -515,10 +906,15 @@ views:
       - type: horizontal-stack
         cards:
           - type: custom:mushroom-template-card
-            primary: Internet
+            primary: >
+              {% if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') %}
+                INet — Online
+              {% else %}
+                INet — Offline!
+              {% endif %}
             secondary: >
               {% if is_state('binary_sensor.fritz_box_6591_cable_vodafone_connection', 'on') %}
-                Verbunden — {{ states('sensor.fritz_uptime') }}
+                {{ states('sensor.fritz_uptime') }}
               {% else %}
                 Getrennt!
               {% endif %}
@@ -534,18 +930,15 @@ views:
               action: navigate
               navigation_path: /lovelace-system/netzwerk-details
           - type: custom:mushroom-template-card
-            primary: "↓{{ states('sensor.speedtest_download') }}"
-            secondary: "Mbit/s"
-            icon: mdi:download-network
+            primary: "↓{{ states('sensor.speedtest_download') }} Mb"
+            secondary: "↑{{ states('sensor.speedtest_upload') }} Mb"
+            icon: mdi:speedometer
             icon_color: green
           - type: custom:mushroom-template-card
-            primary: "↑{{ states('sensor.speedtest_upload') }}"
-            secondary: "Mbit/s"
-            icon: mdi:upload-network
-            icon_color: blue
-          - type: custom:mushroom-template-card
-            primary: "{{ states('sensor.speedtest_ping') }} ms"
-            secondary: "Ping"
+            primary: "{{ states('sensor.speedtest_ping') }}ms Ping"
+            secondary: >
+              {% set p = states('sensor.speedtest_ping')|float(0) %}
+              {% if p < 20 %}Gut{% elif p < 50 %}OK{% else %}Langsam{% endif %}
             icon: mdi:lan-pending
             icon_color: >
               {% set p = states('sensor.speedtest_ping')|float(0) %}
@@ -557,11 +950,11 @@ views:
       - type: horizontal-stack
         cards:
           - type: custom:mushroom-template-card
-            primary: WiFi
+            primary: >
+              WiFi — {{ states('sensor.unifi_clients_total_2') }} Clients
             secondary: >
               {% set s = states('sensor.netzwerk_status') %}
-              {% set clients = states('sensor.unifi_clients_total') %}
-              {{ s }} — {{ clients }} Clients
+              {{ s }}
             icon: >
               {% set s = states('sensor.netzwerk_status') %}
               {% if s == 'Alles OK' %}mdi:wifi-check
@@ -576,28 +969,26 @@ views:
               action: navigate
               navigation_path: /lovelace-network/overview
           - type: custom:mushroom-template-card
-            primary: "INet: {{ states('sensor.wifi_clients_bad_inet') }}"
-            secondary: "IoT: {{ states('sensor.wifi_clients_bad_iot') }}"
-            icon: mdi:access-point
-            icon_color: blue
-          - type: custom:mushroom-template-card
-            primary: "APs"
-            secondary: "{{ states('sensor.unifi_aps_online') }}/{{ states('sensor.unifi_aps_gesamt') }}"
+            primary: >
+              APs {{ states('sensor.unifi_aps_online_2') }}/{{ states('sensor.unifi_aps_gesamt') }}
+            secondary: >
+              INet {{ states('sensor.wifi_clients_bad_inet') }} · IoT {{ states('sensor.wifi_clients_bad_iot') }}
             icon: >
-              {% set online = states('sensor.unifi_aps_online') | int(0) %}
+              {% set online = states('sensor.unifi_aps_online_2') | int(0) %}
               {% set total = states('sensor.unifi_aps_gesamt') | int(2) %}
               {% if online >= total %}mdi:access-point-check
               {% elif online > 0 %}mdi:access-point-minus
               {% else %}mdi:access-point-off{% endif %}
             icon_color: >
-              {% set online = states('sensor.unifi_aps_online') | int(0) %}
+              {% set online = states('sensor.unifi_aps_online_2') | int(0) %}
               {% set total = states('sensor.unifi_aps_gesamt') | int(2) %}
               {% if online >= total %}green
               {% elif online > 0 %}orange
               {% else %}red{% endif %}
           - type: custom:mushroom-template-card
-            primary: "Tor"
-            secondary: "{{ states('sensor.wifi_clients_bad_bad') }} Clients"
+            primary: >
+              Tor {{ states('sensor.wifi_clients_bad_bad') }}
+            secondary: "Gastnetz"
             icon: mdi:incognito
             icon_color: >
               {% if states('sensor.wifi_clients_bad_bad') | int(0) > 0 %}purple{% else %}grey{% endif %}
@@ -641,6 +1032,8 @@ views:
             tap_action:
               action: navigate
               navigation_path: /lovelace-vacuum
+      - type: horizontal-stack
+        cards:
           - type: custom:mushroom-template-card
             primary: Räume
             icon: mdi:floor-plan

@@ -49,7 +49,7 @@ template:
         icon: mdi:cash-plus
         state: >
           {% set energy_today = states('sensor.pv_energie_heute') | float(0) %}
-          {% set avg_price = states('sensor.tibber_avg_price_24h') | float(0.30) %}
+          {% set avg_price = states('sensor.tibber_durchschnittspreis_heute') | float(30) / 100 %}{# ct/kWh -> EUR/kWh #}
           {{ (energy_today * avg_price) | round(2) }}
 
       # Preis-gewichtete Einsparung (genauer)
@@ -171,8 +171,8 @@ automation:
         above: 500
     condition:
       - condition: state
-        entity_id: sensor.tibber_price_level
-        state: "expensive"
+        entity_id: sensor.tibber_preis_status
+        state: "teuer"
     action:
       - service: notify.notify
         data:

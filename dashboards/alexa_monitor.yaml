@@ -1,0 +1,170 @@
+title: Alexa-Monitor
+views:
+  # ===========================================================================
+  # Uebersicht: Risiko-Einschaetzung + Kernmetriken (IceAlexaSecure, VLAN14)
+  # ===========================================================================
+  - title: Übersicht
+    path: overview
+    icon: mdi:shield-search
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: custom:mushroom-template-card
+            primary: "Risiko-Einschätzung"
+            secondary: "{{ states('sensor.alexa_monitor_vlan14_alexa_vlan_risiko_einschaetzung') }}"
+            icon: mdi:shield-search
+            icon_color: >
+              {% set s = states('sensor.alexa_monitor_vlan14_alexa_vlan_risiko_einschaetzung') %}
+              {% if s == 'Unauffaellig' %}
+                green
+              {% elif s.startswith('Beobachten') %}
+                orange
+              {% else %}
+                red
+              {% endif %}
+          - type: custom:mushroom-template-card
+            primary: "Firewall-Blocks (lateral)"
+            secondary: "{{ states('sensor.alexa_monitor_vlan14_alexa_vlan_firewall_blocks_lateral') }} seit Aktivierung"
+            icon: mdi:shield-alert
+            icon_color: >
+              {{ 'red' if states('sensor.alexa_monitor_vlan14_alexa_vlan_firewall_blocks_lateral') | int(0) > 0 else 'green' }}
+
+      - type: grid
+        cards:
+          - type: markdown
+            title: "Was das bedeutet"
+            content: >
+              **VLAN14 (Alexa-Secure)** ist per Default-Deny von allen anderen internen
+              Netzen isoliert (siehe [IceAlexaSecure](https://github.com/icepaule/Ice-Kubernetes)).
+              Diese Ansicht zeigt Metadaten (Domains/Volumen), keine Inhalte —
+              volle Sprachrekonstruktion aus Netzwerk-Traffic ist nur mit trainierten
+              ML-Modellen möglich (siehe Ausgangsrecherche), nicht Ziel dieses Dashboards.
+
+              - **Firewall-Blocks > 0** → Alexa hat versucht, ein anderes internes Netz
+                zu erreichen (sollte NIE passieren, starkes Anomalie-Signal).
+              - **Neue Domains** → seit dem letzten 10-Minuten-Lauf erstmals gesehene
+                Zieladressen (harmlos bei neuen Radiosendern/Skills, sonst genauer prüfen).
+              - **Amazon/AWS-Anteil** → Anteil der DNS-Anfragen, die auf bekannte
+                Amazon/AWS-Infrastruktur entfallen (Rest sind meist Streaming-CDNs
+                der abgespielten Radiosender/Dienste, z.B. TuneIn/Spotify).
+
+      - type: grid
+        cards:
+          - type: custom:mushroom-template-card
+            primary: "Echo Show (echo-show-az)"
+            secondary: >
+              {{ states('sensor.alexa_monitor_vlan14_alexa_echo_show_az_dns_anfragen') }} DNS-Anfragen ·
+              {{ state_attr('sensor.alexa_monitor_vlan14_alexa_echo_show_az_dns_anfragen', 'anteil_amazon_aws_prozent') }}% Amazon/AWS
+            icon: mdi:tablet-dashboard
+            icon_color: blue
+          - type: custom:mushroom-template-card
+            primary: "Neue Domains (Echo Show)"
+            secondary: "{{ states('sensor.alexa_monitor_vlan14_alexa_echo_show_az_neue_domains') }} seit letztem Lauf"
+            icon: mdi:alert-circle-outline
+            icon_color: >
+              {{ 'orange' if states('sensor.alexa_monitor_vlan14_alexa_echo_show_az_neue_domains') | int(0) > 0 else 'green' }}
+
+      - type: grid
+        cards:
+          - type: custom:mushroom-template-card
+            primary: "Traffic gesamt (ntopng)"
+            secondary: "{{ (states('sensor.alexa_monitor_vlan14_alexa_vlan_traffic_ntopng_bytes_gesamt') | float(0) / 1048576) | round(1) }} MB seit ntopng-Start"
+            icon: mdi:swap-horizontal-bold
+            icon_color: purple
+          - type: custom:mushroom-template-card
+            primary: "Durchsatz aktuell"
+            secondary: "{{ (states('sensor.alexa_monitor_vlan14_alexa_vlan_durchsatz_ntopng') | float(0) / 1000) | round(1) }} kbit/s"
+            icon: mdi:speedometer
+            icon_color: purple
+
+      - type: grid
+        cards:
+          - type: history-graph
+            title: "DNS-Anfragen & Traffic über Zeit"
+            hours_to_show: 48
+            entities:
+              - entity: sensor.alexa_monitor_vlan14_alexa_echo_show_az_dns_anfragen
+                name: "DNS-Anfragen (Echo Show)"
+              - entity: sensor.alexa_monitor_vlan14_alexa_vlan_ntopng_bytes_gesamt
+                name: "Traffic gesamt (Bytes)"
+              - entity: sensor.alexa_monitor_vlan14_alexa_vlan_firewall_blocks_lateral
+                name: "Firewall-Blocks"
+
+  # ===========================================================================
+  # Domains: welche Ziele wurden kontaktiert (Metadaten-Transparenz)
+  # ===========================================================================
+  - title: Domains
+    path: domains
+    icon: mdi:dns
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: markdown
+            title: "Häufigste Ziele — Echo Show (letzte ~4000 Log-Zeilen)"
+            content: >
+              {% set td = state_attr('sensor.alexa_monitor_vlan14_alexa_echo_show_az_dns_anfragen', 'top_domains') %}
+              {% if td %}
+              | Domain | Anzahl |
+              |---|---|
+              {% for row in td %}
+              | `{{ row[0] }}` | {{ row[1] }} |
+              {% endfor %}
+              {% else %}
+              _Keine Daten (Gerät gerade inaktiv oder noch kein Lauf seit Neustart)._
+              {% endif %}
+
+      - type: grid
+        cards:
+          - type: markdown
+            title: "Neu gesehene Domains (seit letztem 10-Min-Lauf)"
+            content: >
+              {% set nd = state_attr('sensor.alexa_monitor_vlan14_alexa_echo_show_az_neue_domains', 'neue_domains') %}
+              {% if nd %}
+              {% for d in nd %}
+              - `{{ d }}`
+              {% endfor %}
+              {% else %}
+              _Keine neuen Domains seit dem letzten Lauf._
+              {% endif %}
+
+              ---
+              **Bekannte Domains insgesamt (Baseline):**
+              {{ state_attr('sensor.alexa_monitor_vlan14_alexa_echo_show_az_neue_domains', 'bekannte_domains_gesamt') }}
+
+      - type: grid
+        cards:
+          - type: markdown
+            title: "Bekannte, unbedenkliche Muster"
+            content: >
+              Domains außerhalb `*.amazon.*` / `*.amazonaws.com` / `*.cloudfront.net`
+              sind **nicht automatisch verdächtig** — TuneIn/Spotify-Wiedergabe
+              kontaktiert legitim die CDN-Domains des jeweiligen Radiosenders/Dienstes
+              (z.B. `*.rndfnk.com`, `icecast.ndr.de` bei NDR-Wiedergabe). Der
+              "Neue Domains"-Zähler ist deshalb aussagekräftiger als eine starre
+              Allowlist — eine wirklich neue, unbekannte Domain lohnt einen Blick,
+              ein bekannter Radiosender nicht.
+
+  # ===========================================================================
+  # ntopng: direkter Zugriff auf die volle Web-Oberflaeche
+  # ===========================================================================
+  - title: ntopng
+    path: ntopng
+    icon: mdi:chart-line
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: markdown
+            content: >
+              **ntopng Live-Dashboard:** [https://192.168.1.1:3000](https://192.168.1.1:3000)
+              (Login erforderlich, Zugangsdaten siehe `/opt/alexa-monitor/ntopng_password.txt`
+              auf NUC-HA). Selbstsigniertes Zertifikat → Zertifikatswarnung im Browser
+              ist erwartet.
+
+              Zeigt Live-Flows, Top-Talker, Protokoll-Verteilung und Historie für
+              Interface `VLAN14_Alexa` (vtnet4) direkt auf pfSense.

@@ -1,0 +1,37 @@
+# =============================================================================
+# Tibber Helpers & Utility Meters
+# =============================================================================
+# Moved from automations/tibber_next24h.yaml where they were not loaded
+# (automation: !include_dir_merge_list only loads automation lists)
+# =============================================================================
+
+# =============================================================================
+# INPUT HELPERS
+# =============================================================================
+input_number:
+  tibber_cheapest_hours:
+    name: "Tibber Günstigste Stunden Anzahl"
+    min: 1
+    max: 8
+    step: 1
+    mode: slider
+    icon: mdi:clock-check
+
+# =============================================================================
+# UTILITY METERS (für tägliche/monatliche Kosten-Tracking)
+# =============================================================================
+utility_meter:
+  tibber_daily_cost:
+    source: sensor.tibber_pulse_paule_accumulated_cost
+    name: "Tibber Tageskosten"
+    cycle: daily
+
+  tibber_monthly_cost:
+    source: sensor.tibber_pulse_paule_accumulated_cost
+    name: "Tibber Monatskosten"
+    cycle: monthly
+
+  tibber_yearly_cost:
+    source: sensor.tibber_pulse_paule_accumulated_cost
+    name: "Tibber Jahreskosten"
+    cycle: yearly

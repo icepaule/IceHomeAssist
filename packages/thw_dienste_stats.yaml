@@ -1,0 +1,286 @@
+# =============================================================================
+# THW DIENSTE - LANGZEIT-STATISTIK / VERFÜGBARKEIT
+# =============================================================================
+# - Uptime-Sensoren (100 = erreichbar / 0 = gestört) mit state_class measurement
+#   -> erzeugen Langzeitstatistik (LTS, NICHT von purge_keep_days betroffen)
+#   -> Verfügbarkeit über Wochen/Monate (apexcharts liest die LTS).
+# - history_stats je Dienst: Online-Zeit und gemessene Zeit (on+off) der letzten
+#   30 Tage. Verfügbarkeit% = Online / Gemessen (ignoriert Zeit ohne Messdaten,
+#   daher von Tag 1 an korrekt - nicht durch das 30-Tage-Fenster verfälscht).
+# Auswertung beginnt mit Aktivierung (31.05.2026) und füllt sich auf.
+# =============================================================================
+
+template:
+  - sensor:
+      - name: "THW Web heroesday.de Uptime"
+        unique_id: thw_web_heroesday_de_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_web_heroesday_de','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_web_heroesday_de') in ['on','off'] }}"
+      - name: "THW Web herosbeach.de Uptime"
+        unique_id: thw_web_herosbeach_de_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_web_herosbeach_de','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_web_herosbeach_de') in ['on','off'] }}"
+      - name: "THW Web herosday.de Uptime"
+        unique_id: thw_web_herosday_de_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_web_herosday_de','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_web_herosday_de') in ['on','off'] }}"
+      - name: "THW Web riesenkicker.info Uptime"
+        unique_id: thw_web_riesenkicker_info_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_web_riesenkicker_info','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_web_riesenkicker_info') in ['on','off'] }}"
+      - name: "THW Web thwfv-muenchen-ost.de Uptime"
+        unique_id: thw_web_thwfv_muenchen_ost_de_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_web_thwfv_muenchen_ost_de','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_web_thwfv_muenchen_ost_de') in ['on','off'] }}"
+      - name: "THW Web weinfest Uptime"
+        unique_id: thw_web_weinfest_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_web_weinfest','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_web_weinfest') in ['on','off'] }}"
+      - name: "THW Web thw-muenchen-ost.de Uptime"
+        unique_id: thw_web_thw_muenchen_ost_de_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_web_thw_muenchen_ost_de','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_web_thw_muenchen_ost_de') in ['on','off'] }}"
+      - name: "THW VPN Intranet Uptime"
+        unique_id: thw_vpn_intranet_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_vpn_intranet','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_vpn_intranet') in ['on','off'] }}"
+      - name: "THW Mail IMAPS Uptime"
+        unique_id: thw_mail_imaps_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_mail_imaps','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_mail_imaps') in ['on','off'] }}"
+      - name: "THW Mail Submission Uptime"
+        unique_id: thw_mail_submission_uptime
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:lan-check
+        state: "{{ 100 if is_state('binary_sensor.thw_mail_submission','on') else 0 }}"
+        availability: "{{ states('binary_sensor.thw_mail_submission') in ['on','off'] }}"
+
+sensor:
+  - platform: history_stats
+    name: "THW Web heroesday.de Online 30T"
+    unique_id: thw_web_heroesday_de_on_30t
+    entity_id: binary_sensor.thw_web_heroesday_de
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web heroesday.de Gemessen 30T"
+    unique_id: thw_web_heroesday_de_meas_30t
+    entity_id: binary_sensor.thw_web_heroesday_de
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web herosbeach.de Online 30T"
+    unique_id: thw_web_herosbeach_de_on_30t
+    entity_id: binary_sensor.thw_web_herosbeach_de
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web herosbeach.de Gemessen 30T"
+    unique_id: thw_web_herosbeach_de_meas_30t
+    entity_id: binary_sensor.thw_web_herosbeach_de
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web herosday.de Online 30T"
+    unique_id: thw_web_herosday_de_on_30t
+    entity_id: binary_sensor.thw_web_herosday_de
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web herosday.de Gemessen 30T"
+    unique_id: thw_web_herosday_de_meas_30t
+    entity_id: binary_sensor.thw_web_herosday_de
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web riesenkicker.info Online 30T"
+    unique_id: thw_web_riesenkicker_info_on_30t
+    entity_id: binary_sensor.thw_web_riesenkicker_info
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web riesenkicker.info Gemessen 30T"
+    unique_id: thw_web_riesenkicker_info_meas_30t
+    entity_id: binary_sensor.thw_web_riesenkicker_info
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web thwfv-muenchen-ost.de Online 30T"
+    unique_id: thw_web_thwfv_muenchen_ost_de_on_30t
+    entity_id: binary_sensor.thw_web_thwfv_muenchen_ost_de
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web thwfv-muenchen-ost.de Gemessen 30T"
+    unique_id: thw_web_thwfv_muenchen_ost_de_meas_30t
+    entity_id: binary_sensor.thw_web_thwfv_muenchen_ost_de
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web weinfest Online 30T"
+    unique_id: thw_web_weinfest_on_30t
+    entity_id: binary_sensor.thw_web_weinfest
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web weinfest Gemessen 30T"
+    unique_id: thw_web_weinfest_meas_30t
+    entity_id: binary_sensor.thw_web_weinfest
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web thw-muenchen-ost.de Online 30T"
+    unique_id: thw_web_thw_muenchen_ost_de_on_30t
+    entity_id: binary_sensor.thw_web_thw_muenchen_ost_de
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Web thw-muenchen-ost.de Gemessen 30T"
+    unique_id: thw_web_thw_muenchen_ost_de_meas_30t
+    entity_id: binary_sensor.thw_web_thw_muenchen_ost_de
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW VPN Intranet Online 30T"
+    unique_id: thw_vpn_intranet_on_30t
+    entity_id: binary_sensor.thw_vpn_intranet
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW VPN Intranet Gemessen 30T"
+    unique_id: thw_vpn_intranet_meas_30t
+    entity_id: binary_sensor.thw_vpn_intranet
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Mail IMAPS Online 30T"
+    unique_id: thw_mail_imaps_on_30t
+    entity_id: binary_sensor.thw_mail_imaps
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Mail IMAPS Gemessen 30T"
+    unique_id: thw_mail_imaps_meas_30t
+    entity_id: binary_sensor.thw_mail_imaps
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Mail Submission Online 30T"
+    unique_id: thw_mail_submission_on_30t
+    entity_id: binary_sensor.thw_mail_submission
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30
+  - platform: history_stats
+    name: "THW Mail Submission Gemessen 30T"
+    unique_id: thw_mail_submission_meas_30t
+    entity_id: binary_sensor.thw_mail_submission
+    state:
+      - "on"
+      - "off"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      days: 30

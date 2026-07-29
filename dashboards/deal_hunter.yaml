@@ -1,0 +1,218 @@
+title: Deal Hunter
+icon: mdi:tag-search
+views:
+  - title: Übersicht
+    path: overview
+    icon: mdi:view-dashboard
+    cards:
+      # ─── Hero-Card mit Status (v3-manage) ─────────────────
+      - type: markdown
+        title: "🤖 Deal-Hunter"
+        content: |
+          ## {{ states('sensor.deal_hunter_deal_hunter_status') }}
+
+          **Treffer heute:** {{ states('sensor.deal_hunter_deal_hunter_treffer_heute') }} · **Letzte 7 Tage:** {{ states('sensor.deal_hunter_all_recent_hits_7d') }} · **Eigene Suchen:** {{ states('sensor.deal_hunter_user_searches') }}
+
+          {% set last = states('sensor.deal_hunter_deal_hunter_last_alert') %}
+          {% if last and last != 'unknown' %}
+          **Letzter Alert:** {{ last }}
+          {% endif %}
+
+      # ─── Glance ─────────────────────────────
+      - type: glance
+        title: Live-Statistik
+        columns: 3
+        entities:
+          - entity: sensor.deal_hunter_deal_hunter_treffer_heute
+            name: Heute
+            icon: mdi:counter
+          - entity: sensor.deal_hunter_all_recent_hits_7d
+            name: 7 Tage
+            icon: mdi:format-list-bulleted
+          - entity: sensor.deal_hunter_user_searches
+            name: Eigene
+            icon: mdi:tag-plus
+
+      # ─── NEU: Such-Eingabe-Formular ──────────────────────
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              ## ➕ Eigene Suche hinzufügen
+              Trage Query, Target und Max-Preis ein und drücke **➕ Suche hinzufügen**.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: input_text.deal_hunter_new_query
+                name: "🔍 Suchbegriff(e)"
+              - entity: input_text.deal_hunter_new_target
+                name: "🎯 Target (siehe Hilfe unten)"
+              - entity: input_text.deal_hunter_new_maxprice
+                name: "💰 Maximal-Preis (EUR)"
+              - entity: input_button.deal_hunter_add_search
+                name: "➕ Suche hinzufügen"
+              - entity: input_button.deal_hunter_force_run
+                name: "▶️ Jetzt suchen"
+              - entity: input_button.deal_hunter_clear_searches
+                name: "🗑️ Alle eigenen Suchen löschen"
+          - type: markdown
+            content: |
+              **Target-Werte:**
+              - `ram_32_single`, `ram_64_kit` — DDR5 SO-DIMM
+              - `nvme_2tb`, `nvme_4tb` — NVMe Gen4
+              - `rpi4_8gb`, `rpi4_8gb_kit`, `rpi5_8gb` — Raspberry Pi
+              - `minipc_salvage`, `laptop_salvage`, `workstation_salvage` — Komplettsysteme
+              - `generic` — eigene Keywords mit Max-Preis als Markt-Hinweis
+
+      # ─── Aktuelle Eigene Suchaufträge mit MANAGE-Funktion ────
+      - type: markdown
+        title: "🔍 Eigene Suchaufträge — verwalten"
+        content: |
+          {% set lst = state_attr('sensor.deal_hunter_user_searches', 'searches') or [] %}
+          {% if lst | length == 0 %}
+          _Noch keine eigenen Suchen. Trage oben einen Suchbegriff ein und drücke **Suche hinzufügen**._
+          {% else %}
+          | ID | Status | Query | Target | Max | Hinzugefügt |
+          |:---|:------:|:------|:-------|----:|:------------|
+          {% for s in lst -%}
+          | `{{ s.id or '---' }}` | {% if s.enabled is defined and s.enabled == false %}⏸️ aus{% else %}✅ an{% endif %} | **{{ (s.q or '') | replace('|','/') | truncate(45, true, '…') }}** | `{{ s.target }}` | {{ s.max }}€ | {{ (s.added_at or '')[:10] }} |
+          {% endfor %}
+
+          ---
+          **So verwaltest du eine Suche:**
+          1. ID aus erster Spalte in **🆔 Such-ID** eintragen
+          2. Button drücken: **⏯️ An/Aus** · **🗑️ Löschen**
+          3. Oder Edit-Felder + **💾 Edit speichern** (leere Felder bleiben unverändert)
+          {% endif %}
+
+      # ─── MANAGE-Form ─────────────────────────────────────
+      - type: entities
+        title: "🛠️ Suche verwalten"
+        show_header_toggle: false
+        entities:
+          - entity: input_text.deal_hunter_manage_id
+            name: "🆔 Such-ID (aus Tabelle oben)"
+          - type: section
+            label: "Aktionen ohne Edit"
+          - entity: input_button.deal_hunter_toggle_search
+            name: "⏯️ An/Aus umschalten"
+          - entity: input_button.deal_hunter_delete_search
+            name: "🗑️ Diese Suche löschen"
+          - type: section
+            label: "Edit (leer = nicht ändern)"
+          - entity: input_text.deal_hunter_edit_q
+            name: "✏️ Neue Query"
+          - entity: input_text.deal_hunter_edit_target
+            name: "✏️ Neues Target"
+          - entity: input_text.deal_hunter_edit_max
+            name: "✏️ Neuer Max-Preis"
+          - entity: input_button.deal_hunter_save_edit
+            name: "💾 Edit speichern"
+
+      # ─── 7-TAGE TREFFER-LISTE (KLICKBAR) ─────────────────
+      - type: markdown
+        title: "📦 Treffer der letzten 7 Tage"
+        content: |
+          {% set hits = state_attr('sensor.deal_hunter_all_recent_hits_7d', 'hits') or [] %}
+          {% if hits | length == 0 %}
+          _Noch keine Treffer in den letzten 7 Tagen._
+          {% else %}
+          {% for h in hits -%}
+          {%- set safe_title = (h.title | replace('|', '/') | truncate(60, true, '…')) -%}
+          {%- set safe_bewertung = ((h.vision_findings or h.llm_summary or '') | replace('|', '/') | truncate(80, true, '…')) -%}
+          **[{{ h.price }} €]({{ h.url }})** · -{{ h.discount }}% · `{{ h.target }}` · {{ h.source }}{% if h.vision_used %} 👁️{% endif %}
+          [{{ safe_title }}]({{ h.url }})
+          _{{ safe_bewertung }}_
+          ___
+          {% endfor %}
+          {% endif %}
+
+          _Tippe auf Preis oder Titel um das Inserat zu öffnen._
+
+      # ─── Letzter Treffer (Titel klickbar) ──────────────
+      - type: markdown
+        title: "📍 Letzter Treffer"
+        content: |
+          {% set s = states.sensor.deal_hunter_deal_hunter_last_alert %}
+          {% if s and s.state != 'unknown' and s.attributes.url %}
+          ### 🛒 [{{ s.attributes.title or s.state }}]({{ s.attributes.url }})
+
+          | | |
+          |:---|:---|
+          | **💰 Preis** | **{{ s.attributes.price }} €** |
+          | 📊 Marktpreis | {{ s.attributes.market }} € |
+          | 🔥 Rabatt | **{{ s.attributes.discount }}** |
+          | 🌐 Quelle | {{ s.attributes.source }} |
+          | 🤖 KI-Summary | {{ s.attributes.summary[:200] }}{% if s.attributes.summary | length > 200 %}…{% endif %} |
+          {% if s.attributes.vision_findings %}
+          | 👁️ Vision (qwen2.5vl) | {{ s.attributes.vision_findings[:200] }} |
+          {% endif %}
+          | ⏰ Gefunden | {{ s.attributes.found_at[:19].replace('T',' ') }} |
+
+          → **[Inserat öffnen / Kaufen]({{ s.attributes.url }})**
+          {% else %}
+          _Noch kein Treffer aufgezeichnet._
+          {% endif %}
+
+      # ─── Bester Deal heute (Titel klickbar) ────────────
+      - type: markdown
+        title: "🏆 Bester Deal heute"
+        content: |
+          {% set s = states.sensor.deal_hunter_deal_hunter_bester_deal_heute %}
+          {% if s and s.state != 'unknown' and s.attributes.url %}
+          ### 🏆 [{{ s.attributes.title or s.state }}]({{ s.attributes.url }})
+
+          | | |
+          |:---|:---|
+          | **💰 Preis** | **{{ s.attributes.price }} €** |
+          | 📊 Marktpreis | {{ s.attributes.market }} € |
+          | 🔥 Rabatt | **-{{ (s.attributes.discount * 100) | round(0) }}%** |
+          | 🎯 Target | {{ s.attributes.target }} |
+          | ⏰ Gefunden | {{ s.attributes.found_at[:19].replace('T',' ') }} |
+
+          → **[Inserat öffnen / Kaufen]({{ s.attributes.url }})**
+          {% else %}
+          _Heute noch keinen besten Deal._
+          {% endif %}
+
+      # ─── Workflow-Status ─────────────────────────────────
+      - type: markdown
+        title: "⚙️ Workflow-Übersicht"
+        content: |
+          ### Aktive Workflows
+          - **Deal-Hunter Kleinanzeigen V2** (alle 15 min)
+          - **Deal-Hunter eBay V2 (DE+AT)** (alle 15 min)
+          - **Add User-Search Webhook** (`POST /webhook/dh-add-search`)
+          - **Clear User-Searches Webhook** (`POST /webhook/dh-clear-searches`)
+
+          ### Features
+          ✅ Eigene Suchaufträge via HA-UI · ✅ Dedup via Static-Data
+          ✅ HA-Sensor-Updates · ✅ InfluxDB-Trends · ✅ qwen2.5:14b KI-Bewertung
+          ✅ Pushover + HA-App 1-Tap-URL · ✅ 7-Tage-Trefferliste
+
+          ### KI-Modelle (Ollama auf ki01)
+          - **qwen2.5:14b** — Text-Bewertung der Top-10
+          - **qwen2.5vl:7b** — Vision (Roadmap)
+          - **nomic-embed-text** — Semantic Dedup (Roadmap)
+
+      # ─── Quick-Buttons ─────────────────────────────────────
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: n8n
+            icon: mdi:graph
+            tap_action:
+              action: url
+              url_path: "http://10.10.0.100:5678/"
+          - type: button
+            name: Grafana
+            icon: mdi:chart-areaspline
+            tap_action:
+              action: url
+              url_path: "http://10.10.0.100:3000/d/6dc826b0-b67d-4d03-9d88-203e99be65bc"
+          - type: button
+            name: GitHub Repo
+            icon: mdi:github
+            tap_action:
+              action: url
+              url_path: "https://github.com/icepaule/esxi2proxmox"

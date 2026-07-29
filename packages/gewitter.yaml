@@ -1,0 +1,76 @@
+# =============================================================================
+# GEWITTER-ERKENNUNG (AS3935 Workaround)
+# =============================================================================
+# Der AS3935 in Luft1 (Schuppen, 10.10.12.32) klassifiziert echte Blitze
+# faelschlich als "disturber" (Antennen-Tuning Stage 10, EM-Stoerer im Schuppen).
+# Statt auf das `lightning`-Event zu warten, wird die Disturber-Rate ausgewertet:
+# bei aktivem Gewitter steigt sie deutlich (>10/15min, normal: <3/15min).
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# History Stats - Event-Zaehler ueber Zeitfenster
+# -----------------------------------------------------------------------------
+sensor:
+  - platform: history_stats
+    name: "Blitz Disturber 5min"
+    unique_id: blitz_disturber_5min
+    entity_id: sensor.luft1_wetterstation_blitzsensor_event
+    state: "disturber"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      minutes: 5
+
+  - platform: history_stats
+    name: "Blitz Disturber 15min"
+    unique_id: blitz_disturber_15min
+    entity_id: sensor.luft1_wetterstation_blitzsensor_event
+    state: "disturber"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      minutes: 15
+
+  - platform: history_stats
+    name: "Blitz Lightning 30min"
+    unique_id: blitz_lightning_30min
+    entity_id: sensor.luft1_wetterstation_blitzsensor_event
+    state: "lightning"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      minutes: 30
+
+# -----------------------------------------------------------------------------
+# Template Sensoren
+# -----------------------------------------------------------------------------
+template:
+  - binary_sensor:
+      - name: "Gewitter wahrscheinlich"
+        unique_id: gewitter_wahrscheinlich
+        device_class: safety
+        icon: mdi:weather-lightning
+        state: >
+          {% set d5 = states('sensor.blitz_disturber_5min') | int(0) %}
+          {% set d15 = states('sensor.blitz_disturber_15min') | int(0) %}
+          {% set l30 = states('sensor.blitz_lightning_30min') | int(0) %}
+          {{ l30 >= 1 or d5 >= 5 or d15 >= 10 }}
+        attributes:
+          disturber_5min: "{{ states('sensor.blitz_disturber_5min') }}"
+          disturber_15min: "{{ states('sensor.blitz_disturber_15min') }}"
+          lightning_30min: "{{ states('sensor.blitz_lightning_30min') }}"
+
+  - sensor:
+      - name: "Gewitter Intensitaet"
+        unique_id: gewitter_intensitaet
+        icon: mdi:weather-lightning-rainy
+        state: >
+          {% set d5 = states('sensor.blitz_disturber_5min') | int(0) %}
+          {% set d15 = states('sensor.blitz_disturber_15min') | int(0) %}
+          {% set l30 = states('sensor.blitz_lightning_30min') | int(0) %}
+          {% if l30 >= 1 %}lightning
+          {% elif d5 >= 10 or d15 >= 25 %}stark
+          {% elif d5 >= 5 or d15 >= 10 %}gewitter
+          {% elif d15 >= 3 %}verdaechtig
+          {% else %}ruhig
+          {% endif %}

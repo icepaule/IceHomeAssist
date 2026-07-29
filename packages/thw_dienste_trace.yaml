@@ -1,0 +1,74 @@
+# =============================================================================
+# THW DIENSTE - TRACEROUTE-DIAGNOSE
+# =============================================================================
+# Bei einer Störung wird ein Traceroute gefahren und mit dem letzten
+# funktionierenden Traceroute (Referenz) verglichen. Das Ergebnis (Zusammen-
+# fassung + Hop-für-Hop-Vergleich) wird in der Kachel und in der Detailansicht
+# des Dienstes angezeigt -> erleichtert die Entstörung (Netz- vs. Serverproblem).
+#
+# Logik im Shell-Skript /config/thw_trace/trace.sh:
+#   capture <slug> -> speichert Referenz-Trace (nur solange der Dienst läuft)
+#   diff <slug>    -> aktueller Trace vs. Referenz, gibt SUMMARY + Tabelle aus
+# Referenz wird regelmäßig (alle 3 h) und bei jeder Wiederherstellung erneuert.
+# =============================================================================
+
+shell_command:
+  thw_trace_capture: "sh /config/thw_trace/trace.sh capture {{ slug }}"
+  thw_trace_diff: "sh /config/thw_trace/trace.sh diff {{ slug }}"
+
+# Speicher für die letzte Traceroute-Diagnose je Dienst (Event-gespeist)
+template:
+  - trigger:
+      - platform: event
+        event_type: thw_trace_result
+    sensor:
+      - name: "THW Trace Log"
+        unique_id: thw_trace_log
+        icon: mdi:map-marker-path
+        state: "{{ trigger.event.data.slug }}"
+        attributes:
+          data: >
+            {% set prev = this.attributes.get('data', {}) if this is defined and this.attributes is defined else {} %}
+            {% set entry = {'summary': trigger.event.data.summary,
+                            'detail': trigger.event.data.detail,
+                            'ts': trigger.event.data.ts} %}
+            {{ prev | combine({ trigger.event.data.slug: entry }) }}
+
+automation:
+  # Referenz-Traceroute regelmäßig erneuern (nur für aktuell erreichbare Dienste)
+  - id: thw_trace_baseline
+    alias: "THW: Traceroute-Referenz erfassen"
+    description: "Aktualisiert alle 3 h den Referenz-Traceroute der erreichbaren Dienste"
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time_pattern
+        hours: "/3"
+      - platform: homeassistant
+        event: start
+    action:
+      - delay: "00:01:00"
+      - repeat:
+          for_each:
+            - thw_web_heroesday_de
+            - thw_web_herosbeach_de
+            - thw_web_herosday_de
+            - thw_web_riesenkicker_info
+            - thw_web_thwfv_muenchen_ost_de
+            - thw_web_weinfest
+            - thw_web_thw_muenchen_ost_de
+            - thw_vpn_intranet
+            - thw_mail_imaps
+            - thw_mail_submission
+          sequence:
+            # Template-Condition statt 'condition: state', da entity_id hier ein
+            # Template ist (Schema-Validierung verbietet Templates in
+            # condition.state.entity_id -> sonst "validation_failed_schema").
+            - if:
+                - condition: template
+                  value_template: "{{ is_state('binary_sensor.' ~ repeat.item, 'on') }}"
+              then:
+                - service: shell_command.thw_trace_capture
+                  data:
+                    slug: "{{ repeat.item }}"
+            - delay: "00:00:03"

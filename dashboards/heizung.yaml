@@ -1,0 +1,703 @@
+title: Heizung
+views:
+  - title: Heizung
+    path: heizung
+    icon: mdi:radiator
+    cards:
+      # =====================================================================
+      # Gaswarner (nur sichtbar wenn Alarm aktiv)
+      # =====================================================================
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.gasleck_heizungskeller
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Gasleck Heizungskeller!"
+          secondary: "{{ states('sensor.luft4_sensor_luft4_luftqualitaet_ppm') }} ppm (Alarm ab 2000ppm)"
+          icon: mdi:gas-cylinder
+          icon_color: red
+          tap_action:
+            action: more-info
+            entity: binary_sensor.gasleck_heizungskeller
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(244, 67, 54, 0.15) !important;
+                border: 2px solid red !important;
+              }
+
+      # =====================================================================
+      # Sektion 1: Uebersicht
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          # Betriebsart HK1
+          - type: custom:mushroom-template-card
+            primary: "Betriebsart"
+            secondary: "{{ states('sensor.heizung_betriebsart') }}"
+            icon: mdi:cog
+            icon_color: >-
+              {% set mode = states('sensor.heizung_betriebsart') %}
+              {% if mode == 'Automatik' %}blue
+              {% elif 'Komfort' in mode or 'Heizen' in mode %}orange
+              {% elif mode == 'Schutzbetrieb' %}cyan
+              {% else %}grey{% endif %}
+            tap_action:
+              action: more-info
+              entity: climate.bsb_lan
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+          # Aussentemperatur
+          - type: custom:mushroom-template-card
+            primary: "Aussen"
+            secondary: "{{ states('sensor.bsb_lan_outside_temperature') }}°C"
+            icon: mdi:home-thermometer-outline
+            icon_color: >-
+              {% set t = states('sensor.bsb_lan_outside_temperature') | float(0) %}
+              {% if t < 0 %}blue
+              {% elif t < 10 %}cyan
+              {% elif t < 20 %}green
+              {% else %}orange{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.bsb_lan_outside_temperature
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+          # Status HK1
+          - type: custom:mushroom-template-card
+            primary: "Status HK1"
+            secondary: "{{ states('sensor.heizung_status_hk1') }}"
+            icon: mdi:radiator
+            icon_color: >-
+              {% set s = states('sensor.heizung_status_hk1') %}
+              {% if 'Komfort' in s %}orange
+              {% elif 'Reduziert' in s %}cyan
+              {% elif 'Schutz' in s or 'Frost' in s %}blue
+              {% else %}grey{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.heizung_status_hk1
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+          # Brenner
+          - type: custom:mushroom-template-card
+            primary: "Brenner"
+            secondary: >-
+              {% if is_state('binary_sensor.heizung_brenner', 'on') %}
+                {{ states('sensor.heizung_leistung') }}%
+              {% else %}Aus{% endif %}
+            icon: mdi:fire
+            icon_color: >-
+              {% set p = states('sensor.heizung_leistung') | int(0) %}
+              {% if p == 0 %}grey
+              {% elif p < 30 %}yellow
+              {% elif p < 70 %}orange
+              {% else %}red{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.heizung_leistung
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+      # =====================================================================
+      # Sektion 2: Heizkreis 1
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          # Vorlauf
+          - type: custom:mushroom-template-card
+            primary: "Vorlauf"
+            secondary: >-
+              {{ states('sensor.heizung_vorlauf') }}°C /
+              {{ states('sensor.heizung_vorlauf_soll') }}°C Soll
+            icon: mdi:thermometer-chevron-up
+            icon_color: >-
+              {% set t = states('sensor.heizung_vorlauf') | float(0) %}
+              {% if t > 50 %}red
+              {% elif t > 35 %}orange
+              {% else %}yellow{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.heizung_vorlauf
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+          # Ruecklauf
+          - type: custom:mushroom-template-card
+            primary: "Ruecklauf"
+            secondary: "{{ states('sensor.heizung_ruecklauf') }}°C"
+            icon: mdi:thermometer-chevron-down
+            icon_color: >-
+              {% set t = states('sensor.heizung_ruecklauf') | float(0) %}
+              {% if t > 45 %}orange
+              {% elif t > 30 %}blue
+              {% else %}cyan{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.heizung_ruecklauf
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+          # Spreizung
+          - type: custom:mushroom-template-card
+            primary: "Spreizung"
+            secondary: "{{ states('sensor.heizung_spreizung') }} K"
+            icon: mdi:thermometer-lines
+            icon_color: >-
+              {% set s = states('sensor.heizung_spreizung') | float(0) %}
+              {% if s > 15 %}red
+              {% elif s > 8 %}orange
+              {% else %}green{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.heizung_spreizung
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+      # =====================================================================
+      # Sektion 3: Trinkwasser
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          # TWW Status
+          - type: custom:mushroom-template-card
+            primary: "Trinkwasser"
+            secondary: "{{ states('sensor.heizung_status_tww') }}"
+            icon: mdi:water-boiler
+            icon_color: >-
+              {% set s = states('sensor.heizung_status_tww') %}
+              {% if 'Geladen' in s %}green
+              {% elif 'Laden' in s or 'Ladung' in s %}orange
+              {% else %}grey{% endif %}
+            tap_action:
+              action: more-info
+              entity: water_heater.bsb_lan
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+          # TWW Temperatur
+          - type: custom:mushroom-template-card
+            primary: "TWW Temp."
+            secondary: >-
+              {{ states('sensor.heizung_tww_ist') }}°C /
+              {{ states('sensor.heizung_tww_soll') }}°C Soll
+            icon: mdi:water-thermometer
+            icon_color: >-
+              {% set t = states('sensor.heizung_tww_ist') | float(0) %}
+              {% set s = states('sensor.heizung_tww_soll') | float(0) %}
+              {% if t >= s %}green
+              {% elif (s - t) < 3 %}orange
+              {% else %}red{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.heizung_tww_ist
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+          # Legionellenschutz
+          - type: custom:mushroom-template-card
+            primary: "Legionellen"
+            secondary: >-
+              {{ states('sensor.heizung_legionellenfunktion') }},
+              {{ states('sensor.heizung_legionellen_sollwert') }}°C
+            icon: mdi:shield-bug
+            icon_color: green
+            tap_action:
+              action: more-info
+              entity: sensor.heizung_legionellen_sollwert
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+      # =====================================================================
+      # Sektion 4: Kessel & Brenner
+      # =====================================================================
+      - type: horizontal-stack
+        cards:
+          # Kessel
+          - type: custom:mushroom-template-card
+            primary: "Kessel"
+            secondary: >-
+              {{ states('sensor.heizung_kessel') }}°C /
+              {{ states('sensor.heizung_kessel_soll') }}°C Soll
+            icon: mdi:fire-circle
+            icon_color: >-
+              {% set t = states('sensor.heizung_kessel') | float(0) %}
+              {% if t > 60 %}red
+              {% elif t > 40 %}orange
+              {% else %}yellow{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.heizung_kessel
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+          # Geblaese
+          - type: custom:mushroom-template-card
+            primary: "Geblaese"
+            secondary: "{{ states('sensor.heizung_geblaese') }} U/min"
+            icon: mdi:fan
+            icon_color: >-
+              {% set r = states('sensor.heizung_geblaese') | int(0) %}
+              {% if r == 0 %}grey
+              {% elif r < 2000 %}cyan
+              {% else %}blue{% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.heizung_geblaese
+            card_mod:
+              style:
+                .: |
+                  ha-card {
+                    --primary-font-size: 12px;
+                    --secondary-font-size: 11px;
+                    --icon-size: 32px;
+                  }
+                mushroom-state-info$: |
+                  .secondary {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow: visible !important;
+                    text-overflow: unset !important;
+                    -webkit-line-clamp: unset !important;
+                  }
+
+      - type: horizontal-stack
+        cards:
+          # Leistung Gauge
+          - type: gauge
+            entity: sensor.heizung_leistung
+            name: Brennerleistung
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 50
+              red: 80
+            needle: true
+
+          # Pumpe Gauge
+          - type: gauge
+            entity: sensor.heizung_pumpe
+            name: Pumpendrehzahl
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 50
+              red: 80
+            needle: true
+
+      # =====================================================================
+      # Sektion 5: Temperaturverlauf (ApexCharts)
+      # =====================================================================
+      - type: custom:apexcharts-card
+        header:
+          title: Temperaturverlauf 24h
+          show: true
+        graph_span: 24h
+        yaxis:
+          - id: temp
+            min: ~0
+            max: ~60
+            apex_config:
+              title:
+                text: "°C"
+              tickAmount: 6
+          - id: pct
+            opposite: true
+            min: 0
+            max: 100
+            apex_config:
+              title:
+                text: "%"
+              tickAmount: 5
+        series:
+          - entity: sensor.heizung_vorlauf
+            name: Vorlauf
+            yaxis_id: temp
+            color: "#F44336"
+            stroke_width: 2
+          - entity: sensor.heizung_ruecklauf
+            name: Ruecklauf
+            yaxis_id: temp
+            color: "#2196F3"
+            stroke_width: 2
+          - entity: sensor.bsb_lan_outside_temperature
+            name: Aussen
+            yaxis_id: temp
+            color: "#4CAF50"
+            stroke_width: 2
+          - entity: sensor.heizung_kessel
+            name: Kessel
+            yaxis_id: temp
+            color: "#FF9800"
+            stroke_width: 1
+            opacity: 0.5
+          - entity: sensor.heizung_leistung
+            name: Leistung
+            yaxis_id: pct
+            color: "#9C27B0"
+            type: area
+            stroke_width: 1
+            opacity: 0.3
+
+      # =====================================================================
+      # Sektion 5b: Luft4 - Heizungskeller (Klima + Gassensor MQ-2)
+      # =====================================================================
+      - type: entities
+        title: Luft4 - Heizungskeller
+        show_header_toggle: false
+        entities:
+          - entity: sensor.luft4_sensor_luft4_temperatur
+            name: Temperatur
+          - entity: sensor.luft4_sensor_luft4_luftfeuchtigkeit
+            name: Luftfeuchtigkeit
+          - entity: sensor.luft4_sensor_luft4_luftqualitaet_ppm
+            name: Gas (äquiv.)
+          - entity: sensor.luft4_sensor_luft4_luftqualitaet_bewertung
+            name: Bewertung
+
+      - type: custom:apexcharts-card
+        header:
+          title: Luft4 Klima - Tag
+          show: true
+        graph_span: 24h
+        yaxis:
+          - id: temp
+            decimals: 1
+            apex_config:
+              title:
+                text: "°C"
+          - id: pct
+            opposite: true
+            min: 0
+            max: 100
+            apex_config:
+              title:
+                text: "%"
+        series:
+          - entity: sensor.luft4_sensor_luft4_temperatur
+            name: Temperatur
+            yaxis_id: temp
+            curve: smooth
+            color: "#F44336"
+          - entity: sensor.luft4_sensor_luft4_luftfeuchtigkeit
+            name: Luftfeuchtigkeit
+            yaxis_id: pct
+            curve: smooth
+            color: "#2196F3"
+
+      - type: custom:apexcharts-card
+        header:
+          title: Luft4 Klima - Monat
+          show: true
+        graph_span: 30d
+        yaxis:
+          - id: temp
+            decimals: 1
+            apex_config:
+              title:
+                text: "°C"
+          - id: pct
+            opposite: true
+            min: 0
+            max: 100
+            apex_config:
+              title:
+                text: "%"
+        series:
+          - entity: sensor.luft4_sensor_luft4_temperatur
+            name: Temperatur
+            yaxis_id: temp
+            curve: smooth
+            color: "#F44336"
+            group_by:
+              func: avg
+              duration: 2h
+          - entity: sensor.luft4_sensor_luft4_luftfeuchtigkeit
+            name: Luftfeuchtigkeit
+            yaxis_id: pct
+            curve: smooth
+            color: "#2196F3"
+            group_by:
+              func: avg
+              duration: 2h
+
+      - type: custom:apexcharts-card
+        header:
+          title: Luft4 Gas (äquiv.) - Tag
+          show: true
+        graph_span: 24h
+        yaxis:
+          - id: ppm
+            decimals: 0
+            apex_config:
+              title:
+                text: "ppm"
+        series:
+          - entity: sensor.luft4_sensor_luft4_luftqualitaet_ppm
+            name: Gas äquiv.
+            yaxis_id: ppm
+            curve: smooth
+            color: "#9C27B0"
+
+      - type: custom:apexcharts-card
+        header:
+          title: Luft4 Gas (äquiv.) - Monat
+          show: true
+        graph_span: 30d
+        yaxis:
+          - id: ppm
+            decimals: 0
+            apex_config:
+              title:
+                text: "ppm"
+        series:
+          - entity: sensor.luft4_sensor_luft4_luftqualitaet_ppm
+            name: Gas äquiv.
+            yaxis_id: ppm
+            curve: smooth
+            color: "#9C27B0"
+            group_by:
+              func: avg
+              duration: 2h
+
+      # =====================================================================
+      # Sektion 6: Konfiguration
+      # =====================================================================
+      - type: entities
+        title: Konfiguration
+        icon: mdi:tune-variant
+        entities:
+          - entity: sensor.heizung_kennlinie
+            name: "Heizkennlinien-Steilheit"
+            icon: mdi:chart-line
+          - entity: sensor.heizung_sommer_winter
+            name: "Sommer/Winter Umschaltung"
+            icon: mdi:sun-snowflake-variant
+          - entity: sensor.heizung_komfortsollwert
+            name: "Komfortsollwert"
+            icon: mdi:sofa
+          - entity: sensor.heizung_reduziertsollwert
+            name: "Reduziertsollwert"
+            icon: mdi:weather-night
+          - entity: sensor.heizung_frostschutzsollwert
+            name: "Frostschutzsollwert"
+            icon: mdi:snowflake
+          - entity: sensor.heizung_tww_nennsollwert
+            name: "TWW Nennsollwert"
+            icon: mdi:water-boiler
+          - entity: sensor.heizung_tww_reduziertsollwert
+            name: "TWW Reduziertsollwert"
+            icon: mdi:water-boiler-off
+
+      - type: custom:mushroom-template-card
+        primary: "BSB-LAN Webinterface"
+        secondary: "10.10.12.57"
+        icon: mdi:web
+        icon_color: blue
+        tap_action:
+          action: url
+          url_path: "http://10.10.12.57"
+        card_mod:
+          style:
+            .: |
+              ha-card {
+                --primary-font-size: 12px;
+                --secondary-font-size: 11px;
+                --icon-size: 32px;
+              }
+
+      # --- Kessel-Status ---
+      - type: entities
+        title: Status Details
+        icon: mdi:information-outline
+        entities:
+          - entity: sensor.heizung_status_hk1
+            name: "Heizkreis 1"
+          - entity: sensor.heizung_status_tww
+            name: "Trinkwasser"
+          - entity: sensor.heizung_status_kessel
+            name: "Kessel"
+          - entity: sensor.heizung_betriebsart
+            name: "Betriebsart"
+
+      # --- Brenner-Statistik + Diagnose ---
+      - type: entities
+        title: Brenner-Statistik & Diagnose
+        icon: mdi:chart-box-outline
+        entities:
+          - entity: sensor.heizung_brenner_startzaehler
+            name: "Brenner-Starts"
+          - entity: sensor.heizung_brenner_betriebsstunden
+            name: "Betriebsstunden Brenner"
+          - entity: sensor.heizung_betriebsstunden_heizbetrieb
+            name: "davon Heizbetrieb"
+          - entity: sensor.heizung_betriebsstunden_tww
+            name: "davon Trinkwasser"
+          - entity: sensor.heizung_betriebsstunden_zonen
+            name: "davon Zonen"
+          - entity: sensor.heizung_raumsollwert
+            name: "Raumsollwert"
+          - entity: sensor.heizung_fehlercode
+            name: "Fehlercode (0 = kein Fehler)"
+          - entity: sensor.heizung_wartungscode
+            name: "Wartungscode (0 = keine Meldung)"

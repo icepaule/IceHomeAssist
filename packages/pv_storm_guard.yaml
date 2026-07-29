@@ -1,0 +1,177 @@
+# =============================================================================
+# PV STORM GUARD - HA-seitige Wind-Sturm-Automatik fuer den Solar-Tracker
+# =============================================================================
+# Konzept:
+#   Olimex ESP32-EVB bleibt "dumm" - HA uebernimmt die Wind-Ueberwachung.
+#   Bei anhaltend hohem Wind wird per HTTP POST /api/emergency on gesendet,
+#   was den Tracker auf MIN_ANGLE (flach) fahren laesst.
+#   Bei anhaltend ruhigem Wind: /api/emergency off -> normaler Betrieb.
+#   HTTP via nginx-Reverse-Proxy 10.10.0.100:8055 (unabhaengig vom MQTT-Sub,
+#   der auf dem Olimex zeitweise ausfaellt).
+#
+# Quelle: sensor.tasmota_iceweather_windspeed (m/s) - lokale Wetterstation
+# Schwellwerte: konfigurierbar via input_number in HA-UI
+#
+# Wichtig: Automation greift nur wenn input_boolean.pv_storm_guard_enabled on.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# INPUT HELPERS - alle Schwellwerte in HA-UI editierbar
+# -----------------------------------------------------------------------------
+input_number:
+  pv_storm_wind_trigger_kmh:
+    name: "PV Sturm Trigger-Schwelle"
+    min: 5
+    max: 100
+    step: 1
+    initial: 30
+    unit_of_measurement: "km/h"
+    icon: mdi:weather-windy
+
+  pv_storm_wind_release_kmh:
+    name: "PV Sturm Release-Schwelle"
+    min: 0
+    max: 50
+    step: 1
+    initial: 10
+    unit_of_measurement: "km/h"
+    icon: mdi:weather-partly-cloudy
+
+  pv_storm_wind_trigger_minutes:
+    name: "PV Sturm Trigger-Dauer"
+    min: 1
+    max: 30
+    step: 1
+    initial: 1
+    unit_of_measurement: "min"
+    icon: mdi:timer-outline
+
+  pv_storm_wind_release_minutes:
+    name: "PV Sturm Release-Dauer"
+    min: 1
+    max: 60
+    step: 1
+    initial: 10
+    unit_of_measurement: "min"
+    icon: mdi:timer-outline
+
+input_boolean:
+  pv_storm_guard_enabled:
+    name: "PV Sturm-Guard aktiv"
+    icon: mdi:shield-check
+  pv_storm_guard_active:
+    name: "PV Sturm-Guard AKTIV (Panel flach)"
+    icon: mdi:shield-alert
+
+# -----------------------------------------------------------------------------
+# TEMPLATE SENSOR - Wind in km/h fuer schoene Anzeige
+# -----------------------------------------------------------------------------
+template:
+  - sensor:
+      - name: "PV Wind km/h"
+        unique_id: pv_wind_kmh
+        state: >-
+          {{ (states('sensor.tasmota_iceweather_windspeed') | float(0) * 3.6) | round(1) }}
+        unit_of_measurement: "km/h"
+        icon: mdi:weather-windy
+        availability: >-
+          {{ states('sensor.tasmota_iceweather_windspeed') not in ['unavailable', 'unknown', 'none'] }}
+
+# -----------------------------------------------------------------------------
+# AUTOMATIONS
+# -----------------------------------------------------------------------------
+automation:
+  - id: pv_storm_guard_activate
+    alias: "PV Storm Guard - Aktivieren bei Wind"
+    description: "Wind ueber Trigger-Schwelle fuer Trigger-Dauer -> EMERGENCY on -> Panel flach"
+    mode: single
+    trigger:
+      - platform: template
+        value_template: >-
+          {{ (states('sensor.tasmota_iceweather_windspeed') | float(0))
+             > (states('input_number.pv_storm_wind_trigger_kmh') | float(30) / 3.6) }}
+        for:
+          minutes: "{{ states('input_number.pv_storm_wind_trigger_minutes') | int(1) }}"
+    condition:
+      - condition: state
+        entity_id: input_boolean.pv_storm_guard_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.pv_storm_guard_active
+        state: "off"
+    action:
+      - service: rest_command.solar_emergency_on
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.pv_storm_guard_active
+      - service: logbook.log
+        data:
+          name: "PV Storm Guard"
+          message: >-
+            AKTIVIERT - Wind {{ states('sensor.pv_wind_km_h') }} km/h ueber
+            {{ states('input_number.pv_storm_wind_trigger_kmh') }} km/h fuer
+            {{ states('input_number.pv_storm_wind_trigger_minutes') }} min
+
+  - id: pv_storm_guard_release
+    alias: "PV Storm Guard - Release bei Windruhe"
+    description: "Wind unter Release-Schwelle fuer Release-Dauer -> EMERGENCY off -> Normal"
+    mode: single
+    trigger:
+      - platform: template
+        value_template: >-
+          {{ (states('sensor.tasmota_iceweather_windspeed') | float(999))
+             < (states('input_number.pv_storm_wind_release_kmh') | float(10) / 3.6) }}
+        for:
+          minutes: "{{ states('input_number.pv_storm_wind_release_minutes') | int(10) }}"
+    condition:
+      - condition: state
+        entity_id: input_boolean.pv_storm_guard_active
+        state: "on"
+    action:
+      - service: rest_command.solar_emergency_off
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.pv_storm_guard_active
+      - service: logbook.log
+        data:
+          name: "PV Storm Guard"
+          message: >-
+            RELEASE - Wind {{ states('sensor.pv_wind_km_h') }} km/h ruhig fuer
+            {{ states('input_number.pv_storm_wind_release_minutes') }} min
+
+  - id: pv_storm_guard_disabled_cleanup
+    alias: "PV Storm Guard - Deaktivierung -> Emergency off"
+    description: "Wenn Guard-Schalter aus, aber Guard aktiv -> Emergency off + Reset Status"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.pv_storm_guard_enabled
+        to: "off"
+    condition:
+      - condition: state
+        entity_id: input_boolean.pv_storm_guard_active
+        state: "on"
+    action:
+      - service: rest_command.solar_emergency_off
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.pv_storm_guard_active
+
+# -----------------------------------------------------------------------------
+# REST COMMANDS - direktes HTTP an Olimex (zuverlaessiger als MQTT sub)
+# Reverse-Proxy nginx pv-tracker-proxy laeuft auf NUC-HA:8055 -> Olimex 10.10.12.55
+# -----------------------------------------------------------------------------
+rest_command:
+  solar_emergency_on:
+    url: "http://10.10.0.100:8055/api/emergency"
+    method: POST
+    content_type: "application/x-www-form-urlencoded"
+    payload: "v=on"
+    timeout: 8
+
+  solar_emergency_off:
+    url: "http://10.10.0.100:8055/api/emergency"
+    method: POST
+    content_type: "application/x-www-form-urlencoded"
+    payload: "v=off"
+    timeout: 8

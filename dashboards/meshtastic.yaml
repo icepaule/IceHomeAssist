@@ -1,0 +1,437 @@
+title: Meshtastic
+views:
+  # ===========================================================================
+  # Tab 1: Status
+  # ===========================================================================
+  - title: Status
+    path: status
+    icon: mdi:radio-tower
+    cards:
+      # --- Netzwerk-Ueberblick ---
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: "Meshtastic Mesh"
+            secondary: >-
+              {{ states('sensor.mesh_lora_region') }} |
+              {{ states('sensor.mesh_lora_preset') }} |
+              {{ states('sensor.mesh_aktive_nodes') }} eigene,
+              {{ states('sensor.mesh_total_nodes') }} gesamt
+            icon: mdi:radio-tower
+            icon_color: cyan
+            card_mod:
+              style: |
+                ha-card { --ha-card-background: rgba(0, 188, 212, 0.08); }
+
+      # --- Node Status Chips ---
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: template
+            icon: mdi:router-wireless
+            icon_color: >-
+              {{ 'green' if states('sensor.mesh_gw_battery') not in ['unknown', 'unavailable'] else 'red' }}
+            content: "GW {{ states('sensor.mesh_gw_battery') }}%"
+            tap_action:
+              action: more-info
+              entity: sensor.mesh_gw_battery
+          - type: template
+            icon: mdi:radio-handheld
+            icon_color: >-
+              {{ 'green' if states('sensor.mesh_supreme_battery') not in ['unknown', 'unavailable'] else 'red' }}
+            content: "Supreme {{ states('sensor.mesh_supreme_battery') }}%"
+            tap_action:
+              action: more-info
+              entity: sensor.mesh_supreme_battery
+          - type: template
+            icon: mdi:cellphone
+            icon_color: >-
+              {{ 'green' if states('sensor.mesh_deck_battery') not in ['unknown', 'unavailable'] else 'red' }}
+            content: "Deck {{ states('sensor.mesh_deck_battery') }}%"
+            tap_action:
+              action: more-info
+              entity: sensor.mesh_deck_battery
+          - type: template
+            icon: mdi:cellphone-text
+            icon_color: >-
+              {{ 'green' if states('sensor.mesh_otn_battery') not in ['unknown', 'unavailable'] else 'red' }}
+            content: "OTN {{ states('sensor.mesh_otn_battery') }}%"
+            tap_action:
+              action: more-info
+              entity: sensor.mesh_otn_battery
+        alignment: center
+
+      # --- T-Beam GW Card ---
+      - type: custom:mushroom-template-card
+        primary: "IceMesh GW (T-Beam)"
+        secondary: >-
+          {{ states('sensor.mesh_gw_battery') }}% |
+          {{ states('sensor.mesh_gw_voltage') }}V |
+          Uptime: {{ states('sensor.mesh_gw_uptime_text') }}
+        icon: mdi:router-wireless
+        icon_color: >-
+          {% set bat = states('sensor.mesh_gw_battery') | int(0) %}
+          {% if bat > 50 %}green{% elif bat > 20 %}orange{% else %}red{% endif %}
+        badge_icon: >-
+          {% set bat = states('sensor.mesh_gw_battery') | int(0) %}
+          {% if bat > 75 %}mdi:battery-high
+          {% elif bat > 50 %}mdi:battery-medium
+          {% elif bat > 20 %}mdi:battery-low
+          {% else %}mdi:battery-alert{% endif %}
+        badge_color: >-
+          {% set bat = states('sensor.mesh_gw_battery') | int(0) %}
+          {% if bat > 50 %}green{% elif bat > 20 %}orange{% else %}red{% endif %}
+        tap_action:
+          action: more-info
+          entity: sensor.mesh_gw_battery
+
+      # --- T-Beam Supreme Card ---
+      - type: custom:mushroom-template-card
+        primary: "IceRepeater (T-Beam Supreme)"
+        secondary: >-
+          {{ states('sensor.mesh_supreme_battery') }}% |
+          {{ states('sensor.mesh_supreme_voltage') }}V |
+          Uptime: {{ states('sensor.mesh_supreme_uptime_text') }}
+        icon: mdi:radio-handheld
+        icon_color: >-
+          {% set bat = states('sensor.mesh_supreme_battery') | int(0) %}
+          {% if bat > 50 %}green{% elif bat > 20 %}orange{% else %}red{% endif %}
+        badge_icon: >-
+          {% set bat = states('sensor.mesh_supreme_battery') | int(0) %}
+          {% if bat > 75 %}mdi:battery-high
+          {% elif bat > 50 %}mdi:battery-medium
+          {% elif bat > 20 %}mdi:battery-low
+          {% else %}mdi:battery-alert{% endif %}
+        badge_color: >-
+          {% set bat = states('sensor.mesh_supreme_battery') | int(0) %}
+          {% if bat > 50 %}green{% elif bat > 20 %}orange{% else %}red{% endif %}
+        tap_action:
+          action: more-info
+          entity: sensor.mesh_supreme_battery
+
+      # --- T-Deck Plus Card ---
+      - type: custom:mushroom-template-card
+        primary: "IceDeck (T-Deck Plus)"
+        secondary: >-
+          {{ states('sensor.mesh_deck_battery') }}% |
+          {{ states('sensor.mesh_deck_voltage') }}V |
+          Uptime: {{ states('sensor.mesh_deck_uptime_text') }}
+        icon: mdi:cellphone
+        icon_color: >-
+          {% set bat = states('sensor.mesh_deck_battery') | int(0) %}
+          {% if bat > 50 %}green{% elif bat > 20 %}orange{% else %}red{% endif %}
+        badge_icon: >-
+          {% set bat = states('sensor.mesh_deck_battery') | int(0) %}
+          {% if bat > 75 %}mdi:battery-high
+          {% elif bat > 50 %}mdi:battery-medium
+          {% elif bat > 20 %}mdi:battery-low
+          {% else %}mdi:battery-alert{% endif %}
+        badge_color: >-
+          {% set bat = states('sensor.mesh_deck_battery') | int(0) %}
+          {% if bat > 50 %}green{% elif bat > 20 %}orange{% else %}red{% endif %}
+        tap_action:
+          action: more-info
+          entity: sensor.mesh_deck_battery
+
+      # --- OTN TDeck Card ---
+      - type: custom:mushroom-template-card
+        primary: "OTN TDeck (T-Deck)"
+        secondary: >-
+          {{ states('sensor.mesh_otn_battery') }}% |
+          {{ states('sensor.mesh_otn_voltage') }}V |
+          Uptime: {{ states('sensor.mesh_otn_uptime_text') }}
+        icon: mdi:cellphone-text
+        icon_color: >-
+          {% set bat = states('sensor.mesh_otn_battery') | int(0) %}
+          {% if bat > 50 %}green{% elif bat > 20 %}orange{% else %}red{% endif %}
+        badge_icon: >-
+          {% set bat = states('sensor.mesh_otn_battery') | int(0) %}
+          {% if bat > 75 %}mdi:battery-high
+          {% elif bat > 50 %}mdi:battery-medium
+          {% elif bat > 20 %}mdi:battery-low
+          {% else %}mdi:battery-alert{% endif %}
+        badge_color: >-
+          {% set bat = states('sensor.mesh_otn_battery') | int(0) %}
+          {% if bat > 50 %}green{% elif bat > 20 %}orange{% else %}red{% endif %}
+        tap_action:
+          action: more-info
+          entity: sensor.mesh_otn_battery
+
+      # --- Letzter Kontakt ---
+      - type: entities
+        title: "Letzter LoRa-Kontakt"
+        icon: mdi:clock-check-outline
+        entities:
+          - entity: sensor.mesh_gw_last_heard
+            name: "GW"
+          - entity: sensor.mesh_supreme_last_heard
+            name: "Supreme"
+          - entity: sensor.mesh_deck_last_heard
+            name: "IceDeck"
+          - entity: sensor.mesh_otn_last_heard
+            name: "OTN TDeck"
+
+      # --- Kanalauslastung & Air Util ---
+      - type: entities
+        title: "Kanalauslastung"
+        icon: mdi:signal-variant
+        entities:
+          - entity: sensor.mesh_gw_channel_util
+            name: "GW Channel Util"
+          - entity: sensor.mesh_gw_air_util_tx
+            name: "GW Air Util TX"
+          - entity: sensor.mesh_supreme_channel_util
+            name: "Supreme Channel Util"
+          - entity: sensor.mesh_supreme_air_util_tx
+            name: "Supreme Air Util TX"
+          - entity: sensor.mesh_deck_channel_util
+            name: "Deck Channel Util"
+          - entity: sensor.mesh_deck_air_util_tx
+            name: "Deck Air Util TX"
+          - entity: sensor.mesh_otn_channel_util
+            name: "OTN Channel Util"
+          - entity: sensor.mesh_otn_air_util_tx
+            name: "OTN Air Util TX"
+
+      # --- Signal-Qualitaet ---
+      - type: entities
+        title: "Signalqualitaet (zum GW)"
+        icon: mdi:signal
+        entities:
+          - entity: sensor.mesh_supreme_rssi
+            name: "Supreme RSSI"
+          - entity: sensor.mesh_supreme_snr
+            name: "Supreme SNR"
+          - entity: sensor.mesh_deck_rssi
+            name: "Deck RSSI"
+          - entity: sensor.mesh_deck_snr
+            name: "Deck SNR"
+          - entity: sensor.mesh_otn_rssi
+            name: "OTN RSSI"
+          - entity: sensor.mesh_otn_snr
+            name: "OTN SNR"
+
+      # --- Detail-Telemetrie ---
+      - type: entities
+        title: "Detail-Telemetrie"
+        icon: mdi:information-outline
+        entities:
+          - entity: sensor.mesh_gw_voltage
+            name: "GW Voltage"
+          - entity: sensor.mesh_gw_uptime
+            name: "GW Uptime (s)"
+          - entity: sensor.mesh_gw_altitude
+            name: "GW Altitude"
+          - entity: sensor.mesh_supreme_voltage
+            name: "Supreme Voltage"
+          - entity: sensor.mesh_supreme_uptime
+            name: "Supreme Uptime (s)"
+          - entity: sensor.mesh_deck_voltage
+            name: "Deck Voltage"
+          - entity: sensor.mesh_deck_uptime
+            name: "Deck Uptime (s)"
+          - entity: sensor.mesh_otn_voltage
+            name: "OTN Voltage"
+          - entity: sensor.mesh_otn_uptime
+            name: "OTN Uptime (s)"
+
+      # --- LoRa Konfiguration ---
+      - type: entities
+        title: "LoRa Konfiguration"
+        icon: mdi:tune-variant
+        entities:
+          - entity: sensor.mesh_lora_region
+            name: "Region"
+          - entity: sensor.mesh_lora_preset
+            name: "Modem Preset"
+          - entity: sensor.mesh_lora_hop_limit
+            name: "Hop Limit"
+          - entity: sensor.mesh_lora_tx_power
+            name: "TX Power"
+          - entity: sensor.mesh_total_nodes
+            name: "Nodes im Mesh"
+
+  # ===========================================================================
+  # Tab 2: Nachrichten (Chat-Stil)
+  # ===========================================================================
+  - title: Nachrichten
+    path: nachrichten
+    icon: mdi:message-text
+    cards:
+      # --- Chat-Verlauf (Signal-Stil mit card_mod CSS) ---
+      - type: markdown
+        content: |
+          {% set ch = states('input_select.meshtastic_channel') %}
+          {% set all_msgs = state_attr('sensor.mesh_chat_history', 'messages') %}
+          {% set msgs = all_msgs | selectattr('channel', 'eq', ch) | list if all_msgs is iterable else [] %}
+          {% if msgs | length > 0 %}
+          {% for msg in msgs %}
+          {% if msg.dir == 'out' %}
+          > {{ msg.text }}<br>*{{ msg.time }}*
+
+          {% else %}
+          {{ msg.text }}<br>**{{ msg.sender }}** · *{{ msg.time }}*
+
+          {% endif %}
+          {% endfor %}
+          {% else %}
+          *Keine Nachrichten auf {{ ch }}.*
+          {% endif %}
+        card_mod:
+          style:
+            ha-markdown$: |
+              blockquote {
+                background: #2563EB !important;
+                border: none !important;
+                border-left: none !important;
+                border-radius: 18px 18px 4px 18px;
+                padding: 10px 16px !important;
+                margin: 6px 0 6px 18% !important;
+                color: white !important;
+              }
+              blockquote p {
+                color: white !important;
+                margin: 0 !important;
+              }
+              blockquote em {
+                color: rgba(255,255,255,0.6) !important;
+                font-size: 0.8em;
+              }
+              :host > p {
+                background: #374151;
+                color: #E5E7EB !important;
+                border-radius: 18px 18px 18px 4px;
+                padding: 10px 16px;
+                margin: 6px 18% 6px 0;
+              }
+              :host > p strong {
+                color: #60A5FA !important;
+              }
+              :host > p em {
+                color: rgba(229,231,235,0.5) !important;
+                font-size: 0.8em;
+              }
+            .: |
+              ha-card {
+                background: #111827 !important;
+                max-height: 500px;
+                overflow-y: auto;
+                border: 1px solid rgba(55,65,81,0.5);
+              }
+
+      # --- Kanal-Auswahl ---
+      - type: custom:mushroom-select-card
+        entity: input_select.meshtastic_channel
+        name: "Kanal"
+        icon: mdi:radio-tower
+
+      # --- Nachricht eingeben + Senden ---
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            entities:
+              - entity: input_text.meshtastic_message
+                name: "Nachricht"
+          - type: custom:mushroom-template-card
+            primary: "Senden"
+            icon: mdi:send
+            icon_color: blue
+            layout: vertical
+            tap_action:
+              action: perform-action
+              perform_action: script.meshtastic_send
+            card_mod:
+              style: |
+                ha-card { cursor: pointer; min-height: 68px; }
+
+      # --- Schnellnachrichten ---
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: "Ping"
+            icon: mdi:lan-connect
+            icon_color: cyan
+            layout: vertical
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: event.fire
+                data:
+                  event_type: meshtastic_quick_ping
+          - type: custom:mushroom-template-card
+            primary: "Status OK"
+            icon: mdi:check-circle
+            icon_color: green
+            layout: vertical
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: event.fire
+                data:
+                  event_type: meshtastic_quick_ok
+          - type: custom:mushroom-template-card
+            primary: "Komme heim"
+            icon: mdi:home
+            icon_color: orange
+            layout: vertical
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: event.fire
+                data:
+                  event_type: meshtastic_quick_home
+
+      # --- Letzte empfangene Nachricht (Detail) ---
+      - type: markdown
+        title: "Letzte empfangene Nachricht"
+        content: >-
+          **Kanal:** {{ states('sensor.mesh_letzte_nachricht_kanal') }}
+
+          **Sender:** {{ states('sensor.mesh_letzte_nachricht_sender') }}
+
+          **Zeit:** {{ states('sensor.mesh_letzte_nachricht_zeit') }}
+
+          ---
+
+          {{ states('sensor.mesh_letzte_nachricht') }}
+
+  # ===========================================================================
+  # Tab 3: Karte (Ottobrunn-zentriert)
+  # ===========================================================================
+  - title: Karte
+    path: karte
+    icon: mdi:map
+    cards:
+      - type: map
+        default_zoom: 12
+        entities:
+          - entity: device_tracker.meshtastic_gw
+          - entity: device_tracker.meshtastic_supreme
+          - entity: device_tracker.meshtastic_deck
+          - entity: device_tracker.meshtastic_otn
+          - entity: zone.ottobrunn
+        hours_to_show: 24
+        aspect_ratio: "16:9"
+
+      # --- GPS-Details ---
+      - type: entities
+        title: "GPS Positionen"
+        icon: mdi:crosshairs-gps
+        entities:
+          - entity: sensor.mesh_gw_latitude
+            name: "GW Lat"
+          - entity: sensor.mesh_gw_longitude
+            name: "GW Lon"
+          - entity: sensor.mesh_gw_altitude
+            name: "GW Altitude"
+          - entity: sensor.mesh_deck_latitude
+            name: "Deck Lat"
+          - entity: sensor.mesh_deck_longitude
+            name: "Deck Lon"
+          - entity: sensor.mesh_supreme_latitude
+            name: "Supreme Lat"
+          - entity: sensor.mesh_supreme_longitude
+            name: "Supreme Lon"
+          - entity: sensor.mesh_otn_latitude
+            name: "OTN Lat"
+          - entity: sensor.mesh_otn_longitude
+            name: "OTN Lon"

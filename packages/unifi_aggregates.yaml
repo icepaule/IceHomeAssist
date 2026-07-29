@@ -1,0 +1,34 @@
+template:
+  - sensor:
+      - name: "UniFi Total Clients"
+        unique_id: unifi_total_clients
+        unit_of_measurement: clients
+        state: >
+          {% set total = (states('sensor.u6_1_og_clients') | int(0))
+                       + (states('sensor.u6_2_og_clients') | int(0))
+                       + (states('sensor.u6_wz_clients') | int(0))
+                       + (states('sensor.usg_3p_clients') | int(0)) %}
+          {{ total }}
+        icon: mdi:account-group
+
+      - name: "UniFi APs Online"
+        unique_id: unifi_aps_online
+        unit_of_measurement: APs
+        state: >
+          {% set aps = ['sensor.u6_1_og_state','sensor.u6_2_og_state','sensor.u6_wz_state'] %}
+          {{ aps | select('is_state','connected') | list | length }}
+        icon: mdi:access-point
+
+      - name: "USG WAN Download"
+        unique_id: usg_wan_download
+        unit_of_measurement: "Mbps"
+        state: "{{ (states('sensor.usg_3p_wan_link_speed') | float(0)) }}"
+        icon: mdi:download-network
+        availability: "{{ has_value('sensor.usg_3p_wan_link_speed') }}"
+
+      - name: "USG WAN Upload"
+        unique_id: usg_wan_upload
+        unit_of_measurement: "Mbps"
+        state: "{{ (states('sensor.usg_3p_wan_link_speed') | float(0)) }}"
+        icon: mdi:upload-network
+        availability: "{{ has_value('sensor.usg_3p_wan_link_speed') }}"

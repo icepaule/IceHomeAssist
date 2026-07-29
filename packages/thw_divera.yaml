@@ -12,17 +12,18 @@
 # REST Sensoren - Divera Events API
 # -----------------------------------------------------------------------------
 rest:
-  - resource: "https://app.divera247.com/api/v2/pull/all?accesskey=!secret divera_api_key"
+  - resource: !secret divera_pull_url
     scan_interval: 1800
     sensor:
       - name: "Divera Unbeantwortete Termine"
         unique_id: divera_unbeantwortete_termine
         value_template: >
-          {% set events = value_json.data.events.items.values() | list %}
+          {% set events = value_json.data.events['items'].values() | list %}
           {% set now_ts = now().timestamp() %}
+          {% set max_ts = now_ts + (90 * 86400) %}
           {% set ns = namespace(count=0) %}
           {% for ev in events %}
-            {% if ev.end > now_ts and ev.answerable and ev.participation == 0 %}
+            {% if ev.end > now_ts and ev.start <= max_ts and ev.answerable and ev.participation == 0 %}
               {% set ns.count = ns.count + 1 %}
             {% endif %}
           {% endfor %}
@@ -33,11 +34,12 @@ rest:
       - name: "Divera Nächster Unbeantworteter Termin"
         unique_id: divera_naechster_unbeantworteter
         value_template: >
-          {% set events = value_json.data.events.items.values() | list %}
+          {% set events = value_json.data.events['items'].values() | list %}
           {% set now_ts = now().timestamp() %}
+          {% set max_ts = now_ts + (90 * 86400) %}
           {% set ns = namespace(next_title='Keiner', next_start=0, next_days=-1) %}
           {% for ev in events | sort(attribute='start') %}
-            {% if ev.end > now_ts and ev.answerable and ev.participation == 0 and ns.next_start == 0 %}
+            {% if ev.end > now_ts and ev.start <= max_ts and ev.answerable and ev.participation == 0 and ns.next_start == 0 %}
               {% set ns.next_title = ev.title %}
               {% set ns.next_start = ev.start %}
               {% set ns.next_days = ((ev.start - now_ts) / 86400) | round(0, 'floor') | int %}
@@ -53,7 +55,7 @@ rest:
       - name: "Divera Termine Bald Fällig"
         unique_id: divera_termine_bald_faellig
         value_template: >
-          {% set events = value_json.data.events.items.values() | list %}
+          {% set events = value_json.data.events['items'].values() | list %}
           {% set now_ts = now().timestamp() %}
           {% set drei_tage = now_ts + (3 * 86400) %}
           {% set ns = namespace(titles=[]) %}
@@ -170,7 +172,7 @@ template:
       - name: "Divera Rückmeldung Fällig"
         unique_id: divera_rueckmeldung_faellig
         state: >
-          {{ states('sensor.divera_termine_bald_faellig') != 'Keine' }}
+          {{ states('sensor.divera_termine_bald_fallig') != 'Keine' }}
         icon: mdi:calendar-alert
 
 # -----------------------------------------------------------------------------
@@ -232,7 +234,7 @@ automation:
         at: "09:00:00"
     condition:
       - condition: state
-        entity_id: binary_sensor.divera_rueckmeldung_faellig
+        entity_id: binary_sensor.divera_ruckmeldung_fallig
         state: "on"
     action:
       - service: persistent_notification.create
@@ -241,7 +243,7 @@ automation:
           message: >
             Du hast noch nicht zu-/abgesagt:
 
-            {{ states('sensor.divera_termine_bald_faellig') }}
+            {{ states('sensor.divera_termine_bald_fallig') }}
 
             Insgesamt {{ states('sensor.divera_unbeantwortete_termine') }} unbeantwortete Termine.
 
@@ -251,7 +253,7 @@ automation:
         data:
           title: "THW Rückmeldung fällig!"
           message: >
-            Bitte zu-/absagen: {{ states('sensor.divera_termine_bald_faellig') }}
+            Bitte zu-/absagen: {{ states('sensor.divera_termine_bald_fallig') }}
             ({{ states('sensor.divera_unbeantwortete_termine') }} Termine insgesamt offen)
           priority: "high"
     mode: single
@@ -262,7 +264,7 @@ automation:
     description: "Benachrichtigt wenn ein neuer unbeantworteter Termin in die 3-Tage-Frist rutscht"
     trigger:
       - platform: state
-        entity_id: binary_sensor.divera_rueckmeldung_faellig
+        entity_id: binary_sensor.divera_ruckmeldung_fallig
         from: "off"
         to: "on"
     action:
@@ -270,14 +272,14 @@ automation:
         data:
           title: "Divera: Termin in Kürze - noch keine Rückmeldung!"
           message: >
-            {{ states('sensor.divera_termine_bald_faellig') }}
+            {{ states('sensor.divera_termine_bald_fallig') }}
 
             Bitte in Divera zu-/absagen!
           notification_id: divera_rueckmeldung_neu
       - service: script.send_notification
         data:
           title: "THW: Termin in Kürze!"
-          message: "Noch nicht zu-/abgesagt: {{ states('sensor.divera_termine_bald_faellig') }}"
+          message: "Noch nicht zu-/abgesagt: {{ states('sensor.divera_termine_bald_fallig') }}"
           priority: "high"
     mode: single
 
@@ -291,16 +293,17 @@ automation:
         from: "off"
         to: "on"
     action:
-      - service: notify.mobile_app_galaxy_tab
+      # Moderne notify-Plattform: das Tablet-Overlay ist eine notify-*Entity*,
+      # daher über notify.send_message mit target.entity_id ansteuern
+      # (der alte Service-Aufruf notify.tab_s7_fe_..._overlay_message existiert
+      # nicht mehr -> erzeugte "service_not_found"-Repair).
+      - action: notify.send_message
+        target:
+          entity_id: notify.tab_s7_fe_von_marcus_overlay_message
         data:
           title: "DIVERA ALARM"
           message: >
             {{ states('sensor.divera_aktueller_alarm') }}
             {{ state_attr('sensor.divera_aktueller_alarm', 'address') }}
-          data:
-            channel: alarm
-            importance: high
-            ttl: 0
-            priority: high
         continue_on_error: true
     mode: single

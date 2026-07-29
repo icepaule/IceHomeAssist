@@ -1,0 +1,187 @@
+# =============================================================================
+# TAILNET STATUS PAKET
+# =============================================================================
+# Quelle: /config/www/tailnet.json (geschrieben alle 30s von
+#         /usr/local/bin/tailnet-status.sh auf NUC-HA-Host via systemd-timer)
+# Inhalt:
+#   - Headscale-Peers (lokales `tailscale status --json`)
+#   - Travel-Pi via WireGuard-Handshake auf AdGuard (10.6.0.2 / wg0)
+# =============================================================================
+
+command_line:
+  - sensor:
+      name: "Tailnet Status"
+      unique_id: tailnet_status_raw
+      command: "cat /config/www/tailnet.json 2>/dev/null || echo '{}'"
+      scan_interval: 30
+      value_template: "{{ value_json.ts | default(0) }}"
+      json_attributes:
+        - headscale
+        - travel_pi
+
+template:
+  - sensor:
+      # --- Headscale Aggregate ---
+      - name: "Headscale Peers Online"
+        unique_id: headscale_peers_online
+        icon: mdi:lan-connect
+        state: >-
+          {% set hs = state_attr('sensor.tailnet_status','headscale') %}
+          {{ hs.peer_count_online if hs else 0 }}
+        state_class: measurement
+
+      - name: "Headscale Peers Total"
+        unique_id: headscale_peers_total
+        icon: mdi:server-network
+        state: >-
+          {% set hs = state_attr('sensor.tailnet_status','headscale') %}
+          {{ hs.peer_count_total if hs else 0 }}
+
+      # --- Travel-Pi (WG Proxy) ---
+      - name: "Travel Pi Endpoint"
+        unique_id: travel_pi_endpoint
+        icon: mdi:earth
+        state: >-
+          {% set tp = state_attr('sensor.tailnet_status','travel_pi') %}
+          {{ tp.endpoint if tp and tp.endpoint else 'unbekannt' }}
+
+      - name: "Travel Pi Last Handshake Age"
+        unique_id: travel_pi_handshake_age_s
+        icon: mdi:clock-alert-outline
+        unit_of_measurement: "s"
+        state_class: measurement
+        state: >-
+          {% set tp = state_attr('sensor.tailnet_status','travel_pi') %}
+          {% if tp and tp.last_handshake_age_s is not none %}
+            {{ tp.last_handshake_age_s }}
+          {% else %}
+            unknown
+          {% endif %}
+
+      - name: "Travel Pi Last Handshake"
+        unique_id: travel_pi_handshake_human
+        icon: mdi:handshake
+        state: >-
+          {% set tp = state_attr('sensor.tailnet_status','travel_pi') %}
+          {% if tp and tp.last_handshake_age_s is not none %}
+            {% set s = tp.last_handshake_age_s | int %}
+            {% if s < 60 %}
+              vor {{ s }}s
+            {% elif s < 3600 %}
+              vor {{ (s/60) | int }}m
+            {% elif s < 86400 %}
+              vor {{ (s/3600) | int }}h
+            {% else %}
+              vor {{ (s/86400) | int }}d
+            {% endif %}
+          {% else %}
+            nie
+          {% endif %}
+
+      - name: "Travel Pi RX"
+        unique_id: travel_pi_rx_bytes
+        icon: mdi:download
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: >-
+          {% set tp = state_attr('sensor.tailnet_status','travel_pi') %}
+          {{ ((tp.rx_bytes | int(0)) / 1048576) | round(1) if tp else 0 }}
+
+      - name: "Travel Pi TX"
+        unique_id: travel_pi_tx_bytes
+        icon: mdi:upload
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: >-
+          {% set tp = state_attr('sensor.tailnet_status','travel_pi') %}
+          {{ ((tp.tx_bytes | int(0)) / 1048576) | round(1) if tp else 0 }}
+
+  - binary_sensor:
+      # --- Travel-Pi Online (WG-Proxy: Handshake jünger als 180s) ---
+      - name: "Travel Pi Online"
+        unique_id: travel_pi_online
+        device_class: connectivity
+        icon: mdi:raspberry-pi
+        state: >-
+          {% set tp = state_attr('sensor.tailnet_status','travel_pi') %}
+          {{ tp is not none and tp.online }}
+
+      # --- Headscale-Peers (statisch nach Hostname) ---
+      - name: "Headscale NUC12 Online"
+        unique_id: headscale_nuc12_online
+        device_class: connectivity
+        state: >-
+          {% set peers = state_attr('sensor.tailnet_status','headscale')['peers'] | default([]) %}
+          {% set m = peers | selectattr('hostname','equalto','nuc12') | list %}
+          {{ m | length > 0 and m[0].online }}
+
+      - name: "Headscale SynNAS Online"
+        unique_id: headscale_synnas_online
+        device_class: connectivity
+        state: >-
+          {% set peers = state_attr('sensor.tailnet_status','headscale')['peers'] | default([]) %}
+          {% set m = peers | selectattr('hostname','equalto','synnas') | list %}
+          {{ m | length > 0 and m[0].online }}
+
+      - name: "Headscale iPhone Online"
+        unique_id: headscale_iphone_online
+        device_class: connectivity
+        state: >-
+          {% set peers = state_attr('sensor.tailnet_status','headscale')['peers'] | default([]) %}
+          {% set m = peers | selectattr('hostname','equalto','IPhone Marcus') | list %}
+          {{ m | length > 0 and m[0].online }}
+
+      - name: "Headscale CapeV2 Online"
+        unique_id: headscale_capev2_online
+        device_class: connectivity
+        state: >-
+          {% set peers = state_attr('sensor.tailnet_status','headscale')['peers'] | default([]) %}
+          {% set m = peers | selectattr('hostname','equalto','capev2') | list %}
+          {{ m | length > 0 and m[0].online }}
+
+      - name: "Headscale GW Online"
+        unique_id: headscale_gw_online
+        device_class: connectivity
+        state: >-
+          {% set peers = state_attr('sensor.tailnet_status','headscale')['peers'] | default([]) %}
+          {% set m = peers | selectattr('hostname','equalto','headscale-gw') | list %}
+          {{ m | length > 0 and m[0].online }}
+
+# =============================================================================
+# AUTOMATIONS - Travel Pi Online-Notification
+# =============================================================================
+automation:
+  - id: tailnet_travel_pi_online_notify
+    alias: "Tailnet: Travel Pi online → Persistent Notification"
+    description: "Erstellt eine HA-Info wenn der Travel-Pi-WG-Tunnel hochkommt"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.travel_pi_online
+        to: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          notification_id: travel_pi_online
+          title: "Travel Pi online"
+          message: >-
+            {% set tp = state_attr('sensor.tailnet_status','travel_pi') %}
+            Der Travel-Pi-WG-Tunnel steht.
+            **SSH:** `ssh pi@10.6.0.2`
+            {% if tp %}
+            - Endpoint: `{{ tp.endpoint }}`
+            - Pubkey: `{{ tp.pubkey_short }}…`
+            - Letzter Handshake: `{{ tp.last_handshake_age_s }}s`
+            {% endif %}
+
+  - id: tailnet_travel_pi_offline_dismiss
+    alias: "Tailnet: Travel Pi offline → Notification entfernen"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.travel_pi_online
+        to: "off"
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: travel_pi_online

@@ -1,0 +1,83 @@
+# Gaswarner Package - MQ-2 Gassensor an Luft4 (Heizungskeller)
+#
+# Basis: sensor.luft4_sensor_luft4_luftqualitaet_ppm (MQ-2, brennbares Gas/Rauch,
+# Tasmota-Script-Kennlinie, Schwellen 800/2000ppm siehe esp_tasmota_displays-Doku).
+# 2000ppm ("Schlecht") wird hier als Gasleck-Alarmschwelle verwendet.
+
+template:
+  - binary_sensor:
+      - name: "Gasleck Heizungskeller"
+        unique_id: gasleck_heizungskeller
+        device_class: gas
+        state: >
+          {{ states('sensor.luft4_sensor_luft4_luftqualitaet_ppm') | float(0) >= 2000 }}
+        availability: >
+          {{ states('sensor.luft4_sensor_luft4_luftqualitaet_ppm') not in ['unknown', 'unavailable'] }}
+        delay_on:
+          seconds: 90
+        delay_off:
+          seconds: 30
+        icon: mdi:gas-cylinder
+
+automation:
+  # Alarm ausloesen (Erstmeldung)
+  - id: gaswarner_alarm
+    alias: "Gaswarner: Alarm Heizungskeller"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.gasleck_heizungskeller
+        to: "on"
+    action:
+      - service: script.send_notification
+        data:
+          title: "Gasleck Heizungskeller!"
+          message: >
+            MQ-2-Sensor Luft4 meldet {{ states('sensor.luft4_sensor_luft4_luftqualitaet_ppm') }} ppm
+            (Alarmschwelle 2000ppm) im Heizungskeller.
+          priority: critical
+      # Alexa-Ansage bewusst OHNE Night-Mode-Ruecksicht (Sicherheitsrelevanz,
+      # anders als script.notify_alexa das nachts stumm bleibt)
+      - service: notify.alexa_media
+        data:
+          target: "media_player.marcus_echo_show_8_2nd_gen"
+          message: >
+            Achtung! Gaswarner im Heizungskeller hat ausgeloest.
+            Bitte sofort pruefen!
+          data:
+            type: announce
+    mode: single
+
+  # Wiederholte Erinnerung alle 10 Minuten solange Alarm aktiv
+  - id: gaswarner_alarm_reminder
+    alias: "Gaswarner: Wiederholung solange aktiv"
+    trigger:
+      - platform: time_pattern
+        minutes: "/10"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.gasleck_heizungskeller
+        state: "on"
+    action:
+      - service: script.send_notification
+        data:
+          title: "Gasleck Heizungskeller weiterhin aktiv"
+          message: >
+            Weiterhin {{ states('sensor.luft4_sensor_luft4_luftqualitaet_ppm') }} ppm im Heizungskeller.
+          priority: critical
+    mode: single
+
+  # Entwarnung
+  - id: gaswarner_entwarnung
+    alias: "Gaswarner: Entwarnung Heizungskeller"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.gasleck_heizungskeller
+        to: "off"
+    action:
+      - service: script.send_notification
+        data:
+          title: "Gaswarner Heizungskeller: Entwarnung"
+          message: >
+            Wert wieder unter 2000ppm ({{ states('sensor.luft4_sensor_luft4_luftqualitaet_ppm') }} ppm).
+          priority: normal
+    mode: single
