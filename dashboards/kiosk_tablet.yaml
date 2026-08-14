@@ -144,14 +144,40 @@ views:
       # =============================================
       # ROBOROCK WARNUNG (Robby, S7 Max Ultra)
       # =============================================
+      # Sauger-Fehler (z.B. Räder blockiert, Wassertank fehlt)
       - type: conditional
         conditions:
           - entity: sensor.s7_max_ultra_vacuum_error
-            state_not: "None"
+            state_not: "none"
+          - entity: sensor.s7_max_ultra_vacuum_error
+            state_not: "unavailable"
         card:
           type: custom:mushroom-template-card
           primary: "Robby: Fehler"
           secondary: "{{ states('sensor.s7_max_ultra_vacuum_error') }}"
+          icon: mdi:robot-vacuum-alert
+          icon_color: red
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace-vacuum/erdgeschoss
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 0, 0, 0.15) !important;
+                border: 2px solid red !important;
+              }
+
+      # Dock-Fehler (z.B. Reinwassertank leer/prüfen)
+      - type: conditional
+        conditions:
+          - entity: sensor.s7_max_ultra_dock_dock_error
+            state_not: "ok"
+          - entity: sensor.s7_max_ultra_dock_dock_error
+            state_not: "unavailable"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Robby: Dockstation"
+          secondary: "{{ states('sensor.s7_max_ultra_dock_dock_error') }}"
           icon: mdi:robot-vacuum-alert
           icon_color: red
           tap_action:
@@ -170,7 +196,9 @@ views:
       - type: conditional
         conditions:
           - entity: sensor.willi_robby_error
-            state_not: "No Error"
+            state_not: "no_error"
+          - entity: sensor.willi_robby_error
+            state_not: "unavailable"
         card:
           type: custom:mushroom-template-card
           primary: "Willi: Fehler"
