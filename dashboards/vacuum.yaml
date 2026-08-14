@@ -89,7 +89,7 @@ views:
       - type: conditional
         conditions:
           - entity: sensor.willi_robby_error
-            state_not: "No Error"
+            state_not: "no_error"
         card:
           type: custom:mushroom-template-card
           primary: Fehler
@@ -481,11 +481,23 @@ views:
       - type: conditional
         conditions:
           - entity: sensor.s7_max_ultra_vacuum_error
-            state_not: "None"
+            state_not: "none"
         card:
           type: custom:mushroom-template-card
           primary: Fehler
           secondary: "{{ states('sensor.s7_max_ultra_vacuum_error') }}"
+          icon: mdi:alert-circle
+          icon_color: red
+
+      # Dock-Fehler-Anzeige (z.B. Reinwassertank leer/prüfen)
+      - type: conditional
+        conditions:
+          - entity: sensor.s7_max_ultra_dock_dock_error
+            state_not: "ok"
+        card:
+          type: custom:mushroom-template-card
+          primary: Dockstation
+          secondary: "{{ states('sensor.s7_max_ultra_dock_dock_error') }}"
           icon: mdi:alert-circle
           icon_color: red
 
