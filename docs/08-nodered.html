@@ -430,6 +430,77 @@ flowchart LR
                 Broker-Referenzen m&uuml;ssen ggf. angepasst werden.
             </div>
 
+            <!-- Matrix2-4 Praesenz-Abschaltung -->
+            <h2>Matrix2-4 Pr&auml;senz-Abschaltung (SM301Z)</h2>
+            <p>
+                Ein Zigbee-PIR-Bewegungsmelder (Samotech SM301Z, meldet sich als generischer
+                Tuya-Klon <code>_TZ3000_.../TS0202</code>) schaltet die Matrix2-4-Displays im
+                Arbeitszimmer automatisch aus, wenn 15 Minuten lang keine Bewegung erkannt wurde
+                &ndash; und sofort wieder ein, sobald erneut Bewegung erkannt wird. Gepairt &uuml;ber
+                ZHA (Sonoff Zigbee 3.0 USB Dongle Plus, CC2652), IAS-Zone-Typ vom Ger&auml;t selbst
+                als <code>Motion_Sensor</code> best&auml;tigt.
+            </p>
+
+            <h3>Flow-Diagramm</h3>
+            <pre class="mermaid">
+flowchart LR
+    A["HA State-Node<br/>binary_sensor.az_sm301z_anwesenheit"] --> B{"Switch<br/>on / off?"}
+    B -->|off| C["Trigger-Node<br/>15min Timer, resettable"]
+    B -->|on| D["Change-Node<br/>Payload = ON"]
+    B -->|on = Reset-Wert| C
+    C -->|Timeout ohne Reset| E["MQTT Out x3<br/>cmnd/Matrix2-4/Power"]
+    D --> E
+            </pre>
+
+            <h3>Flow-Beschreibung</h3>
+            <div class="card">
+                <ol>
+                    <li>
+                        <strong>HA State-Node:</strong> lauscht auf
+                        <code>binary_sensor.az_sm301z_anwesenheit</code> und gibt bei jeder
+                        Statusänderung <code>"on"</code>/<code>"off"</code> als Payload aus
+                        (nur bei echter Änderung, nicht bei jedem Attribut-Update).
+                    </li>
+                    <li>
+                        <strong>Switch-Node:</strong> verzweigt je nach Payload-Wert.
+                    </li>
+                    <li>
+                        <strong>Trigger-Node (Kernlogik):</strong> startet bei <code>"off"</code>
+                        einen 15-Minuten-Timer, der sich bei jedem weiteren <code>"off"</code>
+                        verl&auml;ngert (<code>extend</code>). Trifft w&auml;hrend der Wartezeit ein
+                        <code>"on"</code> ein (Reset-Wert), wird der Timer ohne Ausgabe verworfen.
+                    </li>
+                    <li>
+                        <strong>Change-Node:</strong> setzt bei <code>"on"</code> sofort
+                        <code>payload = "ON"</code> f&uuml;r das sofortige Wiedereinschalten.
+                    </li>
+                    <li>
+                        <strong>MQTT Out (x3):</strong> <code>cmnd/Matrix2/Power</code>,
+                        <code>cmnd/Matrix3/Power</code>, <code>cmnd/Matrix4/Power</code>,
+                        jeweils mit <code>retain=true</code>.
+                    </li>
+                </ol>
+            </div>
+
+            <div class="info-box">
+                <strong>Warum retain=true:</strong> Wie bei allen Tasmota-Power-Kommandos in
+                diesem Setup wird der zuletzt gewollte Zustand retained gesendet, damit Tasmota
+                ihn bei jedem MQTT-Reconnect sofort erneut zugestellt bekommt &ndash; verhindert,
+                dass ein einzelnes verlorenes Publish die Displays dauerhaft im falschen Zustand
+                l&auml;sst (Self-Heal-Pattern, siehe Matrix1-Power-Fix weiter oben in diesem
+                Repo).
+            </div>
+
+            <div class="warning-box">
+                <strong>Grenze von PIR:</strong> Ein reiner Infrarot-Bewegungsmelder erkennt keine
+                Mikrobewegungen &ndash; sitzt man ruhig am Schreibtisch (z.B. nur Tippen), f&auml;llt
+                der Sensor nach der kurzen, nicht einstellbaren Hold-Zeit dieser g&uuml;nstigen
+                Tuya-Klone (meist ~60s) auf <code>"off"</code>, obwohl der Raum belegt ist. F&uuml;r
+                echte Sitzplatz-Pr&auml;senzerkennung w&auml;re ein mmWave-Radarsensor (z.B. Aqara
+                FP1, Sonoff SNZB-06P) die bessere Wahl, da dieser auch Mikrobewegungen wie Atmung
+                erkennt.
+            </div>
+
             <!-- Flows-Datei -->
             <h2>Flows-Datei</h2>
             <div class="card">
