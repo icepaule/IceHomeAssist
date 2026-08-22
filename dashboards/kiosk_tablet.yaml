@@ -960,9 +960,9 @@ views:
           - type: custom:mushroom-template-card
             primary: >
               {% set e = states('sensor.tasmota_as3935_event_2') %}
-              {% if e == '8' %}Blitz!
-              {% elif e == '4' %}Störer
-              {% elif e == '1' %}Rauschen
+              {% if e in ['1','2','3','4'] %}Blitz!
+              {% elif e == '6' %}Störer
+              {% elif e == '5' %}Rauschen
               {% else %}Blitz —{% endif %}
             secondary: >
               {% set d = states('sensor.tasmota_as3935_distance_2') %}
@@ -970,8 +970,8 @@ views:
             icon: mdi:weather-lightning
             icon_color: >
               {% set e = states('sensor.tasmota_as3935_event_2') %}
-              {% if e == '8' %}yellow
-              {% elif e == '4' %}orange
+              {% if e in ['1','2','3','4'] %}yellow
+              {% elif e == '6' %}orange
               {% else %}grey{% endif %}
 
       # =============================================
