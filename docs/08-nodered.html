@@ -575,6 +575,245 @@ flowchart LR
                 sind aber kein Softwarefix.
             </div>
 
+            <!-- GT-7000 Funksteckdosen-Replay -->
+            <h2>GT-7000 Funksteckdosen-Replay (ESP8266 + SYN115 + RX470)</h2>
+            <p>
+                Ein ESP8266 lernt die Funkcodes einer handels&uuml;blichen 433,92-MHz-
+                Funksteckdose (Globaltronics/Quigg/Tevion <strong>GT-FSA-01</strong>,
+                Fernbedienung <strong>GT-7000</strong>, u.a. bei Aldi verkauft) per
+                RF-Empf&auml;nger mit und spielt sie per Sender-Modul wieder ab &ndash;
+                dadurch l&auml;sst sich die Steckdose per MQTT (und darüber aus Node-RED)
+                schalten, obwohl sie selbst keinerlei Netzwerkanbindung hat. Das Setup ist
+                bewusst produktunabh&auml;ngig beschrieben: dieselbe Vorgehensweise
+                funktioniert f&uuml;r praktisch jede einfache 433-MHz-Funksteckdose oder
+                -Klingel mit Festcode-Fernbedienung.
+            </p>
+
+            <h3>Hardware</h3>
+            <div class="card">
+                <table>
+                    <tr><th>Bauteil</th><th>Rolle</th><th>Hinweis</th></tr>
+                    <tr><td>ESP8266 (ESP-12F-Modul)</td><td>Steuerung, WLAN/MQTT</td><td>jedes ESP8266-Board geht, hier ein nacktes ESP-12F auf Breakout mit D-Pin-Beschriftung</td></tr>
+                    <tr><td>SYN115</td><td>433,92-MHz-ASK/OOK-Sender</td><td>nur 1,8&ndash;3,6V! Niemals an 5V</td></tr>
+                    <tr><td>RX470 (QIACHIP)</td><td>433,92-MHz-ASK/OOK-Empf&auml;nger</td><td>2,2&ndash;5V, hier mit 5V betrieben (bessere Empfindlichkeit)</td></tr>
+                    <tr><td>LED + Vorwiderstand</td><td>optischer Empfangsmonitor</td><td>optional, aber sehr n&uuml;tzlich beim Debuggen (s.u.)</td></tr>
+                    <tr><td>Draht ~17cm</td><td>Antenne (je Modul)</td><td>Quarterwave f&uuml;r 433,92MHz, ohne Antenne nur wenige cm Reichweite</td></tr>
+                </table>
+            </div>
+
+            <h3>Verkabelung</h3>
+            <div class="card" style="overflow-x:auto;">
+                <svg viewBox="0 0 840 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;min-width:600px;">
+                    <!-- Antennen -->
+                    <path d="M 20 160 L 2 150 L 2 170 L -16 160" stroke="#a0a0b8" stroke-width="1.5" fill="none"/>
+                    <text x="10" y="140" fill="#6c6c80" font-size="10" text-anchor="middle">~17cm</text>
+                    <path d="M 820 160 L 838 150 L 838 170 L 856 160" stroke="#a0a0b8" stroke-width="1.5" fill="none"/>
+                    <text x="830" y="140" fill="#6c6c80" font-size="10" text-anchor="middle">~17cm</text>
+
+                    <!-- TX Modul -->
+                    <rect x="20" y="100" width="170" height="120" rx="8" fill="#1e2a45" stroke="#00d4ff" stroke-width="2"/>
+                    <text x="105" y="122" text-anchor="middle" fill="#00d4ff" font-size="14" font-weight="600">SYN115</text>
+                    <text x="105" y="138" text-anchor="middle" fill="#a0a0b8" font-size="11">433,92 MHz Sender</text>
+                    <text x="35" y="165" fill="#e0e0e0" font-size="12">DATA</text>
+                    <text x="35" y="187" fill="#e0e0e0" font-size="12">VCC</text>
+                    <text x="35" y="209" fill="#e0e0e0" font-size="12">GND</text>
+
+                    <!-- ESP-12F -->
+                    <rect x="335" y="40" width="170" height="260" rx="8" fill="#1e2a45" stroke="#00e676" stroke-width="2"/>
+                    <text x="420" y="65" text-anchor="middle" fill="#00e676" font-size="14" font-weight="600">ESP-12F (ESP8266)</text>
+                    <text x="420" y="82" text-anchor="middle" fill="#a0a0b8" font-size="11">WLAN + MQTT</text>
+                    <text x="350" y="165" fill="#e0e0e0" font-size="12">D2 (GPIO4)</text>
+                    <text x="350" y="187" fill="#e0e0e0" font-size="12">3V3</text>
+                    <text x="350" y="209" fill="#e0e0e0" font-size="12">GND</text>
+                    <text x="490" y="165" fill="#e0e0e0" font-size="12" text-anchor="end">D5 (GPIO14)</text>
+                    <text x="490" y="187" fill="#e0e0e0" font-size="12" text-anchor="end">5V/VIN</text>
+                    <text x="490" y="209" fill="#e0e0e0" font-size="12" text-anchor="end">GND</text>
+                    <text x="420" y="255" text-anchor="middle" fill="#e0e0e0" font-size="12">D1 (GPIO5)</text>
+                    <text x="420" y="272" text-anchor="middle" fill="#a0a0b8" font-size="10">&rarr; LED (Empfangs-Monitor)</text>
+
+                    <!-- LED -->
+                    <circle cx="420" cy="310" r="12" fill="none" stroke="#ffc107" stroke-width="2"/>
+                    <line x1="420" y1="292" x2="420" y2="298" stroke="#ffc107" stroke-width="2"/>
+
+                    <!-- RX Modul -->
+                    <rect x="650" y="100" width="170" height="120" rx="8" fill="#1e2a45" stroke="#00d4ff" stroke-width="2"/>
+                    <text x="735" y="122" text-anchor="middle" fill="#00d4ff" font-size="14" font-weight="600">RX470</text>
+                    <text x="735" y="138" text-anchor="middle" fill="#a0a0b8" font-size="11">433,92 MHz Empf&auml;nger</text>
+                    <text x="805" y="165" fill="#e0e0e0" font-size="12" text-anchor="end">DATA</text>
+                    <text x="805" y="187" fill="#e0e0e0" font-size="12" text-anchor="end">VCC</text>
+                    <text x="805" y="209" fill="#e0e0e0" font-size="12" text-anchor="end">GND</text>
+
+                    <!-- Wires TX -> ESP -->
+                    <line x1="190" y1="160" x2="335" y2="160" stroke="#00d4ff" stroke-width="2"/>
+                    <line x1="190" y1="182" x2="335" y2="182" stroke="#ffc107" stroke-width="2"/>
+                    <text x="262" y="176" text-anchor="middle" fill="#ffc107" font-size="10">nur 3,3V!</text>
+                    <line x1="190" y1="204" x2="335" y2="204" stroke="#6c6c80" stroke-width="2"/>
+
+                    <!-- Wires RX -> ESP -->
+                    <line x1="650" y1="160" x2="505" y2="160" stroke="#00d4ff" stroke-width="2"/>
+                    <line x1="650" y1="182" x2="505" y2="182" stroke="#00e676" stroke-width="2"/>
+                    <text x="577" y="176" text-anchor="middle" fill="#00e676" font-size="10">5V</text>
+                    <line x1="650" y1="204" x2="505" y2="204" stroke="#6c6c80" stroke-width="2"/>
+
+                    <!-- LED Wire -->
+                    <line x1="420" y1="280" x2="420" y2="292" stroke="#ffc107" stroke-width="2"/>
+                </svg>
+            </div>
+
+            <div class="warning-box">
+                <strong>Spannungs-Falle:</strong> Der SYN115-Sender vertr&auml;gt
+                <strong>ausschlie&szlig;lich 1,8&ndash;3,6V</strong> (an ESP-3V3, niemals an
+                5V/VIN!). Der RX470-Empf&auml;nger dagegen ist auf 5V ausgelegt (funktioniert
+                zwar auch mit 3,3V, aber mit deutlich weniger Empfindlichkeit/Reichweite).
+                Auf einem Board mit D-Pin-Beschriftung (Wemos/NodeMCU-Konvention) entspricht
+                GPIO4 = D2, GPIO5 = D1, GPIO14 = D5 &ndash; auf einem nackten, unbeschrifteten
+                ESP-12F-Modul z&auml;hlen stattdessen die physischen Pin-Nummern 1&ndash;22 des
+                Datenblatts (dort ist GPIO14 = Pin 5), die Zuordnung ist NICHT identisch.
+            </div>
+
+            <h3>Architektur</h3>
+            <pre class="mermaid">
+flowchart LR
+    subgraph Lernen["Code lernen (einmalig)"]
+        Fern["GT-7000<br/>Fernbedienung"] -- 433,92MHz --> RX["RX470"]
+        RX -- GPIO14 --> ISR["Eigener Flanken-Interrupt<br/>(kein RCSwitch)"]
+        ISR -- MQTT --> Analyse["Python-Auswertung<br/>(Cluster + Sync-Marker-Suche)"]
+    end
+
+    subgraph Betrieb["Dauerbetrieb (Replay)"]
+        NR["Node-RED<br/>Geraete-Steuerung"] -- "cmnd/gt7000fake/Power<br/>ON / OFF" --> ESP["ESP8266"]
+        ESP -- GPIO4 --> TX["SYN115"]
+        TX -. 433,92MHz OOK .-> Dose["GT-FSA-01<br/>Funksteckdose"]
+        ESP -- "stat/gt7000fake/POWER" --> NR
+    end
+
+    Analyse -.->|Codes fest einprogrammiert| ESP
+            </pre>
+
+            <h3>Protokoll</h3>
+            <p>
+                Kein bei rtl_433/RCSwitch bekanntes Standardprotokoll (Sync/Pr&auml;ambel-
+                Heuristik matcht nicht) &ndash; strukturell &auml;hnlich zu PT2262-artigen
+                Festcode-Encodern: ein kurzer Sync-Puls gefolgt von einer deutlich l&auml;ngeren
+                Sync-Pause, danach ca. 19&ndash;20 Datenbits als abwechselnde kurze/lange
+                Pegel-Dauern, mehrfach wiederholt pro Tastendruck.
+            </p>
+            <div class="card">
+                <table>
+                    <tr><th>Parameter</th><th>Wert</th></tr>
+                    <tr><td>Frequenz</td><td>433,92 MHz (laut Original-Bedienungsanleitung)</td></tr>
+                    <tr><td>Modulation</td><td>ASK/OOK</td></tr>
+                    <tr><td>Wiederholungen je Tastendruck (Original)</td><td>mehrfach, ca. 4&ndash;6x</td></tr>
+                    <tr><td>Sync-Marker</td><td>kurzer Puls (~700&ndash;900&micro;s) + lange Pause (~3900&ndash;4750&micro;s)</td></tr>
+                    <tr><td>Datenbits</td><td>~19&ndash;20 Bit, je Bit ein High/Low-Paar (~600&ndash;900&micro;s / ~1250&ndash;1470&micro;s)</td></tr>
+                </table>
+            </div>
+            <p>Mitgeschnittene Rohzeiten (&micro;s zwischen Flankenwechseln, erste Wiederholung je Taste, Sync-Marker fett hervorgehoben):</p>
+            <pre><code><span class="cmt">// AN</span>
+<strong>765, 4747</strong>, 1385, 663, 715, 1334, 1383, 672, 1378, 671, 708, 1333, 719, 1327,
+721, 1326, 724, 1350, 714, 1330, 749, 1294, 725, 1322, 729, 1311, 741, 1311, 728,
+1318, 733, 1314, 1397, 681, 723, 1317, 731, 1323, 723, 1325, 1398, 600
+
+<span class="cmt">// AUS</span>
+<strong>939, 3945</strong>, 1435, 613, 766, 1285, 1431, 620, 1427, 623, 750, 1300, 745, 1299,
+751, 1296, 749, 1318, 761, 1286, 755, 1295, 752, 1295, 753, 1291, 758, 1286, 764,
+1284, 752, 1296, 753, 1320, 756, 1290, 761, 1280, 769, 1280, 759, 1240</code></pre>
+
+            <h3>Schritt f&uuml;r Schritt nachbauen</h3>
+            <div class="card">
+                <ol>
+                    <li>
+                        <strong>Hardware verkabeln</strong> wie oben gezeigt (Antennen nicht
+                        vergessen, sonst nur wenige Zentimeter Reichweite).
+                    </li>
+                    <li>
+                        <strong>Firmware-Grundger&uuml;st flashen:</strong> ESP8266-Arduino-Core
+                        + Bibliothek <code>PubSubClient</code>. WLAN- und MQTT-Zugangsdaten im
+                        Sketch eintragen (Broker-Adresse als RFC1918-IP, z.B.
+                        <code>10.10.12.100</code>, Port 1883).
+                    </li>
+                    <li>
+                        <strong>Eigenen Flanken-Interrupt statt RCSwitch verwenden:</strong>
+                        <code>attachInterrupt(pin, isr, CHANGE)</code> zeichnet bei jeder
+                        Pegel&auml;nderung die Zeit seit der letzten Flanke auf (Ringpuffer).
+                        Ein Burst gilt als abgeschlossen, sobald &ge;25ms Funkstille herrscht
+                        (l&auml;sst alle Wiederholungen eines Tastendrucks in einem
+                        zusammenh&auml;ngenden Mitschnitt). RCSwitch selbst hat dieses Signal
+                        nie als g&uuml;ltiges Paket akzeptiert &ndash; vermutlich matcht die
+                        interne Sync-Heuristik der Bibliothek nicht jedes Protokoll.
+                    </li>
+                    <li>
+                        <strong>Rohdaten per MQTT statt Serial ausgeben:</strong> in dieser
+                        Aufbau-Umgebung war die serielle Konsole unzuverl&auml;ssig
+                        (USB-Passthrough-Artefakte); MQTT-Publish war durchgehend stabil.
+                        Achtung dabei: <code>PubSubClient</code> hat standardm&auml;&szlig;ig
+                        nur 256 Byte Sendepuffer &ndash; f&uuml;r Rohdaten-Arrays reicht das
+                        nicht, <code>mqtt.setBufferSize(2048)</code> setzen, sonst schl&auml;gt
+                        <code>publish()</code> still (ohne Fehlermeldung) fehl.
+                    </li>
+                    <li>
+                        <strong>Je Taste isoliert mitschneiden:</strong> nur eine Taste mehrfach
+                        dr&uuml;cken, alle Mitschnitte per MQTT sammeln, dann in Python nach
+                        h&auml;ufigstem, identischem Bitmuster clustern (kurze/lange
+                        Pegel-Paare in 0/1 umwandeln und z&auml;hlen). Wiederholen f&uuml;r die
+                        zweite Taste.
+                    </li>
+                    <li>
+                        <strong>Sync-Marker pr&uuml;fen:</strong> nicht jeder Mitschnitt mit
+                        &quot;passendem&quot; Bitmuster ist tats&auml;chlich sauber &ndash; wird
+                        beim Zuschneiden der Rohdaten ein Wertebereich eingeschr&auml;nkt (hier
+                        400&ndash;1600&micro;s), kann genau der deutlich l&auml;ngere
+                        Sync-Marker versehentlich abgeschnitten werden. Ergebnis: das Ger&auml;t
+                        sendet nachweislich (per SDR/Pulse-Analyzer verifizierbar), die
+                        Empfangsseite reagiert aber nicht, weil ihr der g&uuml;ltige
+                        Frame-Anfang fehlt. Gezielt einen Mitschnitt mit erkennbarem
+                        Sync-Marker (kurzer Puls + auff&auml;llig lange Pause direkt nach der
+                        f&uuml;hrenden Stille) ausw&auml;hlen.
+                    </li>
+                    <li>
+                        <strong>Replay-Funktion erg&auml;nzen:</strong> die rohen
+                        Mikrosekunden-Werte werden 1:1 als alternierende High/Low-Sequenz
+                        (<code>digitalWrite</code> + <code>delayMicroseconds</code>) auf den
+                        TX-Pin geschrieben, mehrfach wiederholt. Da ein CHANGE-Interrupt keine
+                        absolute Phase kennt, ist der korrekte Startpegel (High- oder
+                        Low-zuerst) beim Mitschnitt nicht bekannt &ndash; pragmatische
+                        L&ouml;sung: bei jedem Kommando einfach beide Polarit&auml;ten
+                        nacheinander senden, eine trifft garantiert.
+                    </li>
+                    <li>
+                        <strong>MQTT-Kommando-Schnittstelle:</strong> Topic
+                        <code>cmnd/gt7000fake/Power</code> (Payload <code>ON</code>/<code>OFF</code>)
+                        l&ouml;st den Replay aus, <code>stat/gt7000fake/POWER</code> liefert
+                        einen Soft-State (kein echtes Feedback von der Funksteckdose m&ouml;glich,
+                        rein unidirektionales Funkprotokoll).
+                    </li>
+                </ol>
+            </div>
+
+            <div class="info-box">
+                <strong>Warum eine LED als Empfangsmonitor?</strong> Die LED wird nicht per
+                Software-Logik angesteuert, sondern spiegelt in <code>loop()</code> direkt den
+                rohen Pegel des RX-Pins (<code>digitalWrite(LED_PIN, digitalRead(RX_PIN))</code>).
+                Das liefert eine sofortige, von jeglicher Decode-Logik unabh&auml;ngige
+                Sichtpr&uuml;fung, ob am Empf&auml;nger &uuml;berhaupt etwas ankommt &ndash;
+                ohne Log-Dateien auswerten zu m&uuml;ssen. War in diesem Projekt der
+                entscheidende Schritt, um Hardware-Probleme von Software-Problemen zu trennen.
+            </div>
+
+            <h3>Node-RED-Integration</h3>
+            <pre class="mermaid">
+flowchart LR
+    A["Inject-Node<br/>GT-FSA-01 AN"] -->|"Payload: ON"| C["MQTT Out<br/>cmnd/gt7000fake/Power"]
+    B["Inject-Node<br/>GT-FSA-01 AUS"] -->|"Payload: OFF"| C
+            </pre>
+            <p>
+                Zwei manuelle Inject-Buttons im Tab &quot;Ger&auml;te-Steuerung&quot;, exakt
+                nach demselben Muster wie die bestehenden Tasmota-Toggle-Buttons
+                (fester String-Payload &rarr; MQTT-Out-Node), nur mit fixem
+                <code>ON</code>/<code>OFF</code> statt <code>TOGGLE</code>, da die
+                Funksteckdose keinen R&uuml;ckmeldekanal hat.
+            </p>
+
             <!-- Flows-Datei -->
             <h2>Flows-Datei</h2>
             <div class="card">
