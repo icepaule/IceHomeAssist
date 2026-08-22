@@ -102,44 +102,201 @@ views:
               action: more-info
               entity: sensor.tasmota_bme280_pressure
 
-      - type: custom:apexcharts-card
-        header:
-          title: Luftdruck - Tag
-          show: true
-        graph_span: 24h
-        yaxis:
-          - id: hpa
-            decimals: 1
+      - type: horizontal-stack
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              title: Luftdruck - Tag
+              show: true
+            graph_span: 24h
             apex_config:
-              title:
-                text: "hPa"
-        series:
-          - entity: sensor.tasmota_bme280_pressure
-            name: Luftdruck
-            yaxis_id: hpa
-            curve: smooth
-            color: "#009688"
+              chart:
+                height: 180
+            yaxis:
+              - id: hpa
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "hPa"
+            series:
+              - entity: sensor.tasmota_bme280_pressure
+                name: Luftdruck
+                yaxis_id: hpa
+                curve: smooth
+                color: "#009688"
+                group_by:
+                  func: avg
+                  duration: 15min
+          - type: custom:apexcharts-card
+            header:
+              title: Luftdruck - Monat
+              show: true
+            graph_span: 30d
+            apex_config:
+              chart:
+                height: 180
+            yaxis:
+              - id: hpa
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "hPa"
+            series:
+              - entity: sensor.tasmota_bme280_pressure
+                name: Luftdruck
+                yaxis_id: hpa
+                curve: smooth
+                color: "#009688"
+                group_by:
+                  func: avg
+                  duration: 6h
 
-      - type: custom:apexcharts-card
-        header:
-          title: Luftdruck - Monat
-          show: true
-        graph_span: 30d
-        yaxis:
-          - id: hpa
-            decimals: 1
+      - type: horizontal-stack
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              title: Temperatur - Tag
+              show: true
+            graph_span: 24h
             apex_config:
-              title:
-                text: "hPa"
-        series:
-          - entity: sensor.tasmota_bme280_pressure
-            name: Luftdruck
-            yaxis_id: hpa
-            curve: smooth
-            color: "#009688"
-            group_by:
-              func: avg
-              duration: 2h
+              chart:
+                height: 180
+            yaxis:
+              - id: temp
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "°C"
+            series:
+              - entity: sensor.tasmota_ds18b20_temperature
+                name: Temperatur
+                yaxis_id: temp
+                curve: smooth
+                color: "#ff9800"
+                group_by:
+                  func: avg
+                  duration: 15min
+          - type: custom:apexcharts-card
+            header:
+              title: Temperatur - Monat
+              show: true
+            graph_span: 30d
+            apex_config:
+              chart:
+                height: 180
+            yaxis:
+              - id: temp
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "°C"
+            series:
+              - entity: sensor.tasmota_ds18b20_temperature
+                name: Temperatur
+                yaxis_id: temp
+                curve: smooth
+                color: "#ff9800"
+                group_by:
+                  func: avg
+                  duration: 6h
+
+      - type: horizontal-stack
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              title: Wind - Tag
+              show: true
+            graph_span: 24h
+            apex_config:
+              chart:
+                height: 180
+            yaxis:
+              - id: wind
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "m/s"
+            series:
+              - entity: sensor.tasmota_iceweather_windspeed
+                name: Windgeschwindigkeit
+                yaxis_id: wind
+                curve: smooth
+                color: "#3f51b5"
+                group_by:
+                  func: avg
+                  duration: 15min
+          - type: custom:apexcharts-card
+            header:
+              title: Wind - Monat
+              show: true
+            graph_span: 30d
+            apex_config:
+              chart:
+                height: 180
+            yaxis:
+              - id: wind
+                decimals: 1
+                apex_config:
+                  title:
+                    text: "m/s"
+            series:
+              - entity: sensor.tasmota_iceweather_windspeed
+                name: Windgeschwindigkeit
+                yaxis_id: wind
+                curve: smooth
+                color: "#3f51b5"
+                group_by:
+                  func: avg
+                  duration: 6h
+
+      - type: horizontal-stack
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              title: Luftfeuchtigkeit - Tag
+              show: true
+            graph_span: 24h
+            apex_config:
+              chart:
+                height: 180
+            yaxis:
+              - id: hum
+                decimals: 0
+                apex_config:
+                  title:
+                    text: "%"
+            series:
+              - entity: sensor.tasmota_bme280_humidity
+                name: Luftfeuchtigkeit
+                yaxis_id: hum
+                curve: smooth
+                color: "#2196f3"
+                group_by:
+                  func: avg
+                  duration: 15min
+          - type: custom:apexcharts-card
+            header:
+              title: Luftfeuchtigkeit - Monat
+              show: true
+            graph_span: 30d
+            apex_config:
+              chart:
+                height: 180
+            yaxis:
+              - id: hum
+                decimals: 0
+                apex_config:
+                  title:
+                    text: "%"
+            series:
+              - entity: sensor.tasmota_bme280_humidity
+                name: Luftfeuchtigkeit
+                yaxis_id: hum
+                curve: smooth
+                color: "#2196f3"
+                group_by:
+                  func: avg
+                  duration: 6h
 
       # -----------------------------------------------------------------
       # WARNUNGEN OBEN (nur wenn aktiv)
