@@ -124,6 +124,8 @@ views:
                 yaxis_id: hpa
                 curve: smooth
                 color: "#009688"
+                cache: false
+                transform: "return (x < 900 || x > 1100) ? null : x;"
                 group_by:
                   func: avg
                   duration: 15min
@@ -147,12 +149,10 @@ views:
                 yaxis_id: hpa
                 curve: smooth
                 color: "#009688"
+                transform: "return (x < 900 || x > 1100) ? null : x;"
                 statistics:
                   type: mean
                   period: hour
-                group_by:
-                  func: avg
-                  duration: 4h
 
       - type: horizontal-stack
         cards:
@@ -176,6 +176,7 @@ views:
                 yaxis_id: temp
                 curve: smooth
                 color: "#ff9800"
+                cache: false
                 group_by:
                   func: avg
                   duration: 15min
@@ -202,9 +203,6 @@ views:
                 statistics:
                   type: mean
                   period: hour
-                group_by:
-                  func: avg
-                  duration: 4h
 
       - type: horizontal-stack
         cards:
@@ -228,6 +226,7 @@ views:
                 yaxis_id: wind
                 curve: smooth
                 color: "#3f51b5"
+                cache: false
                 group_by:
                   func: avg
                   duration: 15min
@@ -254,9 +253,6 @@ views:
                 statistics:
                   type: mean
                   period: hour
-                group_by:
-                  func: avg
-                  duration: 4h
 
       - type: horizontal-stack
         cards:
@@ -280,6 +276,7 @@ views:
                 yaxis_id: hum
                 curve: smooth
                 color: "#2196f3"
+                cache: false
                 group_by:
                   func: avg
                   duration: 15min
@@ -306,9 +303,6 @@ views:
                 statistics:
                   type: mean
                   period: hour
-                group_by:
-                  func: avg
-                  duration: 4h
 
       # -----------------------------------------------------------------
       # WARNUNGEN OBEN (nur wenn aktiv)
