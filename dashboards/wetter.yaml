@@ -111,7 +111,7 @@ views:
             graph_span: 24h
             apex_config:
               chart:
-                height: 180
+                height: 150
             yaxis:
               - id: hpa
                 decimals: 1
@@ -134,7 +134,7 @@ views:
             graph_span: 30d
             apex_config:
               chart:
-                height: 180
+                height: 150
             yaxis:
               - id: hpa
                 decimals: 1
@@ -147,9 +147,12 @@ views:
                 yaxis_id: hpa
                 curve: smooth
                 color: "#009688"
+                statistics:
+                  type: mean
+                  period: hour
                 group_by:
                   func: avg
-                  duration: 6h
+                  duration: 4h
 
       - type: horizontal-stack
         cards:
@@ -160,7 +163,7 @@ views:
             graph_span: 24h
             apex_config:
               chart:
-                height: 180
+                height: 150
             yaxis:
               - id: temp
                 decimals: 1
@@ -183,7 +186,7 @@ views:
             graph_span: 30d
             apex_config:
               chart:
-                height: 180
+                height: 150
             yaxis:
               - id: temp
                 decimals: 1
@@ -196,9 +199,12 @@ views:
                 yaxis_id: temp
                 curve: smooth
                 color: "#ff9800"
+                statistics:
+                  type: mean
+                  period: hour
                 group_by:
                   func: avg
-                  duration: 6h
+                  duration: 4h
 
       - type: horizontal-stack
         cards:
@@ -209,7 +215,7 @@ views:
             graph_span: 24h
             apex_config:
               chart:
-                height: 180
+                height: 150
             yaxis:
               - id: wind
                 decimals: 1
@@ -232,7 +238,7 @@ views:
             graph_span: 30d
             apex_config:
               chart:
-                height: 180
+                height: 150
             yaxis:
               - id: wind
                 decimals: 1
@@ -245,9 +251,12 @@ views:
                 yaxis_id: wind
                 curve: smooth
                 color: "#3f51b5"
+                statistics:
+                  type: mean
+                  period: hour
                 group_by:
                   func: avg
-                  duration: 6h
+                  duration: 4h
 
       - type: horizontal-stack
         cards:
@@ -258,7 +267,7 @@ views:
             graph_span: 24h
             apex_config:
               chart:
-                height: 180
+                height: 150
             yaxis:
               - id: hum
                 decimals: 0
@@ -281,7 +290,7 @@ views:
             graph_span: 30d
             apex_config:
               chart:
-                height: 180
+                height: 150
             yaxis:
               - id: hum
                 decimals: 0
@@ -294,9 +303,12 @@ views:
                 yaxis_id: hum
                 curve: smooth
                 color: "#2196f3"
+                statistics:
+                  type: mean
+                  period: hour
                 group_by:
                   func: avg
-                  duration: 6h
+                  duration: 4h
 
       # -----------------------------------------------------------------
       # WARNUNGEN OBEN (nur wenn aktiv)
