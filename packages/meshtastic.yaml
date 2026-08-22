@@ -355,6 +355,8 @@ mqtt:
       value_template: >-
         {% if value_json.type == 'text' and value_json.payload.text is defined %}
           {{ value_json.payload.text[:255] }}
+        {% else %}
+          {{ states('sensor.mesh_letzte_nachricht') }}
         {% endif %}
       icon: mdi:message-text
 
@@ -363,7 +365,15 @@ mqtt:
       state_topic: "msh/EU_868/2/json/+/+"
       value_template: >-
         {% if value_json.type == 'text' %}
-          {{ value_json.sender }}
+          {% set node_names = {
+            475036064: 'GW',
+            1129993620: 'Supreme',
+            1322481608: 'Deck',
+            860261236: 'OTN'
+          } %}
+          {{ node_names.get(value_json.from, '!' ~ '%08x' | format(value_json.from)) }}
+        {% else %}
+          {{ states('sensor.mesh_letzte_nachricht_sender') }}
         {% endif %}
       icon: mdi:account
 
@@ -374,6 +384,8 @@ mqtt:
         {% if value_json.type == 'text' %}
           {% set channels = {0: 'LongFast', 1: 'IceMesh', 2: 'THW-OMUO'} %}
           {{ channels.get(value_json.channel, 'Kanal ' ~ value_json.channel) }}
+        {% else %}
+          {{ states('sensor.mesh_letzte_nachricht_kanal') }}
         {% endif %}
       icon: mdi:radio-tower
 
@@ -383,6 +395,8 @@ mqtt:
       value_template: >-
         {% if value_json.type == 'text' %}
           {{ value_json.timestamp | int | timestamp_local }}
+        {% else %}
+          {{ states('sensor.mesh_letzte_nachricht_zeit') }}
         {% endif %}
       icon: mdi:clock
 
@@ -519,6 +533,37 @@ mqtt:
       json_attributes_topic: "meshtastic/mesh_info"
       json_attributes_template: "{{ value_json | tojson }}"
       icon: mdi:information-outline
+
+  # ===========================================================================
+  # Device Trackers (Karte-Tab) — dedicated retained per-node topics from
+  # the bridge (publish_node_position), not device_tracker.see (silently
+  # never created anything: no legacy device_tracker: platform configured,
+  # so those automations have been no-ops since day one).
+  # ===========================================================================
+  device_tracker:
+    - name: "Meshtastic GW"
+      unique_id: meshtastic_gw_tracker
+      json_attributes_topic: "meshtastic/position/gw"
+      source_type: gps
+      icon: mdi:router-wireless
+
+    - name: "Meshtastic Supreme"
+      unique_id: meshtastic_supreme_tracker
+      json_attributes_topic: "meshtastic/position/supreme"
+      source_type: gps
+      icon: mdi:radio-handheld
+
+    - name: "Meshtastic Deck"
+      unique_id: meshtastic_deck_tracker
+      json_attributes_topic: "meshtastic/position/deck"
+      source_type: gps
+      icon: mdi:cellphone
+
+    - name: "Meshtastic OTN"
+      unique_id: meshtastic_otn_tracker
+      json_attributes_topic: "meshtastic/position/otn"
+      source_type: gps
+      icon: mdi:cellphone-text
 
 # -----------------------------------------------------------------------------
 # Template Sensors

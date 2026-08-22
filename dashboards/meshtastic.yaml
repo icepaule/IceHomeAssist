@@ -404,10 +404,10 @@ views:
       - type: map
         default_zoom: 12
         entities:
-          - entity: device_tracker.meshtastic_gw
-          - entity: device_tracker.meshtastic_supreme
-          - entity: device_tracker.meshtastic_deck
-          - entity: device_tracker.meshtastic_otn
+          - entity: device_tracker.meshtastic_gw_2
+          - entity: device_tracker.meshtastic_supreme_2
+          - entity: device_tracker.meshtastic_deck_2
+          - entity: device_tracker.meshtastic_otn_2
           - entity: zone.ottobrunn
         hours_to_show: 24
         aspect_ratio: "16:9"
