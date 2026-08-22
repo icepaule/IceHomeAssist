@@ -501,6 +501,80 @@ flowchart LR
                 erkennt.
             </div>
 
+            <!-- WZ Lichtleiste Nacht-Abschaltung -->
+            <h2>WZ Lichtleiste Nacht-Abschaltung (SNZB-06P)</h2>
+            <p>
+                Ein mmWave-Pr&auml;senzsensor (Sonoff SNZB-06P, ZHA) im Wohnzimmer erkennt, wann
+                alle Bewohner ins Bett gegangen sind, und schaltet dann automatisch die
+                WZ-Lichtleiste (Smart-Plug) aus. Die Lichtleiste wird auch manuell per
+                Funk-Fernbedienung geschaltet &ndash; der Flow fragt deshalb immer den echten
+                Live-Zustand des Ger&auml;ts ab, statt einen eigenen Soll-Zustand zu f&uuml;hren.
+            </p>
+
+            <h3>Flow-Diagramm</h3>
+            <pre class="mermaid">
+flowchart LR
+    A["Tick<br/>alle 60s"] --> B["Function-Node<br/>Fensterpr&uuml;fung + Ruhe-Timer"]
+    B -->|"Sunset+60min aktiv<br/>UND 10min Ruhe"| C["Current-State-Node<br/>Lichtleiste an?"]
+    B -->|"Fenster inaktiv<br/>ODER Bewegung"| B
+    C -->|"ja"| D["Change-Node<br/>Service-Call-Payload"]
+    C -->|"nein, schon aus"| B
+    D --> E["Call-Service-Node<br/>switch.turn_off"]
+            </pre>
+
+            <h3>Flow-Beschreibung</h3>
+            <div class="card">
+                <ol>
+                    <li>
+                        <strong>Tick (60s):</strong> l&auml;uft durchgehend, nicht nur bei
+                        Sensor-Flanken &ndash; so &ouml;ffnet das Zeitfenster auch zuverl&auml;ssig,
+                        wenn der Pr&auml;senzsensor schon vor Fensterbeginn "keine Bewegung" meldet.
+                    </li>
+                    <li>
+                        <strong>Function-Node (Kernlogik):</strong> liest Sonnenstand
+                        (<code>sun.sun</code>) und Pr&auml;senzsensor direkt aus dem
+                        Node-RED-internen HA-State-Cache. Das Zeitfenster ist aktiv ab
+                        Sonnenuntergang + 60 Minuten bis zum n&auml;chsten Sonnenaufgang. Innerhalb
+                        des Fensters l&auml;uft ein Ruhe-Timer in einer Flow-Variable, der bei
+                        Bewegung zur&uuml;ckgesetzt wird.
+                    </li>
+                    <li>
+                        <strong>Current-State-Node:</strong> nach 10 Minuten durchgehender Ruhe
+                        wird der echte aktuelle Zustand der Lichtleiste abgefragt &ndash; nur bei
+                        "an" geht es weiter, ist sie schon aus, passiert nichts.
+                    </li>
+                    <li>
+                        <strong>Change- + Call-Service-Node:</strong> setzen den Service-Call
+                        (<code>switch.turn_off</code>) als Payload und f&uuml;hren ihn aus.
+                    </li>
+                </ol>
+            </div>
+
+            <div class="info-box">
+                <strong>Selbstheilend:</strong> Da der Tick durchgehend l&auml;uft (nicht nur
+                einmalig bei einer Sensor-Flanke), geht die Lichtleiste auch dann wieder aus,
+                wenn sie w&auml;hrend einer bereits laufenden Ruhephase nochmal manuell
+                angeschaltet wird &ndash; solange weiterhin Ruhe herrscht.
+            </div>
+
+            <div class="warning-box">
+                <strong>Stolperfalle Current-State-Node:</strong> Der "halt_if"-Parameter dieses
+                Node-Typs hat keine einfache Stopp-Semantik, sondern zwei Ausg&auml;nge: Ausgang 1
+                feuert, wenn der Zustand dem angegebenen Wert entspricht, Ausgang 2, wenn er NICHT
+                entspricht. Intuitiv naheliegend ist die umgekehrte Annahme &ndash; falsch
+                verdrahtet verschwindet die Nachricht kommentarlos, ohne Fehlermeldung im Log.
+            </div>
+
+            <div class="warning-box">
+                <strong>Grenze bei Haustieren:</strong> Der SNZB-06P bietet keine
+                Objektgr&ouml;&szlig;en- oder Distanzfilterung wie teurere Radarsensoren. Ein
+                Haustier kann daher grunds&auml;tzlich als Bewegung erkannt werden und die
+                Ruhephase verl&auml;ngern. Da die Automation nur ausschaltet, nie einschaltet, ist
+                der praktische Schaden begrenzt (Licht bleibt h&ouml;chstens l&auml;nger an).
+                Reduzierte Sensor-Sensitivity (Low) und eine geschickte Montageposition helfen,
+                sind aber kein Softwarefix.
+            </div>
+
             <!-- Flows-Datei -->
             <h2>Flows-Datei</h2>
             <div class="card">
