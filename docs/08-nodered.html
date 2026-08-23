@@ -600,14 +600,15 @@ flowchart TD
             <!-- GT-7000 Nachtlicht bei Bewegung -->
             <h2>GT-7000 Nachtlicht bei Bewegung (SNZB-06P)</h2>
             <p>
-                Erg&auml;nzung zur WZ-Lichtleiste-Nachtabschaltung oben: ist die Lichtleiste
-                bereits aus und es ist zwischen 23:00 und 06:00 Uhr, schaltet eine kurze Bewegung
-                (SNZB-06P) automatisch die per <a href="#gt7000">GT-7000-Replay</a> gesteuerte
-                Funksteckdose ("Lichterkette") an &ndash; z.B. f&uuml;r kurzes nächtliches
-                Aufstehen, ohne dass man im Dunkeln tappen muss. Nach 10 Minuten ohne weitere
-                Bewegung geht sie automatisch wieder aus. Eigener Node-RED-Tab, unabh&auml;ngig
-                vom WZ-Lichtleiste-Flow, da andere Zeitlogik (feste Uhrzeit statt
-                Sonnenuntergang-Fenster) und anderes Zielger&auml;t.
+                Erg&auml;nzung zur WZ-Lichtleiste-Nachtabschaltung oben: ist das WZ komplett
+                dunkel (Lichtleiste UND Dimmer WZ beide aus) und es ist zwischen 23:00 und 06:00
+                Uhr, schaltet eine kurze Bewegung (SNZB-06P) automatisch die per
+                <a href="#gt7000">GT-7000-Replay</a> gesteuerte Funksteckdose ("Lichterkette")
+                an &ndash; z.B. f&uuml;r kurzes n&auml;chtliches Aufstehen, ohne dass man im
+                Dunkeln tappen muss. Nach 10 Minuten ohne weitere Bewegung geht sie automatisch
+                wieder aus. Eigener Node-RED-Tab, unabh&auml;ngig vom WZ-Lichtleiste-Flow, da
+                andere Zeitlogik (feste Uhrzeit statt Sonnenuntergang-Fenster) und anderes
+                Zielger&auml;t.
             </p>
 
             <h3>Flow-Diagramm</h3>
@@ -620,9 +621,9 @@ flowchart TD
     B -->|"ja"| E{"Sensor-State?"}
     E -->|"unavailable/unknown"| A
     E -->|"on (Bewegung)"| F{"Lichterkette<br/>schon an?"}
-    F -->|"nein"| G{"Lichtleiste aus?"}
-    G -->|"ja"| H["AN senden<br/>+ Ruhe-Timer starten"]
-    G -->|"nein"| A
+    F -->|"nein"| G{"Lichtleiste aus<br/>UND Dimmer WZ aus?"}
+    G -->|"ja, WZ dunkel"| H["AN senden<br/>+ Ruhe-Timer starten"]
+    G -->|"nein, WZ schon hell"| A
     F -->|"ja"| I["Ruhe-Timer<br/>verlaengern"]
     E -->|"off (keine Bewegung)"| J{"Lichterkette an<br/>UND 10min ruhig?"}
     J -->|"ja"| K["AUS senden"]
@@ -645,6 +646,15 @@ flowchart TD
                         Flow f&uuml;hrt daher einen eigenen Soll-Zustand in einer Flow-Variable.
                     </li>
                     <li>
+                        Eingeschaltet wird nur, wenn das WZ wirklich komplett dunkel ist &ndash;
+                        gepr&uuml;ft werden sowohl die Lichtleiste
+                        (<code>switch.licht_wz_mss210_main_channel</code>) als auch der "Dimmer
+                        WZ" (Tuya/SmartLife, <code>light.dimmer_wz_light_1</code>). Ist eines von
+                        beiden manuell an, pausiert die Funktion komplett (kein ON-Kommando) &ndash;
+                        die Annahme ist, dass jemand das Licht bereits bewusst manuell
+                        eingeschaltet hat.
+                    </li>
+                    <li>
                         Jede erneute Bewegung, w&auml;hrend die Lichterkette bereits an ist,
                         verl&auml;ngert den Ruhe-Timer (kein starrer 10-Minuten-Timer ab der
                         ersten Bewegung) &ndash; gleiches Verhalten wie die
@@ -665,13 +675,15 @@ flowchart TD
             </div>
 
             <div class="warning-box">
-                <strong>Kollisionspotenzial mit manueller Steuerung:</strong> Die beiden
-                Inject-Buttons "GT-FSA-01 AN/AUS" in "Ger&auml;te-Steuerung" wirken auf dieselbe
-                Steckdose, ohne den Soll-Zustand dieses Flows zu kennen. Ein manuelles Ausschalten
-                w&auml;hrend einer laufenden Bewegungsphase wird vom Flow nicht bemerkt &ndash;
-                die n&auml;chste Bewegung schaltet dann erneut ein. Bewusst nicht gel&ouml;st
-                (seltener Anwendungsfall), gleiches Grundmuster wie im urspr&uuml;nglichen
-                GT-7000-Setup.
+                <strong>Kollisionspotenzial mit manueller Steuerung (akzeptiert):</strong> Die
+                beiden Inject-Buttons "GT-FSA-01 AN/AUS" in "Ger&auml;te-Steuerung" wirken auf
+                dieselbe Steckdose, ohne den Soll-Zustand dieses Flows zu kennen. Schickt der Flow
+                nach einem manuellen AN nochmal ein AN (weil er selbst noch von "aus" ausgeht),
+                passiert nichts &ndash; die Steckdose ist ja schon an. Ein automatisches AUS nach
+                manuellem AN kann nur passieren, wenn der Flow durch eine echte Bewegung nach
+                23:00 Uhr selbst in den "an"-Zustand gewechselt ist und danach 10 Minuten Ruhe
+                herrschte &ndash; also genau der Fall, den die Funktion ohnehin soll. Bewusst so
+                akzeptiert, kein weiterer Soll-Ist-Abgleich mit den manuellen Buttons noetig.
             </div>
 
             <!-- GT-7000 Funksteckdosen-Replay -->
