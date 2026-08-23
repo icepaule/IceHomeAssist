@@ -575,6 +575,28 @@ flowchart LR
                 sind aber kein Softwarefix.
             </div>
 
+            <div class="error-box">
+                <strong>Fix 23.08.2026 &ndash; Sensor-Verf&uuml;gbarkeit pr&uuml;fen:</strong> In der
+                Praxis trat der Fall ein, dass der Pr&auml;senzsensor selbst (noch) nicht an Strom
+                war. Home Assistant liefert f&uuml;r ein nicht erreichbares Ger&auml;t den
+                Entity-State <code>unavailable</code> (bzw. <code>unknown</code>, solange noch nie
+                ein Wert empfangen wurde) statt <code>"on"</code>/<code>"off"</code>. Die
+                Function-Node pr&uuml;fte urspr&uuml;nglich nur auf <code>"on"</code> ("Bewegung") und
+                behandelte jeden anderen Wert &ndash; auch <code>unavailable</code> &ndash; als
+                "keine Bewegung". Ergebnis: nach 10 Minuten ohne echten Sensor schaltete die
+                Automation die Lichtleiste ab, obwohl schlicht kein Sensordatum vorlag. Fix: ein
+                dritter Zweig f&uuml;r "State ist weder <code>on</code> noch <code>off</code>"
+                bricht jetzt sofort ab und setzt den Ruhe-Timer zur&uuml;ck, statt das Fehlen eines
+                Sensorwerts als Ruhe zu interpretieren.
+                <pre class="mermaid">
+flowchart TD
+    A["Praesenzsensor-State lesen"] --> B{"State?"}
+    B -->|"on"| C["Bewegung erkannt<br/>Timer zuruecksetzen"]
+    B -->|"off"| D["Ruhe-Timer laeuft/startet"]
+    B -->|"unavailable / unknown / leer"| E["Abbruch<br/>Timer zuruecksetzen<br/>KEINE Abschaltung"]
+                </pre>
+            </div>
+
             <!-- GT-7000 Funksteckdosen-Replay -->
             <h2>GT-7000 Funksteckdosen-Replay (ESP8266 + SYN115 + RX470)</h2>
             <p>
