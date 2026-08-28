@@ -2,7 +2,7 @@
 # WIFI BUTTONS PAKET
 # =============================================================================
 # ESP32-S3 WiFi Button im Bad
-# 3 physische Buttons (GPIO42/41/40) + 2 RF-Tasten (SRX882S auf GPIO21)
+# 3 physische Buttons (GPIO40/41/42) + 2 RF-Tasten (SRX882S auf GPIO21)
 # Unterstützt: SINGLE, DOUBLE, TRIPLE, HOLD
 #
 # ZUM BEARBEITEN:
@@ -107,7 +107,7 @@ template:
 # "initial" ist der Standardwert nach HA-Neustart.
 # -----------------------------------------------------------------------------
 input_select:
-  # --- Button 1 (physisch, GPIO42) ---
+  # --- Button 1 (physisch, GPIO40) ---
   wifibutton1_button1_single_action:
     name: "Taste 1 Kurz"
     options:
@@ -185,7 +185,7 @@ input_select:
     initial: "Alexa Bad Radio NDR2"
     icon: mdi:gesture-tap
 
-  # --- Button 3 (physisch, GPIO40) ---
+  # --- Button 3 (physisch, GPIO42) ---
   wifibutton1_button3_single_action:
     name: "Taste 3 Kurz"
     options:
@@ -446,7 +446,7 @@ script:
 # HINWEIS: Automationen deaktiviert (initial_state: false) - Node-RED uebernimmt.
 # -----------------------------------------------------------------------------
 automation:
-  # === BUTTON 1 (physisch, GPIO42) ===
+  # === BUTTON 1 (physisch, GPIO40) ===
   - id: wifibutton_b1_single
     alias: "WiFi Taste 1 Kurz"
     initial_state: false
@@ -684,7 +684,7 @@ automation:
             sequence: [service: script.wifibtn_szene_film]
     mode: single
 
-  # === BUTTON 3 (physisch, GPIO40) ===
+  # === BUTTON 3 (physisch, GPIO42) ===
   - id: wifibutton_b3_single
     alias: "WiFi Taste 3 Kurz"
     initial_state: false
