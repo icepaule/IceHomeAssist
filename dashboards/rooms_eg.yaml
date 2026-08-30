@@ -37,6 +37,17 @@ views:
             name: Dimmer
             show_brightness_control: true
 
+          - type: custom:mushroom-light-card
+            entity: light.led_welt_led_welt
+            name: LED-Welt
+            show_brightness_control: true
+
+          - type: entities
+            title: LED-Welt Szene
+            entities:
+              - entity: select.led_welt_led_welt_szene
+                name: Szene
+
           - type: entities
             title: Steckdosen
             entities:
@@ -79,7 +90,7 @@ views:
       # 27.07.2026: Luft2 stand faelschlich als "Buero"-Sensor in der Karte unten
       # (Annahme "gleicher Raum wie Luft3" war falsch) - Luft2 steht tatsaechlich
       # im Wohnzimmer, HA-Area war bereits korrekt "living_room".
-      - type: vertical-stack
+      - type: grid
         title: Wohnzimmer - Luftqualität (Luft2)
         cards:
           - type: entities
@@ -261,7 +272,7 @@ views:
 
       # ===== BUERO - LUFTQUALITAET (Luft3) =====
       # 27.07.2026: Luft2 hierhin ausgelagert, siehe "WOHNZIMMER - LUFTQUALITAET" oben
-      - type: vertical-stack
+      - type: grid
         title: Buero - Luftqualität (Luft3)
         cards:
           - type: entities
