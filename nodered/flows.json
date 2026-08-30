@@ -5824,7 +5824,7 @@
         "type": "tab",
         "label": "LED-Welt (Weltkarte)",
         "disabled": false,
-        "info": "WLED-Weltkarte, Geschenk vom Schwager.\n\nGeraet: NodeMCU/ESP8266, WLED 16.0.0, Hostname LED-Welt\nIP: 10.10.12.73 (Bad!IoT, DHCP)\nMQTT Device-Topic: wled/ledwelt\nVoll-Flash-Backup: /root/backups/led-welt/ (NUC-HA)\n\nFunktionen:\n- On/Off Toggle ueber Funktaste ED2C78 (via wifibutton1 Rule2 -> Button6)\n- Szenen-Auswahl in Home Assistant ueber MQTT-Discovery Select-Entity\n\nWICHTIG: Button6 ist bewusst NEU vergeben (nicht Button3!), um keine\nKollision mit der echten physischen Taste 3 (GPIO42) auf wifibutton1\nauszuloesen. Die physischen Tasten 1-3 und Funk1/2 (Button4/5) wurden\nnicht veraendert."
+        "info": "WLED-Weltkarte, Geschenk vom Schwager.\n\nGeraet: NodeMCU/ESP8266, WLED 16.0.0, Hostname LED-Welt\nIP: 10.10.12.73 (Bad!IoT, DHCP)\nMQTT Device-Topic: wled/ledwelt\nVoll-Flash-Backup: /root/backups/led-welt/ (NUC-HA)\n\nFunktionen:\n- On/Off Toggle ueber Funktaste 0xA83928 (verifiziert 30.08.) (via wifibutton1 Rule2 -> Button6)\n- Szenen-Auswahl in Home Assistant ueber MQTT-Discovery Select-Entity\n\nWICHTIG: Button6 ist bewusst NEU vergeben (nicht Button3!), um keine\nKollision mit der echten physischen Taste 3 (GPIO42) auf wifibutton1\nauszuloesen. Die physischen Tasten 1-3 und Funk1/2 (Button4/5) wurden\nnicht veraendert."
     },
     {
         "id": "ledwelt_mqtt_in_button",
