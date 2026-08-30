@@ -6078,5 +6078,115 @@
                 "ledwelt_map_preset"
             ]
         ]
+    },
+    {
+        "id": "ledwelt_mqtt_in_g",
+        "type": "mqtt in",
+        "z": "ledwelt_tab",
+        "name": "wled/ledwelt/g",
+        "topic": "wled/ledwelt/g",
+        "qos": "1",
+        "datatype": "auto",
+        "broker": "mqtt_nuc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 620,
+        "wires": [
+            [
+                "ledwelt_g_to_json"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_g_to_json",
+        "type": "function",
+        "z": "ledwelt_tab",
+        "name": "Helligkeit zu HA-Light-JSON",
+        "func": "var bri = parseInt(msg.payload, 10);\nif (isNaN(bri)) return null;\nmsg.payload = JSON.stringify({ state: bri > 0 ? 'ON' : 'OFF', brightness: bri });\nmsg.topic = 'ledwelt/nodered/light/state_json';\nmsg.retain = true;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 620,
+        "wires": [
+            [
+                "ledwelt_mqtt_out_light_state"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_mqtt_out_light_state",
+        "type": "mqtt out",
+        "z": "ledwelt_tab",
+        "name": "light/state_json (retained)",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "broker": "mqtt_nuc",
+        "x": 800,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "ledwelt_mqtt_in_ha_cmd",
+        "type": "mqtt in",
+        "z": "ledwelt_tab",
+        "name": "ledwelt/nodered/light/set",
+        "topic": "ledwelt/nodered/light/set",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "mqtt_nuc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 700,
+        "wires": [
+            [
+                "ledwelt_ha_cmd_to_wled"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_ha_cmd_to_wled",
+        "type": "function",
+        "z": "ledwelt_tab",
+        "name": "HA-Kommando zu WLED-API",
+        "func": "var cmd = msg.payload;\nvar out = {};\nif (cmd.state) out.on = (cmd.state === 'ON');\nif (typeof cmd.brightness !== 'undefined') out.bri = cmd.brightness;\nmsg.payload = JSON.stringify(out);\nmsg.topic = 'wled/ledwelt/api';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 700,
+        "wires": [
+            [
+                "ledwelt_mqtt_out_wled_api_cmd"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_mqtt_out_wled_api_cmd",
+        "type": "mqtt out",
+        "z": "ledwelt_tab",
+        "name": "wled/ledwelt/api (von HA)",
+        "topic": "",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "broker": "mqtt_nuc",
+        "x": 800,
+        "y": 700,
+        "wires": []
     }
 ]
