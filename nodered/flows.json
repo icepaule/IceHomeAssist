@@ -5818,5 +5818,265 @@
         "x": 650,
         "y": 480,
         "wires": []
+    },
+    {
+        "id": "ledwelt_tab",
+        "type": "tab",
+        "label": "LED-Welt (Weltkarte)",
+        "disabled": false,
+        "info": "WLED-Weltkarte, Geschenk vom Schwager.\n\nGeraet: NodeMCU/ESP8266, WLED 16.0.0, Hostname LED-Welt\nIP: 10.10.12.73 (Bad!IoT, DHCP)\nMQTT Device-Topic: wled/ledwelt\nVoll-Flash-Backup: /root/backups/led-welt/ (NUC-HA)\n\nFunktionen:\n- On/Off Toggle ueber Funktaste ED2C78 (via wifibutton1 Rule2 -> Button6)\n- Szenen-Auswahl in Home Assistant ueber MQTT-Discovery Select-Entity\n\nWICHTIG: Button6 ist bewusst NEU vergeben (nicht Button3!), um keine\nKollision mit der echten physischen Taste 3 (GPIO42) auf wifibutton1\nauszuloesen. Die physischen Tasten 1-3 und Funk1/2 (Button4/5) wurden\nnicht veraendert."
+    },
+    {
+        "id": "ledwelt_mqtt_in_button",
+        "type": "mqtt in",
+        "z": "ledwelt_tab",
+        "name": "stat/wifibutton1/RESULT",
+        "topic": "stat/wifibutton1/RESULT",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "mqtt_nuc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 160,
+        "wires": [
+            [
+                "ledwelt_filter_button6"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_filter_button6",
+        "type": "function",
+        "z": "ledwelt_tab",
+        "name": "Nur Button6 SINGLE (Funk ED2C78)",
+        "func": "var d = msg.payload;\nif (d && d.Button6 && d.Button6.Action === 'SINGLE') {\n    msg.payload = 't';\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 160,
+        "wires": [
+            [
+                "ledwelt_mqtt_out_toggle",
+                "ledwelt_debug_toggle"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_mqtt_out_toggle",
+        "type": "mqtt out",
+        "z": "ledwelt_tab",
+        "name": "wled/ledwelt (Toggle)",
+        "topic": "wled/ledwelt",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "broker": "mqtt_nuc",
+        "x": 820,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "ledwelt_debug_toggle",
+        "type": "debug",
+        "z": "ledwelt_tab",
+        "name": "LED-Welt Toggle Event",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "true",
+        "targetType": "full",
+        "x": 800,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "ledwelt_inject_test_funk",
+        "type": "inject",
+        "z": "ledwelt_tab",
+        "name": "Test: Funk-Taste LED-Welt (ED2C78)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"Button6\":{\"Action\":\"SINGLE\"}}",
+        "payloadType": "json",
+        "x": 220,
+        "y": 260,
+        "wires": [
+            [
+                "ledwelt_filter_button6"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_inject_discovery",
+        "type": "inject",
+        "z": "ledwelt_tab",
+        "name": "HA Discovery veroeffentlichen (bei Deploy)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 230,
+        "y": 380,
+        "wires": [
+            [
+                "ledwelt_build_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_build_discovery",
+        "type": "function",
+        "z": "ledwelt_tab",
+        "name": "Discovery-Payload bauen",
+        "func": "var options = ['02 Solid-Eurasien','01 Solid Australien','03 Solid-Afrika','07 Beach','06 Flow','08 Lava Flicker','04 Solid-S\u00fcdamerika','09 Orangery','05 Solid - all diff'];\nmsg.payload = JSON.stringify({\n    name: 'LED-Welt Szene',\n    unique_id: 'led_welt_preset_select',\n    command_topic: 'ledwelt/nodered/preset/set',\n    state_topic: 'ledwelt/nodered/preset/state',\n    options: options,\n    icon: 'mdi:earth',\n    device: {\n        identifiers: ['led-welt-c515cb'],\n        name: 'LED-Welt',\n        manufacturer: 'WLED',\n        model: 'ESP8266 WLED Weltkarte',\n        sw_version: '16.0.0'\n    }\n});\nmsg.topic = 'homeassistant/select/led_welt_preset/config';\nmsg.retain = true;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 380,
+        "wires": [
+            [
+                "ledwelt_mqtt_out_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_mqtt_out_discovery",
+        "type": "mqtt out",
+        "z": "ledwelt_tab",
+        "name": "HA Discovery (retained)",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "broker": "mqtt_nuc",
+        "x": 880,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "ledwelt_mqtt_in_preset_cmd",
+        "type": "mqtt in",
+        "z": "ledwelt_tab",
+        "name": "ledwelt/nodered/preset/set",
+        "topic": "ledwelt/nodered/preset/set",
+        "qos": "1",
+        "datatype": "auto",
+        "broker": "mqtt_nuc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 200,
+        "y": 480,
+        "wires": [
+            [
+                "ledwelt_map_preset"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_map_preset",
+        "type": "function",
+        "z": "ledwelt_tab",
+        "name": "Preset-Name zu WLED-ID mappen",
+        "func": "var map = {\n    '02 Solid-Eurasien': 1,\n    '01 Solid Australien': 2,\n    '03 Solid-Afrika': 3,\n    '07 Beach': 4,\n    '06 Flow': 5,\n    '08 Lava Flicker': 6,\n    '04 Solid-S\u00fcdamerika': 7,\n    '09 Orangery': 8,\n    '05 Solid - all diff': 9\n};\nvar name = msg.payload;\nvar id = map[name];\nif (!id) { node.warn('LED-Welt: unbekanntes Preset ' + name); return null; }\nvar out1 = { payload: JSON.stringify({ps: id}), topic: 'wled/ledwelt/api' };\nvar out2 = { payload: name, topic: 'ledwelt/nodered/preset/state' };\nreturn [out1, out2];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 480,
+        "wires": [
+            [
+                "ledwelt_mqtt_out_preset_api"
+            ],
+            [
+                "ledwelt_mqtt_out_preset_state"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_mqtt_out_preset_api",
+        "type": "mqtt out",
+        "z": "ledwelt_tab",
+        "name": "wled/ledwelt/api",
+        "topic": "",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "broker": "mqtt_nuc",
+        "x": 830,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "ledwelt_mqtt_out_preset_state",
+        "type": "mqtt out",
+        "z": "ledwelt_tab",
+        "name": "preset/state (retained, fuer HA)",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "broker": "mqtt_nuc",
+        "x": 850,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "ledwelt_inject_test_preset",
+        "type": "inject",
+        "z": "ledwelt_tab",
+        "name": "Test: Preset waehlen (Beach)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "07 Beach",
+        "payloadType": "str",
+        "x": 200,
+        "y": 560,
+        "wires": [
+            [
+                "ledwelt_map_preset"
+            ]
+        ]
     }
 ]
