@@ -1,19 +1,29 @@
-# Erdgeschoss Dashboard
+# Räume Dashboard
 #
 # Ueberarbeitet 14.07.2026: Vorherige Version war groesstenteils Mockup-Inhalt
 # ohne echte Hardware dahinter (Lichter/Klima/Bewegungsmelder pro Raum,
 # 4-Zonen-Bewaesserung). Jetzt auf tatsaechlich vorhandene Geraete reduziert.
 # Flur + Bewaesserung komplett entfernt (keine Hardware vorhanden).
+#
+# 30.08.2026: Auf ein eigenes View (Tab) pro HA-Area umgestellt (vorher eine
+# einzige scrollende Seite mit allen Raeumen als Sections). Server-/Cloud-
+# Monitoring (SynNAS, THW Muenchen Ost, granulare Tibber/Paule-Preisprognosen)
+# bewusst NICHT in die Raum-Views uebernommen, obwohl teils per HA-Area
+# dorthin getaggt - das gehoert in die bestehenden Spezial-Dashboards
+# (System/Energie/THW), nicht in eine physische Raumansicht.
+# Bekannte Area-Tag-Inkonsistenz (nicht angefasst): WLED2 ist als Area "az"
+# getaggt, wird aber seit jeher im Wohnzimmer angezeigt - hier unveraendert
+# im Wohnzimmer belassen.
 
-title: Erdgeschoss
+title: Räume
 views:
-  - title: Erdgeschoss
-    path: eg
-    icon: mdi:home-floor-0
+  # ===== WOHNZIMMER =====
+  - title: Wohnzimmer
+    path: wohnzimmer
+    icon: mdi:sofa
     type: sections
     max_columns: 3
     sections:
-      # ===== WOHNZIMMER =====
       - type: grid
         title: "🛋️ Wohnzimmer"
         cards:
@@ -63,6 +73,12 @@ views:
                 name: Bravia
               - entity: media_player.kd_55xe8505_2
                 name: Bravia (Cast)
+
+          - type: entities
+            title: Echo (Wohnzimmer)
+            entities:
+              - entity: media_player.marcus_echo_plus
+                name: Echo Plus
 
           - type: entities
             title: Trinkbrunnen (Katze)
@@ -207,9 +223,15 @@ views:
                   func: avg
                   duration: 2h
 
-      # ===== KUECHE =====
+  # ===== KUECHE =====
+  - title: Küche
+    path: kueche
+    icon: mdi:chef-hat
+    type: sections
+    max_columns: 3
+    sections:
       - type: grid
-        title: "🍳 Kueche"
+        title: "🍳 Küche"
         cards:
           - type: custom:mushroom-entity-card
             entity: binary_sensor.briefkasten_door
@@ -240,12 +262,23 @@ views:
               - entity: button.siemens_405100396089025945_start_pause
                 name: Start/Pause
 
-      # ===== BUERO / ARBEITSZIMMER =====
+  # ===== BUERO / ARBEITSZIMMER =====
+  - title: Büro
+    path: buero
+    icon: mdi:desk
+    type: sections
+    max_columns: 3
+    sections:
       - type: grid
-        title: "💻 Buero"
+        title: "💻 Büro"
         cards:
           - type: custom:mushroom-climate-card
             entity: climate.wifi_smart_trv
+            show_temperature_control: true
+
+          - type: custom:mushroom-climate-card
+            entity: climate.az_heizkorper
+            name: AZ Heizkörper
             show_temperature_control: true
 
           - type: custom:mushroom-entity-card
@@ -253,10 +286,25 @@ views:
             name: Fenster
             icon: mdi:window-closed
 
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.az_heizkorper_window
+            name: Fenster (Heizkörper)
+            icon: mdi:window-closed
+
           - type: custom:mushroom-cover-card
             entity: cover.rolo_arbeitszimmer_curtain
             name: Rollo
             show_position_control: true
+
+          - type: custom:mushroom-light-card
+            entity: light.az_licht
+            name: AZ Licht
+            show_brightness_control: true
+
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.az_sm301z_anwesenheit
+            name: Anwesenheit (SM301Z)
+            icon: mdi:motion-sensor
 
           - type: entities
             title: Steckdose / Verbrauch
@@ -270,10 +318,91 @@ views:
               - entity: sensor.arbeitszimmer_kosten_pro_stunde
                 name: Kosten/h
 
+          - type: entities
+            title: Strom-AZ (Steckdose)
+            entities:
+              - entity: switch.tasmota_2
+                name: Schalter
+              - entity: sensor.tasmota_energy_power
+                name: Leistung
+              - entity: sensor.tasmota_energy_today
+                name: Heute
+              - entity: sensor.tasmota_energy_total
+                name: Gesamt
+
+          - type: entities
+            title: WiFi-Button / Funk (wifibutton1)
+            entities:
+              - entity: switch.tasmota_matrix3
+                name: Matrix3
+
+          - type: entities
+            title: LED Matrizen
+            entities:
+              - entity: sensor.led_matrix_2_zeit_text
+                name: Matrix2 - Zeit
+              - entity: sensor.led_matrix_2_pv_text
+                name: Matrix2 - PV
+              - entity: sensor.led_matrix_6_strompreis_json
+                name: Matrix6 - Strompreis
+
+          - type: entities
+            title: Echo (Büro)
+            entities:
+              - entity: media_player.marcus_echo_dot
+                name: Echo Dot
+              - entity: sensor.marcus_echo_dot_next_alarm
+                name: Nächster Alarm
+              - entity: media_player.marcus_echo_show_8_2nd_gen
+                name: Echo Show 8
+
+          - type: entities
+            title: Kiosk2FA
+            entities:
+              - entity: device_tracker.matrix5
+                name: Erreichbarkeit
+
+          - type: entities
+            title: Ubertooth BLE Monitor
+            entities:
+              - entity: sensor.ubertooth_ble_monitor_ble_gerate_aktiv
+                name: BLE Geräte aktiv
+              - entity: binary_sensor.ubertooth_ble_monitor_fremder_airtag_in_nahe
+                name: Fremder AirTag in Nähe
+              - entity: sensor.ubertooth_ble_monitor_starkstes_ble_signal
+                name: Stärkstes Signal
+
+          - type: entities
+            title: Drucker (Brother)
+            entities:
+              - entity: sensor.brother_mfc_j5730dw
+                name: Status
+              - entity: sensor.brother_mfc_j5730dw_bk
+                name: Toner Schwarz
+              - entity: sensor.brother_mfc_j5730dw_c
+                name: Toner Cyan
+              - entity: sensor.brother_mfc_j5730dw_m
+                name: Toner Magenta
+              - entity: sensor.brother_mfc_j5730dw_y
+                name: Toner Gelb
+
+          - type: custom:mushroom-light-card
+            entity: light.wled2
+            name: WLED2
+            show_brightness_control: true
+
+          - type: entities
+            title: WLED2 Szene/Playlist
+            entities:
+              - entity: select.wled2_preset
+                name: Szene
+              - entity: select.wled2_playlist
+                name: Playlist
+
       # ===== BUERO - LUFTQUALITAET (Luft3) =====
       # 27.07.2026: Luft2 hierhin ausgelagert, siehe "WOHNZIMMER - LUFTQUALITAET" oben
       - type: grid
-        title: Buero - Luftqualität (Luft3)
+        title: Büro - Luftqualität (Luft3)
         cards:
           - type: entities
             title: Luft3
@@ -389,7 +518,214 @@ views:
                   func: avg
                   duration: 2h
 
-      # ===== GARTEN =====
+  # ===== SCHLAFZIMMER =====
+  - title: Schlafzimmer
+    path: schlafzimmer
+    icon: mdi:bed
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        title: "🛏️ Schlafzimmer"
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.sz_fenster_door
+            name: Fenster
+            icon: mdi:window-closed
+
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.sz_links_window
+            name: Fenster links
+            icon: mdi:window-closed
+
+          - type: custom:mushroom-climate-card
+            entity: climate.sz_links
+            name: Heizung links
+            show_temperature_control: true
+
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.sz_rechts_window
+            name: Fenster rechts
+            icon: mdi:window-closed
+
+          - type: custom:mushroom-climate-card
+            entity: climate.sz_rechts
+            name: Heizung rechts
+            show_temperature_control: true
+
+          - type: custom:mushroom-light-card
+            entity: light.wecker_jella
+            name: Wecker Jella
+            show_brightness_control: true
+
+  # ===== GAESTEZIMMER =====
+  - title: Gästezimmer
+    path: gaestezimmer
+    icon: mdi:bed-king-outline
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        title: "🛌 Gästezimmer"
+        cards:
+          - type: custom:mushroom-cover-card
+            entity: cover.rolo_gastezimmer_curtain
+            name: Rollo
+            show_position_control: true
+
+          - type: custom:mushroom-cover-card
+            entity: cover.rolos_gastezimmer_curtain
+            name: Rolos
+            show_position_control: true
+
+  # ===== KELLER =====
+  - title: Keller
+    path: keller
+    icon: mdi:stairs-down
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        title: "📦 Keller"
+        cards:
+          - type: entities
+            title: Waschmaschine
+            entities:
+              - entity: switch.strom_waschmaschine
+                name: Schalter
+              - entity: sensor.waschmaschine_leistung
+                name: Leistung
+              - entity: sensor.waschmaschine_energie_heute
+                name: Heute
+              - entity: sensor.waschmaschine_energie_gesamt
+                name: Gesamt
+
+          - type: entities
+            title: Trockner
+            entities:
+              - entity: switch.strom_trockner
+                name: Schalter
+              - entity: sensor.trockner_leistung
+                name: Leistung
+              - entity: sensor.trockner_energie_heute
+                name: Heute
+              - entity: sensor.trockner_energie_gesamt
+                name: Gesamt
+
+          - type: entities
+            title: Gefriertruhe
+            entities:
+              - entity: switch.strom_kueche
+                name: Schalter
+              - entity: sensor.kueche_leistung
+                name: Leistung
+              - entity: sensor.kueche_energie_heute
+                name: Heute
+              - entity: sensor.kueche_energie_gesamt
+                name: Gesamt
+
+          - type: entities
+            title: Power-Server
+            entities:
+              - entity: switch.power_server_powe_server
+                name: Schalter
+              - entity: sensor.server_leistung
+                name: Leistung
+              - entity: sensor.server_energie_heute
+                name: Heute
+              - entity: sensor.server_energie_gesamt
+                name: Gesamt
+
+          - type: entities
+            title: Gasmeter
+            entities:
+              - entity: sensor.gasmeter_readout_value
+                name: Zählerstand
+              - entity: sensor.gasmeter_readout_rate_per_time_unit
+                name: Rate (m³/h)
+              - entity: binary_sensor.gasmeter_readout_problem
+                name: Problem
+              - entity: button.gasmeter_readout_flowstart
+                name: Manueller Start
+
+          - type: entities
+            title: Freddy (Katzenklo)
+            entities:
+              - entity: sensor.freddy_shitkit_state_2
+                name: Status
+              - entity: sensor.freddy_shitkit_litter_level_2
+                name: Streu-Füllstand
+              - entity: sensor.freddy_shitkit_last_used_by_2
+                name: Zuletzt benutzt von
+              - entity: binary_sensor.freddy_shitkit_sand_lack
+                name: Streu leer
+              - entity: binary_sensor.freddy_shitkit_wastebin_filled
+                name: Abfallbehälter voll
+              - entity: binary_sensor.freddy_shitkit_toilet_occupied
+                name: Belegt
+              - entity: button.freddy_shitkit_scoop
+                name: Schaufeln
+              - entity: button.freddy_shitkit_dump_litter_2
+                name: Streu leeren
+
+          - type: entities
+            title: Sicherheit
+            entities:
+              - entity: binary_sensor.water_leak_sensor_moisture
+                name: Wasserleck-Sensor
+              - entity: binary_sensor.tur_zur_9_door
+                name: Tür zur 9
+              - entity: binary_sensor.tur_waschkuche_door
+                name: Tür Waschküche
+
+  # ===== HEIZUNGSKELLER =====
+  - title: Heizungskeller
+    path: heizungskeller
+    icon: mdi:radiator
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        title: "🔥 Heizungskeller"
+        cards:
+          - type: custom:mushroom-climate-card
+            entity: climate.bsb_lan
+            name: Heizkreis 1
+            show_temperature_control: true
+
+          - type: custom:mushroom-climate-card
+            entity: climate.heating_circuit_2
+            name: Heizkreis 2
+            show_temperature_control: true
+
+          - type: entities
+            title: Warmwasser
+            entities:
+              - entity: water_heater.bsb_lan
+                name: Water Heater
+
+          - type: entities
+            title: Luft4
+            show_header_toggle: false
+            entities:
+              - entity: sensor.luft4_sensor_luft4_temperatur
+                name: Temperatur
+              - entity: sensor.luft4_sensor_luft4_luftfeuchtigkeit
+                name: Luftfeuchtigkeit
+              - entity: sensor.luft4_sensor_luft4_taupunkt
+                name: Taupunkt
+              - entity: sensor.luft4_sensor_luft4_luftqualitaet_ppm
+                name: CO2 (äquiv.)
+              - entity: sensor.luft4_sensor_luft4_luftqualitaet_bewertung
+                name: Bewertung
+
+  # ===== GARTEN =====
+  - title: Garten
+    path: garten
+    icon: mdi:tree
+    type: sections
+    max_columns: 3
+    sections:
       - type: grid
         title: "🌳 Garten"
         cards:
@@ -403,9 +739,9 @@ views:
             entities:
               - entity: sensor.tasmota_dht11_humidity
                 name: Luftfeuchtigkeit
-              - entity: sensor.tasmota_as3935_distance
+              - entity: sensor.tasmota_as3935_distance_2
                 name: Blitz Entfernung
-              - entity: sensor.tasmota_as3935_energy
+              - entity: sensor.tasmota_as3935_energy_2
                 name: Blitz Energie
 
           - type: entities
@@ -439,3 +775,26 @@ views:
                 name: Schlaf (Tag)
               - entity: sensor.charly_night_sleep
                 name: Schlaf (Nacht)
+
+  # ===== ERDGESCHOSS (Sonstiges, keinem Einzelraum zugeordnet) =====
+  - title: Erdgeschoss
+    path: erdgeschoss
+    icon: mdi:home-floor-0
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        title: "🏠 Sonstiges Erdgeschoss"
+        cards:
+          - type: entities
+            title: Staubsauger Robby
+            entities:
+              - entity: vacuum.s7_max_ultra
+                name: Robby
+              - entity: button.erdgeschoss_robby_saugen_dann_wischen
+                name: Saugen, dann Wischen
+              - entity: button.erdgeschoss_robby_vollreinigung
+                name: Vollreinigung
+              - entity: button.erdgeschoss_robby_saugen_dann_wischen2
+                name: Saugen, dann Wischen (2)
+

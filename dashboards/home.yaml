@@ -94,8 +94,11 @@ views:
                 entity: media_player.kd_55xe8505
                 name: Sony TV
               - type: entity
-                entity: light.wled2
-                name: WLED
+                entity: light.led_welt_led_welt
+                name: LED-Welt
+              - type: entity
+                entity: select.led_welt_led_welt_szene
+                name: LED-Welt Szene
 
       # Küche
       - type: vertical-stack
@@ -117,6 +120,9 @@ views:
               - type: entity
                 entity: switch.strom_arbeitszimmer
                 name: Schalter
+              - type: entity
+                entity: light.wled2
+                name: WLED2
 
   # ===========================================================================
   # RÄUME - OG
