@@ -419,31 +419,45 @@ views:
                     -webkit-line-clamp: unset !important;
                   }
 
-      - type: horizontal-stack
-        cards:
-          # Leistung Gauge
-          - type: gauge
-            entity: sensor.heizung_leistung
-            name: Brennerleistung
-            min: 0
-            max: 100
-            severity:
-              green: 0
-              yellow: 50
-              red: 80
-            needle: true
+      # Gauges brauchen einen numerischen Wert - BSB-LAN im Heizungskeller
+      # hat schwaches WLAN und faellt gelegentlich auf "unavailable" (dann
+      # wirft die gauge-Karte sonst einen Configuration error).
+      - type: conditional
+        conditions:
+          - entity: sensor.heizung_leistung
+            state_not: "unavailable"
+          - entity: sensor.heizung_leistung
+            state_not: "unknown"
+          - entity: sensor.heizung_pumpe
+            state_not: "unavailable"
+          - entity: sensor.heizung_pumpe
+            state_not: "unknown"
+        card:
+          type: horizontal-stack
+          cards:
+            # Leistung Gauge
+            - type: gauge
+              entity: sensor.heizung_leistung
+              name: Brennerleistung
+              min: 0
+              max: 100
+              severity:
+                green: 0
+                yellow: 50
+                red: 80
+              needle: true
 
-          # Pumpe Gauge
-          - type: gauge
-            entity: sensor.heizung_pumpe
-            name: Pumpendrehzahl
-            min: 0
-            max: 100
-            severity:
-              green: 0
-              yellow: 50
-              red: 80
-            needle: true
+            # Pumpe Gauge
+            - type: gauge
+              entity: sensor.heizung_pumpe
+              name: Pumpendrehzahl
+              min: 0
+              max: 100
+              severity:
+                green: 0
+                yellow: 50
+                red: 80
+              needle: true
 
       # =====================================================================
       # Sektion 5: Temperaturverlauf (ApexCharts)
