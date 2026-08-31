@@ -1,0 +1,15 @@
+# Müllkalender Ottobrunn - ZVMSO via muellapp.com API
+# Node-RED (Tab "Müllkalender Ottobrunn") holt wöchentlich Mo 03:00 die Termine,
+# prüft täglich 18:00/20:00 auf eine Abholung am Folgetag und veröffentlicht das
+# Ergebnis hier per MQTT. Kiosk-Dashboard-Karte + Alexa-Ansagen (AZ/Wohnzimmer)
+# hängen an diesem Sensor.
+
+mqtt:
+  sensor:
+    - name: "Müllkalender Erinnerung"
+      unique_id: muellkalender_erinnerung
+      state_topic: "muellkalender/erinnerung"
+      value_template: "{{ value_json.typ }}"
+      json_attributes_topic: "muellkalender/erinnerung"
+      json_attributes_template: "{{ value_json | tojson }}"
+      icon: mdi:trash-can-outline
