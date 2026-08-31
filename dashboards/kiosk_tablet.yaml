@@ -65,10 +65,8 @@ views:
       # Vogelbad: neue Erkennung (blendet nach 90s automatisch aus)
       - type: conditional
         conditions:
-          - condition: template
-            value_template: >
-              {% set s = states.sensor.vogelbad_letzte_erkennung %}
-              {{ s is not none and s.state not in ['unknown','unavailable',''] and (as_timestamp(now()) - as_timestamp(s.last_changed)) < 90 }}
+          - entity: binary_sensor.vogelbad_neu_erkannt
+            state: "on"
         card:
           type: custom:mushroom-template-card
           primary: "Neuer Vogel: {{ states('sensor.vogelbad_letzte_erkennung') }}"
@@ -96,6 +94,53 @@ views:
           secondary: "Guter Zeitpunkt für Waschmaschine oder Trockner"
           icon: mdi:flash
           icon_color: green
+
+      # =============================================
+      # MÜLLKALENDER (Erinnerung am Vortag ab 18 Uhr)
+      # =============================================
+      - type: conditional
+        conditions:
+          - entity: sensor.mullkalender_erinnerung
+            state_not: "none"
+          - entity: sensor.mullkalender_erinnerung
+            state_not: "unavailable"
+        card:
+          type: custom:mushroom-template-card
+          primary: "Morgen: {{ states('sensor.mullkalender_erinnerung') }}"
+          secondary: "{{ state_attr('sensor.mullkalender_erinnerung', 'datum') }}"
+          icon: mdi:trash-can-outline
+          icon_color: orange
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 165, 0, 0.15) !important;
+                border: 2px solid orange !important;
+              }
+
+      # =============================================
+      # BRIEFKASTEN (Post erkannt)
+      # =============================================
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.briefkasten_briefkasten_post
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "📬 Post im Briefkasten!"
+          secondary: "Neue Post wurde erkannt"
+          icon: mdi:mailbox-open
+          icon_color: red
+          card_mod:
+            style: |
+              ha-card {
+                background-color: rgba(255, 0, 0, 0.15) !important;
+                border: 2px solid red !important;
+                animation: pulse 2s infinite;
+              }
+              @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+              }
 
       # =============================================
       # PETKIT WARNUNGEN (nur wenn Handlung nötig)
@@ -512,14 +557,11 @@ views:
             fill_container: true
             tap_action:
               action: toggle
-          - type: custom:mushroom-entity-card
-            entity: switch.strom_arbeitszimmer
-            name: Büro
-            icon: mdi:desk-lamp
+          - type: custom:mushroom-light-card
+            entity: light.led_welt_led_welt
+            name: LED-Welt
             layout: vertical
             fill_container: true
-            tap_action:
-              action: toggle
           - type: custom:mushroom-entity-card
             entity: media_player.kd_55xe8505
             name: TV
@@ -873,7 +915,7 @@ views:
       - type: conditional
         conditions:
           - condition: numeric_state
-            entity: sensor.divera_open_alarms_helper
+            entity_id: sensor.divera_open_alarms_helper
             above: 0
         card:
           type: custom:mushroom-template-card

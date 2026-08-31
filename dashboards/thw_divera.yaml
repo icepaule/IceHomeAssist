@@ -19,7 +19,7 @@ views:
       - type: conditional
         conditions:
           - condition: numeric_state
-            entity: sensor.divera_open_alarms_helper
+            entity_id: sensor.divera_open_alarms_helper
             above: 0
         card:
           type: custom:mushroom-template-card
@@ -63,7 +63,7 @@ views:
       - type: conditional
         conditions:
           - condition: numeric_state
-            entity: sensor.divera_open_alarms_helper
+            entity_id: sensor.divera_open_alarms_helper
             below: 1
         card:
           type: custom:mushroom-template-card

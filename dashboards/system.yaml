@@ -165,7 +165,7 @@ views:
           - type: entities
             title: AdGuard
             entities:
-              - entity: device_tracker.adguard
+              - entity: device_tracker.unifi_default_b8_27_eb_31_26_0b
                 name: AdGuard Pi
 
       # ===== NAS / STORAGE =====

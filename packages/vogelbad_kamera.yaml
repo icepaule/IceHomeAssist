@@ -63,6 +63,21 @@ template:
           eintraege: "{{ historie_response['content']['eintraege'] }}"
         icon: mdi:format-list-bulleted
 
+  # Frisch-Flag fuers Kiosk-Dashboard: 90s nach einer echten Erkennung "on",
+  # danach automatisch wieder "off" (ersetzt die frueher im Dashboard per
+  # "condition: template" geloeste, dort aber nicht unterstuetzte Logik).
+  - trigger:
+      - trigger: time_pattern
+        seconds: "/10"
+      - trigger: state
+        entity_id: sensor.vogelbad_letzte_erkennung
+    binary_sensor:
+      - name: "Vogelbad Neu Erkannt"
+        unique_id: vogelbad_neu_erkannt
+        state: >
+          {% set s = states.sensor.vogelbad_letzte_erkennung %}
+          {{ s is not none and s.state not in ['unknown', 'unavailable', ''] and (as_timestamp(now()) - as_timestamp(s.last_changed)) < 90 }}
+
 rest_command:
   vogelbad_historie_abrufen:
     url: "http://10.10.0.210:5678/webhook/vogelbad-historie"
