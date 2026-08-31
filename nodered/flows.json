@@ -4,7 +4,7 @@
         "type": "tab",
         "label": "WiFi Buttons (ESP32-S3)",
         "disabled": false,
-        "info": "ESP32-S3 WiFi Button im Bad - 3 physische Tasten + 2 RF-Tasten\nMQTT Topic: stat/wifibutton1/RESULT\n\nLogik: MQTT Event \u2192 Button/Aktion erkennen \u2192 input_select lesen \u2192 Script ausfuehren\n\nDie Zuordnung Button\u2192Aktion kann im HA UI geaendert werden:\nEinstellungen > Geraete & Dienste > Helfer\n\nWICHTIG: Wenn dieser Flow aktiv ist, muessen die HA YAML-Automationen\nfuer die WiFi Buttons deaktiviert werden (sonst doppelte Ausfuehrung)."
+        "info": "ESP32-S3 WiFi Button im Bad - 3 physische Tasten + 2 RF-Tasten\nMQTT Topic: stat/wifibutton1/RESULT\n\nLogik: MQTT Event → Button/Aktion erkennen → input_select lesen → Script ausfuehren\n\nDie Zuordnung Button→Aktion kann im HA UI geaendert werden:\nEinstellungen > Geraete & Dienste > Helfer\n\nWICHTIG: Wenn dieser Flow aktiv ist, muessen die HA YAML-Automationen\nfuer die WiFi Buttons deaktiviert werden (sonst doppelte Ausfuehrung)."
     },
     {
         "id": "tab_led_matrix2",
@@ -670,7 +670,7 @@
         "type": "function",
         "z": "tab_tibber_ampel",
         "name": "Ampel-Logik",
-        "func": "// Tibber Preis-Status zu LED-Steuerung\n// Status: g\u00fcnstig / normal / teuer\n// Blinken: wenn binary_sensor.paule_best_price_period == on (08-22 Uhr)\n// Peak: wenn binary_sensor.paule_peak_price_period == on -> Rot zus\u00e4tzlich AN\n\nvar ha = global.get('homeassistant');\nvar states = (ha && ha.homeAssistant && ha.homeAssistant.states) || {};\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\n\nvar status = getState('sensor.tibber_preis_status');\nvar bestPrice = getState('binary_sensor.paule_best_price_period');\nvar peakPrice = getState('binary_sensor.paule_peak_price_period');\n\n// Zeitfenster 08:00 - 22:00 pr\u00fcfen\nvar hour = new Date().getHours();\nvar inTimeWindow = (hour >= 8 && hour < 22);\n\n// Blink-Modus: g\u00fcnstigste Periode UND im Zeitfenster\nvar shouldBlink = (bestPrice === 'on' && inTimeWindow);\n\n// Peak-Modus: teuerste Periode aktiv -> Rot zus\u00e4tzlich\nvar isPeak = (peakPrice === 'on');\n\nvar rot = \"OFF\";\nvar gelb = \"OFF\";\nvar gruen = \"OFF\";\nvar label = \"?\";\n\n// ON oder BLINK je nach g\u00fcnstigster Periode\nvar onCmd = shouldBlink ? \"BLINK\" : \"ON\";\n\nswitch(status) {\n    case \"g\u00fcnstig\":\n        gruen = onCmd;\n        label = \"GRUEN\" + (shouldBlink ? \" \u2605BLINK\u2605\" : \"\");\n        break;\n    case \"normal\":\n        gelb = onCmd;\n        label = \"GELB\" + (shouldBlink ? \" \u2605BLINK\u2605\" : \"\");\n        break;\n    case \"teuer\":\n        rot = onCmd;\n        label = \"ROT\" + (shouldBlink ? \" \u2605BLINK\u2605\" : \"\");\n        break;\n    default:\n        gelb = onCmd;\n        label = \"GELB (unbekannt: \" + status + \")\";\n}\n\n// Peak-Preisperiode: Rot IMMER zus\u00e4tzlich einschalten (als Warnung)\nif (isPeak && rot === \"OFF\") {\n    rot = \"ON\";\n    label += \" +ROT(Peak)\";\n}\n\nvar fill = gruen !== \"OFF\" ? \"green\" : rot !== \"OFF\" ? \"red\" : \"yellow\";\nvar shape = shouldBlink ? \"ring\" : \"dot\";\nnode.status({fill: fill, shape: shape, text: label});\n\nreturn [\n    {payload: rot},\n    {payload: gelb},\n    {payload: gruen}\n];",
+        "func": "// Tibber Preis-Status zu LED-Steuerung\n// Status: günstig / normal / teuer\n// Blinken: wenn binary_sensor.paule_best_price_period == on (08-22 Uhr)\n// Peak: wenn binary_sensor.paule_peak_price_period == on -> Rot zusätzlich AN\n\nvar ha = global.get('homeassistant');\nvar states = (ha && ha.homeAssistant && ha.homeAssistant.states) || {};\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\n\nvar status = getState('sensor.tibber_preis_status');\nvar bestPrice = getState('binary_sensor.paule_best_price_period');\nvar peakPrice = getState('binary_sensor.paule_peak_price_period');\n\n// Zeitfenster 08:00 - 22:00 prüfen\nvar hour = new Date().getHours();\nvar inTimeWindow = (hour >= 8 && hour < 22);\n\n// Blink-Modus: günstigste Periode UND im Zeitfenster\nvar shouldBlink = (bestPrice === 'on' && inTimeWindow);\n\n// Peak-Modus: teuerste Periode aktiv -> Rot zusätzlich\nvar isPeak = (peakPrice === 'on');\n\nvar rot = \"OFF\";\nvar gelb = \"OFF\";\nvar gruen = \"OFF\";\nvar label = \"?\";\n\n// ON oder BLINK je nach günstigster Periode\nvar onCmd = shouldBlink ? \"BLINK\" : \"ON\";\n\nswitch(status) {\n    case \"günstig\":\n        gruen = onCmd;\n        label = \"GRUEN\" + (shouldBlink ? \" ★BLINK★\" : \"\");\n        break;\n    case \"normal\":\n        gelb = onCmd;\n        label = \"GELB\" + (shouldBlink ? \" ★BLINK★\" : \"\");\n        break;\n    case \"teuer\":\n        rot = onCmd;\n        label = \"ROT\" + (shouldBlink ? \" ★BLINK★\" : \"\");\n        break;\n    default:\n        gelb = onCmd;\n        label = \"GELB (unbekannt: \" + status + \")\";\n}\n\n// Peak-Preisperiode: Rot IMMER zusätzlich einschalten (als Warnung)\nif (isPeak && rot === \"OFF\") {\n    rot = \"ON\";\n    label += \" +ROT(Peak)\";\n}\n\nvar fill = gruen !== \"OFF\" ? \"green\" : rot !== \"OFF\" ? \"red\" : \"yellow\";\nvar shape = shouldBlink ? \"ring\" : \"dot\";\nnode.status({fill: fill, shape: shape, text: label});\n\nreturn [\n    {payload: rot},\n    {payload: gelb},\n    {payload: gruen}\n];",
         "outputs": 3,
         "timeout": "",
         "noerr": 0,
@@ -795,7 +795,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "g\u00fcnstig",
+        "payload": "günstig",
         "payloadType": "str",
         "x": 180,
         "y": 380,
@@ -945,7 +945,7 @@
         "type": "function",
         "z": "tab_tibber_ampel_2",
         "name": "Ampel-Logik 2",
-        "func": "// Tibber Preis-Status zu LED-Steuerung\n// Status: g\u00fcnstig / normal / teuer\n// Blinken: wenn binary_sensor.paule_best_price_period == on (08-22 Uhr)\n// Peak: wenn binary_sensor.paule_peak_price_period == on -> Rot zus\u00e4tzlich AN\n\nvar ha = global.get('homeassistant');\nvar states = (ha && ha.homeAssistant && ha.homeAssistant.states) || {};\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\n\nvar status = getState('sensor.tibber_preis_status');\nvar bestPrice = getState('binary_sensor.paule_best_price_period');\nvar peakPrice = getState('binary_sensor.paule_peak_price_period');\n\n// Zeitfenster 08:00 - 22:00 pr\u00fcfen\nvar hour = new Date().getHours();\nvar inTimeWindow = (hour >= 8 && hour < 22);\n\n// Blink-Modus: g\u00fcnstigste Periode UND im Zeitfenster\nvar shouldBlink = (bestPrice === 'on' && inTimeWindow);\n\n// Peak-Modus: teuerste Periode aktiv -> Rot zus\u00e4tzlich\nvar isPeak = (peakPrice === 'on');\n\nvar rot = \"OFF\";\nvar gelb = \"OFF\";\nvar gruen = \"OFF\";\nvar label = \"?\";\n\n// ON oder BLINK je nach g\u00fcnstigster Periode\nvar onCmd = shouldBlink ? \"BLINK\" : \"ON\";\n\nswitch(status) {\n    case \"g\u00fcnstig\":\n        gruen = onCmd;\n        label = \"GRUEN\" + (shouldBlink ? \" \u2605BLINK\u2605\" : \"\");\n        break;\n    case \"normal\":\n        gelb = onCmd;\n        label = \"GELB\" + (shouldBlink ? \" \u2605BLINK\u2605\" : \"\");\n        break;\n    case \"teuer\":\n        rot = onCmd;\n        label = \"ROT\" + (shouldBlink ? \" \u2605BLINK\u2605\" : \"\");\n        break;\n    default:\n        gelb = onCmd;\n        label = \"GELB (unbekannt: \" + status + \")\";\n}\n\n// Peak-Preisperiode: Rot IMMER zus\u00e4tzlich einschalten (als Warnung)\nif (isPeak && rot === \"OFF\") {\n    rot = \"ON\";\n    label += \" +ROT(Peak)\";\n}\n\nvar fill = gruen !== \"OFF\" ? \"green\" : rot !== \"OFF\" ? \"red\" : \"yellow\";\nvar shape = shouldBlink ? \"ring\" : \"dot\";\nnode.status({fill: fill, shape: shape, text: label});\n\nreturn [\n    {payload: rot},\n    {payload: gelb},\n    {payload: gruen}\n];",
+        "func": "// Tibber Preis-Status zu LED-Steuerung\n// Status: günstig / normal / teuer\n// Blinken: wenn binary_sensor.paule_best_price_period == on (08-22 Uhr)\n// Peak: wenn binary_sensor.paule_peak_price_period == on -> Rot zusätzlich AN\n\nvar ha = global.get('homeassistant');\nvar states = (ha && ha.homeAssistant && ha.homeAssistant.states) || {};\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\n\nvar status = getState('sensor.tibber_preis_status');\nvar bestPrice = getState('binary_sensor.paule_best_price_period');\nvar peakPrice = getState('binary_sensor.paule_peak_price_period');\n\n// Zeitfenster 08:00 - 22:00 prüfen\nvar hour = new Date().getHours();\nvar inTimeWindow = (hour >= 8 && hour < 22);\n\n// Blink-Modus: günstigste Periode UND im Zeitfenster\nvar shouldBlink = (bestPrice === 'on' && inTimeWindow);\n\n// Peak-Modus: teuerste Periode aktiv -> Rot zusätzlich\nvar isPeak = (peakPrice === 'on');\n\nvar rot = \"OFF\";\nvar gelb = \"OFF\";\nvar gruen = \"OFF\";\nvar label = \"?\";\n\n// ON oder BLINK je nach günstigster Periode\nvar onCmd = shouldBlink ? \"BLINK\" : \"ON\";\n\nswitch(status) {\n    case \"günstig\":\n        gruen = onCmd;\n        label = \"GRUEN\" + (shouldBlink ? \" ★BLINK★\" : \"\");\n        break;\n    case \"normal\":\n        gelb = onCmd;\n        label = \"GELB\" + (shouldBlink ? \" ★BLINK★\" : \"\");\n        break;\n    case \"teuer\":\n        rot = onCmd;\n        label = \"ROT\" + (shouldBlink ? \" ★BLINK★\" : \"\");\n        break;\n    default:\n        gelb = onCmd;\n        label = \"GELB (unbekannt: \" + status + \")\";\n}\n\n// Peak-Preisperiode: Rot IMMER zusätzlich einschalten (als Warnung)\nif (isPeak && rot === \"OFF\") {\n    rot = \"ON\";\n    label += \" +ROT(Peak)\";\n}\n\nvar fill = gruen !== \"OFF\" ? \"green\" : rot !== \"OFF\" ? \"red\" : \"yellow\";\nvar shape = shouldBlink ? \"ring\" : \"dot\";\nnode.status({fill: fill, shape: shape, text: label});\n\nreturn [\n    {payload: rot},\n    {payload: gelb},\n    {payload: gruen}\n];",
         "outputs": 3,
         "timeout": "",
         "noerr": 0,
@@ -1070,7 +1070,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "g\u00fcnstig",
+        "payload": "günstig",
         "payloadType": "str",
         "x": 180,
         "y": 380,
@@ -1133,15 +1133,15 @@
     {
         "id": "tab_geraete",
         "type": "tab",
-        "label": "Ger\u00e4te-Steuerung",
+        "label": "Geräte-Steuerung",
         "disabled": false,
-        "info": "Toggle-Steuerung f\u00fcr alle Smart-Home-Ger\u00e4te.\n\nAbschnitt 1: Tasmota Ger\u00e4te (MQTT direct)\nAbschnitt 2: Tuya/Meross Ger\u00e4te (HA Service Call)\nAbschnitt 3: Tuya Rollos (HA Service Call)"
+        "info": "Toggle-Steuerung für alle Smart-Home-Geräte.\n\nAbschnitt 1: Tasmota Geräte (MQTT direct)\nAbschnitt 2: Tuya/Meross Geräte (HA Service Call)\nAbschnitt 3: Tuya Rollos (HA Service Call)"
     },
     {
         "id": "gs_comment_tasmota",
         "type": "comment",
         "z": "tab_geraete",
-        "name": "=== Tasmota Ger\u00e4te (MQTT Toggle) ===",
+        "name": "=== Tasmota Geräte (MQTT Toggle) ===",
         "info": "Tasmota-Steckdosen werden direkt per MQTT angesteuert.\nPayload 'TOGGLE' schaltet den aktuellen Zustand um.\nBroker: Mosquitto auf localhost:1883",
         "x": 200,
         "y": 40,
@@ -1495,8 +1495,8 @@
         "id": "gs_comment_tuya",
         "type": "comment",
         "z": "tab_geraete",
-        "name": "=== Tuya/Meross Ger\u00e4te (HA Service Toggle) ===",
-        "info": "Tuya- und Meross-Ger\u00e4te werden \u00fcber Home Assistant Service Calls gesteuert.\nDomain switch/light, Service toggle.",
+        "name": "=== Tuya/Meross Geräte (HA Service Toggle) ===",
+        "info": "Tuya- und Meross-Geräte werden über Home Assistant Service Calls gesteuert.\nDomain switch/light, Service toggle.",
         "x": 200,
         "y": 340,
         "wires": []
@@ -1505,7 +1505,7 @@
         "id": "gs_inj_tuya_0",
         "type": "inject",
         "z": "tab_geraete",
-        "name": "Toggle Sp\u00fcle",
+        "name": "Toggle Spüle",
         "props": [
             {
                 "p": "payload"
@@ -1530,7 +1530,7 @@
         "id": "gs_svc_tuya_0",
         "type": "api-call-service",
         "z": "tab_geraete",
-        "name": "Toggle Sp\u00fcle",
+        "name": "Toggle Spüle",
         "server": "80ef547.fe1b7a8",
         "version": 7,
         "debugenabled": false,
@@ -1671,7 +1671,7 @@
         "type": "comment",
         "z": "tab_geraete",
         "name": "=== Tuya Rollos (HA Service Open/Close) ===",
-        "info": "Tuya-Rollos werden \u00fcber Home Assistant Service Calls gesteuert.\nDomain cover, Service open_cover / close_cover.",
+        "info": "Tuya-Rollos werden über Home Assistant Service Calls gesteuert.\nDomain cover, Service open_cover / close_cover.",
         "x": 200,
         "y": 540,
         "wires": []
@@ -2145,7 +2145,7 @@
         "type": "comment",
         "z": "tab_sz_heizung",
         "name": "SZ Heizung - Fenster-Automatik",
-        "info": "Automatische Heizungssteuerung im Schlafzimmer.\n\nWenn das Fenster ge\u00f6ffnet wird (binary_sensor.sz_fenster_door = on),\nwerden beide TRVs auf 'off' gesetzt.\nWenn das Fenster geschlossen wird (= off), werden sie auf 'heat' zur\u00fcckgesetzt.\n\nTRV Entity-IDs sind PLATZHALTER:\n- climate.sz_heizung_links\n- climate.sz_heizung_rechts\n\nDiese m\u00fcssen angepasst werden, sobald die Tuya TRVs eingerichtet sind.",
+        "info": "Automatische Heizungssteuerung im Schlafzimmer.\n\nWenn das Fenster geöffnet wird (binary_sensor.sz_fenster_door = on),\nwerden beide TRVs auf 'off' gesetzt.\nWenn das Fenster geschlossen wird (= off), werden sie auf 'heat' zurückgesetzt.\n\nTRV Entity-IDs sind PLATZHALTER:\n- climate.sz_heizung_links\n- climate.sz_heizung_rechts\n\nDiese müssen angepasst werden, sobald die Tuya TRVs eingerichtet sind.",
         "x": 200,
         "y": 40,
         "wires": []
@@ -2361,7 +2361,7 @@
         "type": "comment",
         "z": "tab_sz_heizung",
         "name": "Test-Buttons (simulieren Fenster auf/zu)",
-        "info": "Klicke auf die Inject-Nodes um die Heizungslogik manuell zu testen\nohne dass der Fenstersensor ausgel\u00f6st werden muss.",
+        "info": "Klicke auf die Inject-Nodes um die Heizungslogik manuell zu testen\nohne dass der Fenstersensor ausgelöst werden muss.",
         "x": 230,
         "y": 260,
         "wires": []
@@ -2371,7 +2371,7 @@
         "type": "comment",
         "z": "tab_sz_heizung",
         "name": "HINWEIS: TRV Entity-IDs sind Platzhalter!",
-        "info": "Die folgenden Entity-IDs existieren noch NICHT in Home Assistant:\n- climate.sz_heizung_links\n- climate.sz_heizung_rechts\n\nSobald die Tuya TRVs eingerichtet sind, m\u00fcssen die Entity-IDs\nim Function-Node 'Heizungslogik' angepasst werden.\n\nDie TRVs werden im 'heat' Modus betrieben und behalten\nihre Zieltemperatur selbst bei. Der Flow schaltet nur\nzwischen 'heat' und 'off' um.",
+        "info": "Die folgenden Entity-IDs existieren noch NICHT in Home Assistant:\n- climate.sz_heizung_links\n- climate.sz_heizung_rechts\n\nSobald die Tuya TRVs eingerichtet sind, müssen die Entity-IDs\nim Function-Node 'Heizungslogik' angepasst werden.\n\nDie TRVs werden im 'heat' Modus betrieben und behalten\nihre Zieltemperatur selbst bei. Der Flow schaltet nur\nzwischen 'heat' und 'off' um.",
         "x": 230,
         "y": 420,
         "wires": []
@@ -2805,8 +2805,8 @@
         "id": "m2_dim_check",
         "type": "function",
         "z": "tab_matrix2",
-        "name": "Tag/Abend/Nacht",
-        "func": "var h = new Date().getHours();\nif (h >= 22 || h < 7) {\n    msg.payload = 1;  // Nacht 22-07 Uhr: 1%\n} else if (h >= 20) {\n    msg.payload = 5;  // Abend 20-22 Uhr: 5%\n} else {\n    msg.payload = 15; // Tag 07-20 Uhr: 15%\n}\nreturn msg;",
+        "name": "Tag/Nacht",
+        "func": "var h = new Date().getHours();\nif (h >= 22 || h < 7) {\n    msg.payload = 2;  // Nacht 22-07 Uhr: 2%\n} else {\n    msg.payload = 15; // Tag 07-22 Uhr: 15%\n}\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -3127,7 +3127,7 @@
         "type": "function",
         "z": "tab_matrix1",
         "name": "PV Anzeige-Logik",
-        "func": "var watts = flow.get('m1_pv_watts') || 0;\nvar dailyKwh = flow.get('m1_daily_kwh') || 0;\nvar yesterdayKwh = flow.get('m1_yesterday_kwh') || 0;\nvar nextRisingStr = flow.get('m1_next_rising') || '';\nvar sunState = flow.get('m1_sun_state') || '';\n\nvar now = new Date();\nvar nowMs = now.getTime();\nvar hour = now.getHours();\n\nvar phase = flow.get('m1_phase') || 'init';\nvar prevPhase = phase;\n\n// Sunrise - 30 min\nvar sunrise30Ms = 0;\nif (nextRisingStr) {\n    sunrise30Ms = new Date(nextRisingStr).getTime() - 30 * 60000;\n}\n\n// Skip logic until sun data is available\nif (!sunState) {\n    return [null, null, null];\n}\n\n// --- Phase transitions ---\n\n// 22:00+ -> OFF\nif (hour >= 22) {\n    phase = 'off';\n}\n// 21:00-22:00 -> LIFETIME (Lebensleistung)\nelse if (hour >= 21) {\n    phase = 'lifetime';\n}\n// Night, before sunrise-30min -> OFF\nelse if (sunState === 'below_horizon' && hour < 12 && sunrise30Ms > 0 && nowMs < sunrise30Ms) {\n    phase = 'off';\n}\n// Sunrise-30min reached, sun not up yet, no production -> MORNING\nelse if (phase === 'off' || phase === 'init') {\n    if (sunState === 'below_horizon' && sunrise30Ms > 0 && nowMs >= sunrise30Ms) {\n        phase = 'morning';\n    } else if (sunState === 'above_horizon') {\n        phase = (watts >= 30) ? 'producing' : 'idle';\n    } else if (sunState === 'below_horizon' && hour >= 12) {\n        // Restart during evening (after sunset, before 22:00)\n        phase = 'idle';\n    }\n}\n\n// PV >= 50W -> PRODUCING (from morning or idle)\nif (watts >= 30 && (phase === 'morning' || phase === 'idle')) {\n    phase = 'producing';\n}\n// PV < 50W after producing -> IDLE\nelse if (watts < 30 && phase === 'producing') {\n    phase = 'idle';\n}\n\n// --- Power / Dimmer ---\nvar powerMsg = null;\nvar dimmerMsg = null;\nvar desiredPower = (phase === 'off') ? 'OFF' : 'ON';\n\nif (phase !== prevPhase) {\n    if (phase === 'off' && prevPhase !== 'off') {\n        powerMsg = {payload: 'OFF'};\n    }\n    if ((prevPhase === 'off' || prevPhase === 'init') && phase !== 'off') {\n        powerMsg = {payload: 'ON'};\n        dimmerMsg = {payload: 20};\n        flow.set('m1_evening_dimmed', false);\n    }\n}\n\n// Self-heal: re-assert desired power state periodically, in case a\n// single edge-triggered publish above ever gets lost (WiFi/MQTT blip,\n// broker restart) \u2014 without this, a dropped OFF at 22:00 left the\n// display on until the next phase change at sunrise (reported bug,\n// 29.07.2026). Throttled to every 5 min to avoid relay/MQTT spam.\nvar lastAssertPower = flow.get('m1_last_assert_power') || '';\nvar lastAssertMs = flow.get('m1_last_assert_ms') || 0;\nif (!powerMsg && (desiredPower !== lastAssertPower || (nowMs - lastAssertMs) >= 300000)) {\n    powerMsg = {payload: desiredPower};\n}\nif (powerMsg) {\n    flow.set('m1_last_assert_power', powerMsg.payload);\n    flow.set('m1_last_assert_ms', nowMs);\n}\n\n// After sunset -> dim to 10 (once)\nif (sunState === 'below_horizon' && hour >= 12 && hour < 22 &&\n    !flow.get('m1_evening_dimmed') && phase !== 'off') {\n    dimmerMsg = {payload: 10};\n    flow.set('m1_evening_dimmed', true);\n}\n\n// --- Display text ---\nvar displayText = null;\nswitch (phase) {\n    case 'morning':\n        if (yesterdayKwh < 10) {\n            displayText = yesterdayKwh.toFixed(1) + 'kW';\n        } else if (yesterdayKwh < 100) {\n            displayText = yesterdayKwh.toFixed(1) + 'k';\n        } else {\n            displayText = Math.round(yesterdayKwh) + 'k';\n        }\n        break;\n    case 'producing':\n        if (watts < 10000) {\n            displayText = Math.round(watts) + 'W';\n        } else {\n            displayText = Math.round(watts / 1000) + 'kW';\n        }\n        break;\n    case 'idle':\n        if (dailyKwh < 10) {\n            displayText = dailyKwh.toFixed(1) + 'kW';\n        } else if (dailyKwh < 100) {\n            displayText = dailyKwh.toFixed(1) + 'k';\n        } else {\n            displayText = Math.round(dailyKwh) + 'k';\n        }\n        break;\n    case 'lifetime':\n        var totalKwh = flow.get('m1_lifetime_kwh') || 0;\n        if (totalKwh < 10) {\n            displayText = totalKwh.toFixed(1) + 'kW';\n        } else if (totalKwh < 1000) {\n            displayText = Math.round(totalKwh) + 'kW';\n        } else {\n            var mwh = totalKwh / 1000;\n            if (mwh < 10) {\n                displayText = mwh.toFixed(2) + 'M';\n            } else if (mwh < 100) {\n                displayText = mwh.toFixed(1) + 'M';\n            } else {\n                displayText = Math.round(mwh) + 'M';\n            }\n        }\n        break;\n}\n\n// Dedup\nvar lastText = flow.get('m1_last_text') || '';\nvar textMsg = null;\nif (displayText && displayText !== lastText) {\n    textMsg = {payload: displayText};\n    flow.set('m1_last_text', displayText);\n}\n\nflow.set('m1_phase', phase);\n\nvar fills = {producing:'green', morning:'yellow', idle:'blue', lifetime:'purple'};\nnode.status({\n    fill: fills[phase] || 'grey',\n    shape: 'dot',\n    text: phase + ': ' + (displayText || 'aus') + ' (' + watts + 'W)'\n});\n\nreturn [textMsg, dimmerMsg, powerMsg];\n",
+        "func": "var watts = flow.get('m1_pv_watts') || 0;\nvar dailyKwh = flow.get('m1_daily_kwh') || 0;\nvar yesterdayKwh = flow.get('m1_yesterday_kwh') || 0;\nvar nextRisingStr = flow.get('m1_next_rising') || '';\nvar sunState = flow.get('m1_sun_state') || '';\n\nvar now = new Date();\nvar nowMs = now.getTime();\nvar hour = now.getHours();\n\nvar phase = flow.get('m1_phase') || 'init';\nvar prevPhase = phase;\n\n// Sunrise - 30 min\nvar sunrise30Ms = 0;\nif (nextRisingStr) {\n    sunrise30Ms = new Date(nextRisingStr).getTime() - 30 * 60000;\n}\n\n// Skip logic until sun data is available\nif (!sunState) {\n    return [null, null, null];\n}\n\n// --- Phase transitions ---\n\n// 22:00+ -> OFF\nif (hour >= 22) {\n    phase = 'off';\n}\n// 21:00-22:00 -> LIFETIME (Lebensleistung)\nelse if (hour >= 21) {\n    phase = 'lifetime';\n}\n// Night, before sunrise-30min -> OFF\nelse if (sunState === 'below_horizon' && hour < 12 && sunrise30Ms > 0 && nowMs < sunrise30Ms) {\n    phase = 'off';\n}\n// Sunrise-30min reached, sun not up yet, no production -> MORNING\nelse if (phase === 'off' || phase === 'init') {\n    if (sunState === 'below_horizon' && sunrise30Ms > 0 && nowMs >= sunrise30Ms) {\n        phase = 'morning';\n    } else if (sunState === 'above_horizon') {\n        phase = (watts >= 30) ? 'producing' : 'idle';\n    } else if (sunState === 'below_horizon' && hour >= 12) {\n        // Restart during evening (after sunset, before 22:00)\n        phase = 'idle';\n    }\n}\n\n// PV >= 50W -> PRODUCING (from morning or idle)\nif (watts >= 30 && (phase === 'morning' || phase === 'idle')) {\n    phase = 'producing';\n}\n// PV < 50W after producing -> IDLE\nelse if (watts < 30 && phase === 'producing') {\n    phase = 'idle';\n}\n\n// --- Power / Dimmer ---\nvar powerMsg = null;\nvar dimmerMsg = null;\nvar desiredPower = (phase === 'off') ? 'OFF' : 'ON';\n\nif (phase !== prevPhase) {\n    if (phase === 'off' && prevPhase !== 'off') {\n        powerMsg = {payload: 'OFF'};\n    }\n    if ((prevPhase === 'off' || prevPhase === 'init') && phase !== 'off') {\n        powerMsg = {payload: 'ON'};\n        dimmerMsg = {payload: 20};\n        flow.set('m1_evening_dimmed', false);\n    }\n}\n\n// Self-heal: re-assert desired power state periodically, in case a\n// single edge-triggered publish above ever gets lost (WiFi/MQTT blip,\n// broker restart) — without this, a dropped OFF at 22:00 left the\n// display on until the next phase change at sunrise (reported bug,\n// 29.07.2026). Throttled to every 5 min to avoid relay/MQTT spam.\nvar lastAssertPower = flow.get('m1_last_assert_power') || '';\nvar lastAssertMs = flow.get('m1_last_assert_ms') || 0;\nif (!powerMsg && (desiredPower !== lastAssertPower || (nowMs - lastAssertMs) >= 300000)) {\n    powerMsg = {payload: desiredPower};\n}\nif (powerMsg) {\n    flow.set('m1_last_assert_power', powerMsg.payload);\n    flow.set('m1_last_assert_ms', nowMs);\n}\n\n// After sunset -> dim to 10 (once)\nif (sunState === 'below_horizon' && hour >= 12 && hour < 22 &&\n    !flow.get('m1_evening_dimmed') && phase !== 'off') {\n    dimmerMsg = {payload: 10};\n    flow.set('m1_evening_dimmed', true);\n}\n\n// --- Display text ---\nvar displayText = null;\nswitch (phase) {\n    case 'morning':\n        if (yesterdayKwh < 10) {\n            displayText = yesterdayKwh.toFixed(1) + 'kW';\n        } else if (yesterdayKwh < 100) {\n            displayText = yesterdayKwh.toFixed(1) + 'k';\n        } else {\n            displayText = Math.round(yesterdayKwh) + 'k';\n        }\n        break;\n    case 'producing':\n        if (watts < 10000) {\n            displayText = Math.round(watts) + 'W';\n        } else {\n            displayText = Math.round(watts / 1000) + 'kW';\n        }\n        break;\n    case 'idle':\n        if (dailyKwh < 10) {\n            displayText = dailyKwh.toFixed(1) + 'kW';\n        } else if (dailyKwh < 100) {\n            displayText = dailyKwh.toFixed(1) + 'k';\n        } else {\n            displayText = Math.round(dailyKwh) + 'k';\n        }\n        break;\n    case 'lifetime':\n        var totalKwh = flow.get('m1_lifetime_kwh') || 0;\n        if (totalKwh < 10) {\n            displayText = totalKwh.toFixed(1) + 'kW';\n        } else if (totalKwh < 1000) {\n            displayText = Math.round(totalKwh) + 'kW';\n        } else {\n            var mwh = totalKwh / 1000;\n            if (mwh < 10) {\n                displayText = mwh.toFixed(2) + 'M';\n            } else if (mwh < 100) {\n                displayText = mwh.toFixed(1) + 'M';\n            } else {\n                displayText = Math.round(mwh) + 'M';\n            }\n        }\n        break;\n}\n\n// Dedup\nvar lastText = flow.get('m1_last_text') || '';\nvar textMsg = null;\nif (displayText && displayText !== lastText) {\n    textMsg = {payload: displayText};\n    flow.set('m1_last_text', displayText);\n}\n\nflow.set('m1_phase', phase);\n\nvar fills = {producing:'green', morning:'yellow', idle:'blue', lifetime:'purple'};\nnode.status({\n    fill: fills[phase] || 'grey',\n    shape: 'dot',\n    text: phase + ': ' + (displayText || 'aus') + ' (' + watts + 'W)'\n});\n\nreturn [textMsg, dimmerMsg, powerMsg];\n",
         "outputs": 3,
         "timeout": "",
         "noerr": 0,
@@ -3455,7 +3455,7 @@
         "type": "function",
         "z": "tab_matrix3",
         "name": "Alerts nach Prioritaet sammeln",
-        "func": "// Sammle alle aktiven Alerts nach Prioritaet\n// Max 4 Zeichen pro Alert (64px = 10 Zeichen total)\nvar alerts = [];\nvar ha = global.get('homeassistant');\nif (!ha || !ha.homeAssistant || !ha.homeAssistant.states) {\n    flow.set('m3_alerts', alerts);\n    return null;\n}\nvar states = ha.homeAssistant.states;\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\nfunction isOn(id) {\n    return getState(id) === 'on';\n}\nfunction isEnabled(id) {\n    return isOn('input_boolean.' + id);\n}\n\n// PRIO 1: KRITISCH\nif (isEnabled('matrix3_thw_alarm') && isOn('binary_sensor.divera_alarm_aktiv')) {\n    alerts.push('ALM!');\n}\nif (isEnabled('matrix3_internet_offline')) {\n    var inet = getState('binary_sensor.fritz_box_6591_cable_vodafone_connection');\n    if (inet === 'off') alerts.push('NNET');\n}\n\n// PRIO 2: HOCH\nif (isEnabled('matrix3_nina_warnung')) {\n    var nina = parseInt(getState('sensor.nina_munchen_warnungen_anzahl')) || 0;\n    if (nina > 0) {\n        var txt = getState('sensor.nina_munchen_warnung_aktuell') || 'NINA';\n        alerts.push(txt.substring(0, 4));\n    }\n}\nif (isEnabled('matrix3_dwd_wetter')) {\n    var dwd = parseInt(getState('sensor.dwd_munchen_warnungen')) || 0;\n    if (dwd > 0) alerts.push('UNWT');\n}\nif (isEnabled('matrix3_hochwasser')) {\n    var pegel = parseFloat(getState('sensor.pegel_isar_munchen')) || 0;\n    if (pegel > 600) alerts.push('HCHW');\n}\nif (isEnabled('matrix3_thw_rueckmeldung') && isOn('binary_sensor.divera_ruckmeldung_fallig')) {\n    alerts.push('THW!');\n}\nif (isEnabled('matrix3_netzwerk')) {\n    var netz = getState('sensor.netzwerk_status');\n    if (netz && netz !== 'Alles OK' && netz !== 'unknown' && netz !== 'unavailable') {\n        alerts.push('NETZ');\n    }\n}\n\n// PRIO 3: MITTEL\nif (isEnabled('matrix3_petkit')) {\n    var wastebin = getState('binary_sensor.freddy_shitkit_wastebin_filled');\n    var litter = getState('binary_sensor.freddy_shitkit_sand_lack');\n    var water = getState('binary_sensor.trinkbrunnen_water_lack_warning');\n    var pkError = getState('sensor.freddy_shitkit_error_2');\n    var pkState = getState('sensor.freddy_shitkit_state_2');\n    var pkErrorNorm = (pkError || '').toLowerCase();\n    var pkStateNorm = (pkState || '').toLowerCase();\n    // Petkit meldet Klartext (\"No error\"), nicht den Enum-Wert (\"no_error\") -\n    // case-insensitive vergleichen, sonst gilt JEDER Wert als Fehler (29.07.2026\n    // gefundener Bug: KATZ war dauerhaft false-positive aktiv).\n    var pkErrorIsBad = pkErrorNorm && !['no error', 'no_error', 'unknown', 'unavailable', ''].includes(pkErrorNorm);\n    if (wastebin === 'on' || litter === 'on' || water === 'on' ||\n        pkErrorIsBad ||\n        pkStateNorm.indexOf('system_error') >= 0) {\n        alerts.push('KATZ');\n    }\n}\nif (isEnabled('matrix3_meshtastic')) {\n    var lastMsg = getState('sensor.mesh_letzte_nachricht');\n    var lastTime = getState('sensor.mesh_letzte_nachricht_zeit');\n    if (lastMsg && lastTime) {\n        var msgAge = (Date.now() - new Date(lastTime).getTime()) / 60000;\n        if (msgAge < 30 && msgAge >= 0) {\n            alerts.push('MESH');\n        }\n    }\n}\nif (isEnabled('matrix3_mesh_batterie')) {\n    var bats = ['mesh_gw_battery','mesh_supreme_battery','mesh_deck_battery','mesh_otn_battery'];\n    for (var i = 0; i < bats.length; i++) {\n        var bat = parseFloat(getState('sensor.' + bats[i])) || 100;\n        if (bat < 20 && bat > 0) {\n            alerts.push('B' + Math.round(bat));\n            break;\n        }\n    }\n}\nif (isOn('input_boolean.matrix3_dishwasher')) {\n    alerts.push('SPUL');\n}\nif (isEnabled('matrix3_waschmaschine') && isOn('input_boolean.waschmaschine_warten')) {\n    alerts.push('WSCH');\n}\nif (isEnabled('matrix3_trockner') && isOn('input_boolean.trockner_warten')) {\n    alerts.push('TRCK');\n}\n\n// PRIO 4: NIEDRIG\n// sensor.tibber_price_level existiert nicht (Tippfehler/Altlast) - dieselbe\n// Entity+Werte wie die bereits korrekt funktionierende Tibber-Ampel nutzen.\nif (isEnabled('matrix3_tibber_teuer')) {\n    var price = getState('sensor.tibber_preis_status');\n    if (price === 'teuer') alerts.push('TEUR');\n}\nif (isEnabled('matrix3_tibber_guenstig')) {\n    var price2 = getState('sensor.tibber_preis_status');\n    if (price2 === 'g\u00fcnstig') alerts.push('BIL!');\n}\n\nflow.set('m3_alerts', alerts);\nreturn msg;",
+        "func": "// Sammle alle aktiven Alerts nach Prioritaet\n// Max 4 Zeichen pro Alert (64px = 10 Zeichen total)\nvar alerts = [];\nvar ha = global.get('homeassistant');\nif (!ha || !ha.homeAssistant || !ha.homeAssistant.states) {\n    flow.set('m3_alerts', alerts);\n    return null;\n}\nvar states = ha.homeAssistant.states;\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\nfunction isOn(id) {\n    return getState(id) === 'on';\n}\nfunction isEnabled(id) {\n    return isOn('input_boolean.' + id);\n}\n\n// PRIO 1: KRITISCH\nif (isEnabled('matrix3_thw_alarm') && isOn('binary_sensor.divera_alarm_aktiv')) {\n    alerts.push('ALM!');\n}\nif (isEnabled('matrix3_internet_offline')) {\n    var inet = getState('binary_sensor.fritz_box_6591_cable_vodafone_connection');\n    if (inet === 'off') alerts.push('NNET');\n}\n\n// PRIO 2: HOCH\nif (isEnabled('matrix3_nina_warnung')) {\n    var nina = parseInt(getState('sensor.nina_munchen_warnungen_anzahl')) || 0;\n    if (nina > 0) {\n        var txt = getState('sensor.nina_munchen_warnung_aktuell') || 'NINA';\n        alerts.push(txt.substring(0, 4));\n    }\n}\nif (isEnabled('matrix3_dwd_wetter')) {\n    var dwd = parseInt(getState('sensor.dwd_munchen_warnungen')) || 0;\n    if (dwd > 0) alerts.push('UNWT');\n}\nif (isEnabled('matrix3_hochwasser')) {\n    var pegel = parseFloat(getState('sensor.pegel_isar_munchen')) || 0;\n    if (pegel > 600) alerts.push('HCHW');\n}\nif (isEnabled('matrix3_thw_rueckmeldung') && isOn('binary_sensor.divera_ruckmeldung_fallig')) {\n    alerts.push('THW!');\n}\nif (isEnabled('matrix3_netzwerk')) {\n    var netz = getState('sensor.netzwerk_status');\n    if (netz && netz !== 'Alles OK' && netz !== 'unknown' && netz !== 'unavailable') {\n        alerts.push('NETZ');\n    }\n}\n\n// PRIO 3: MITTEL\nif (isEnabled('matrix3_petkit')) {\n    var wastebin = getState('binary_sensor.freddy_shitkit_wastebin_filled');\n    var litter = getState('binary_sensor.freddy_shitkit_sand_lack');\n    var water = getState('binary_sensor.trinkbrunnen_water_lack_warning');\n    var pkError = getState('sensor.freddy_shitkit_error_2');\n    var pkState = getState('sensor.freddy_shitkit_state_2');\n    var pkErrorNorm = (pkError || '').toLowerCase();\n    var pkStateNorm = (pkState || '').toLowerCase();\n    // Petkit meldet Klartext (\"No error\"), nicht den Enum-Wert (\"no_error\") -\n    // case-insensitive vergleichen, sonst gilt JEDER Wert als Fehler (29.07.2026\n    // gefundener Bug: KATZ war dauerhaft false-positive aktiv).\n    var pkErrorIsBad = pkErrorNorm && !['no error', 'no_error', 'unknown', 'unavailable', ''].includes(pkErrorNorm);\n    if (wastebin === 'on' || litter === 'on' || water === 'on' ||\n        pkErrorIsBad ||\n        pkStateNorm.indexOf('system_error') >= 0) {\n        alerts.push('KATZ');\n    }\n}\nif (isEnabled('matrix3_meshtastic')) {\n    var lastMsg = getState('sensor.mesh_letzte_nachricht');\n    var lastTime = getState('sensor.mesh_letzte_nachricht_zeit');\n    if (lastMsg && lastTime) {\n        var msgAge = (Date.now() - new Date(lastTime).getTime()) / 60000;\n        if (msgAge < 30 && msgAge >= 0) {\n            alerts.push('MESH');\n        }\n    }\n}\nif (isEnabled('matrix3_mesh_batterie')) {\n    var bats = ['mesh_gw_battery','mesh_supreme_battery','mesh_deck_battery','mesh_otn_battery'];\n    for (var i = 0; i < bats.length; i++) {\n        var bat = parseFloat(getState('sensor.' + bats[i])) || 100;\n        if (bat < 20 && bat > 0) {\n            alerts.push('B' + Math.round(bat));\n            break;\n        }\n    }\n}\nif (isOn('input_boolean.matrix3_dishwasher')) {\n    alerts.push('SPUL');\n}\nif (isEnabled('matrix3_waschmaschine') && isOn('input_boolean.waschmaschine_warten')) {\n    alerts.push('WSCH');\n}\nif (isEnabled('matrix3_trockner') && isOn('input_boolean.trockner_warten')) {\n    alerts.push('TRCK');\n}\n\n// PRIO 4: NIEDRIG\n// sensor.tibber_price_level existiert nicht (Tippfehler/Altlast) - dieselbe\n// Entity+Werte wie die bereits korrekt funktionierende Tibber-Ampel nutzen.\nif (isEnabled('matrix3_tibber_teuer')) {\n    var price = getState('sensor.tibber_preis_status');\n    if (price === 'teuer') alerts.push('TEUR');\n}\nif (isEnabled('matrix3_tibber_guenstig')) {\n    var price2 = getState('sensor.tibber_preis_status');\n    if (price2 === 'günstig') alerts.push('BIL!');\n}\n\nflow.set('m3_alerts', alerts);\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -3683,8 +3683,8 @@
         "id": "m3_dim_check",
         "type": "function",
         "z": "tab_matrix3",
-        "name": "Tag/Abend/Nacht",
-        "func": "var h = new Date().getHours();\nif (h >= 22 || h < 7) {\n    msg.payload = 1;  // Nacht 22-07 Uhr: 1%\n} else if (h >= 20) {\n    msg.payload = 5;  // Abend 20-22 Uhr: 5%\n} else {\n    msg.payload = 15; // Tag 07-20 Uhr: 15%\n}\nreturn msg;",
+        "name": "Tag/Nacht",
+        "func": "var h = new Date().getHours();\nif (h >= 22 || h < 7) {\n    msg.payload = 2;  // Nacht 22-07 Uhr: 2%\n} else {\n    msg.payload = 15; // Tag 07-22 Uhr: 15%\n}\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -3756,7 +3756,7 @@
         "id": "ampel_ha_best_price",
         "type": "server-state-changed",
         "z": "tab_tibber_ampel",
-        "name": "G\u00fcnstigste Periode",
+        "name": "Günstigste Periode",
         "server": "80ef547.fe1b7a8",
         "version": 6,
         "outputs": 1,
@@ -3814,7 +3814,7 @@
         "id": "ampel2_ha_best_price",
         "type": "server-state-changed",
         "z": "tab_tibber_ampel_2",
-        "name": "G\u00fcnstigste Periode",
+        "name": "Günstigste Periode",
         "server": "80ef547.fe1b7a8",
         "version": 6,
         "outputs": 1,
@@ -4417,8 +4417,8 @@
         "id": "0ff932b9efaa4432",
         "type": "function",
         "z": "tab_matrix4",
-        "name": "Tag/Abend/Nacht",
-        "func": "var h = new Date().getHours();\nif (h >= 22 || h < 7) {\n    msg.payload = 1;  // Nacht 22-07 Uhr: 1%\n} else if (h >= 20) {\n    msg.payload = 5;  // Abend 20-22 Uhr: 5%\n} else {\n    msg.payload = 15; // Tag 07-20 Uhr: 15%\n}\nreturn msg;",
+        "name": "Tag/Nacht",
+        "func": "var h = new Date().getHours();\nif (h >= 22 || h < 7) {\n    msg.payload = 2;  // Nacht 22-07 Uhr: 2%\n} else {\n    msg.payload = 15; // Tag 07-22 Uhr: 15%\n}\nreturn msg;",
         "outputs": 1,
         "x": 360,
         "y": 520,
@@ -4885,14 +4885,14 @@
         "type": "tab",
         "label": "Solar PV-Emergency",
         "disabled": false,
-        "info": "Reaktion auf Wetterwarnungen (DWD/NINA) \u2192 cmnd/solar/EMERGENCY on/off (retain=true).\nTrigger: binary_sensor.pv_emergency_trigger (Aggregat aus DWD \u22652 + NINA Schwer/Extrem + Force-Helper).\nEcho: binary_sensor.solartracker_emergency_echo (Best\u00e4tigung vom ESP).",
+        "info": "Reaktion auf Wetterwarnungen (DWD/NINA) → cmnd/solar/EMERGENCY on/off (retain=true).\nTrigger: binary_sensor.pv_emergency_trigger (Aggregat aus DWD ≥2 + NINA Schwer/Extrem + Force-Helper).\nEcho: binary_sensor.solartracker_emergency_echo (Bestätigung vom ESP).",
         "env": []
     },
     {
         "id": "6e0a47d2c17745ff",
         "type": "group",
         "z": "8dacf2fca8de4e2b",
-        "name": "1. Trigger (HA \u2192 NR)",
+        "name": "1. Trigger (HA → NR)",
         "style": {
             "label": true,
             "fill": "#FFE0B2",
@@ -4914,7 +4914,7 @@
         "id": "d12306a2dc4a4d78",
         "type": "group",
         "z": "8dacf2fca8de4e2b",
-        "name": "2. MQTT Publish (NR \u2192 ESP)",
+        "name": "2. MQTT Publish (NR → ESP)",
         "style": {
             "label": true,
             "fill": "#C8E6C9",
@@ -4935,7 +4935,7 @@
         "id": "7e321d443dbd415d",
         "type": "group",
         "z": "8dacf2fca8de4e2b",
-        "name": "3. Echo (ESP \u2192 HA \u2192 NR)",
+        "name": "3. Echo (ESP → HA → NR)",
         "style": {
             "label": true,
             "fill": "#BBDEFB",
@@ -5262,81 +5262,6 @@
         "x": 460,
         "y": 460,
         "wires": []
-    },
-    {
-        "id": "m2_dim_evening",
-        "type": "inject",
-        "z": "tab_matrix2",
-        "name": "20:00 Dimmen",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "00 20 * * *",
-        "once": false,
-        "onceDelay": "",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 160,
-        "y": 765,
-        "wires": [
-            [
-                "m2_dim_check"
-            ]
-        ]
-    },
-    {
-        "id": "m3_dim_evening",
-        "type": "inject",
-        "z": "tab_matrix3",
-        "name": "20:00 Dimmen",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "00 20 * * *",
-        "once": false,
-        "onceDelay": "",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 150,
-        "y": 815,
-        "wires": [
-            [
-                "m3_dim_check"
-            ]
-        ]
-    },
-    {
-        "id": "m4_dim_evening",
-        "type": "inject",
-        "z": "tab_matrix4",
-        "name": "20:00 Dimmen",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "00 20 * * *",
-        "once": false,
-        "onceDelay": "",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 150,
-        "y": 505,
-        "wires": [
-            [
-                "0ff932b9efaa4432"
-            ]
-        ]
     },
     {
         "id": "ampel_self_heal",
@@ -5820,6 +5745,1265 @@
         "wires": []
     },
     {
+        "id": "sd-tab",
+        "type": "tab",
+        "label": "Stream Deck -> Solidtime",
+        "disabled": false,
+        "info": "Toggle-Logik fuer das Stream Deck.\n\nTastendruck kommt per MQTT auf streamdeck/button/<n> (0-basiert).\nDer Flow fragt den laufenden Eintrag ab und entscheidet:\n  gleiches Projekt laeuft -> stoppen\n  anderes Projekt laeuft  -> stoppen und neu starten\n  nichts laeuft           -> starten\n\nDanach wird die heutige Arbeitszeit ermittelt und der Gesamtzustand\nretained auf streamdeck/state gemeldet.\n\nToken NICHT hier eintragen, sondern als Umgebungsvariable\nSOLIDTIME_TOKEN setzen (Node-RED Addon -> Konfiguration)."
+    },
+    {
+        "id": "sd-note",
+        "type": "comment",
+        "z": "sd-tab",
+        "name": "Tastenbelegung im Knoten 'Vorbereiten' anpassen",
+        "info": "",
+        "x": 240,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "sd-in",
+        "type": "mqtt in",
+        "z": "sd-tab",
+        "name": "Tastendruck",
+        "topic": "streamdeck/button/+",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "mqtt_nuc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 100,
+        "wires": [
+            [
+                "sd-prep"
+            ]
+        ]
+    },
+    {
+        "id": "sd-tick",
+        "type": "inject",
+        "z": "sd-tab",
+        "name": "Resync alle 60s",
+        "props": [
+            {
+                "p": "resync",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "5",
+        "topic": "",
+        "x": 140,
+        "y": 160,
+        "wires": [
+            [
+                "sd-prep"
+            ]
+        ]
+    },
+    {
+        "id": "sd-prep",
+        "type": "function",
+        "z": "sd-tab",
+        "name": "Vorbereiten",
+        "func": "// ---- Konfiguration -------------------------------------------------\n// Zugang kommt aus settings.js -> functionGlobalContext (Datei /config/solidtime.json,\n// chmod 600). Fallback auf Umgebungsvariablen, damit der Flow auch in einem\n// Node-RED ohne diesen Patch laeuft. Ein Flow-Export enthaelt so nie den Token.\nconst SD = global.get('solidtime') || {};\nconst CFG = {\n    base:   SD.url   || env.get('SOLIDTIME_URL')   || 'http://10.10.0.186:8000',\n    token:  SD.token || env.get('SOLIDTIME_TOKEN') || '',\n    org:    '6b00a184-6ede-4139-8f80-7d0dd7d7c714',   // MHB\n    member: '820cff5d-5819-4536-bbdf-378d4e11d6da',   // mpauli in MHB\n    user:   'ca00fd77-cd9f-4606-8f33-cda40eff9a9a',   // fuer die Tagessumme\n    tz:     'Europe/Berlin',\n\n    // Tastennummer 0-basiert: Taste 1 oben links = 0, Taste 10 = 9.\n    // Taste 5 (Index 4) ist reine Anzeige und taucht hier bewusst nicht auf.\n    keys: {\n        0: { project_id: '7b29601d-7727-41db-abc5-10b8151d10df', description: 'OSI SIEM' },\n        1: { project_id: 'a678ee04-ef63-42ff-994f-ea90ec646d13', description: 'b.a.u. - IT-Steuerung' },\n        2: { project_id: '40a0a734-7be2-404e-92dc-dbfb00f63f08', description: 'Admin' },\n        3: { project_id: '1da22902-bc8a-4850-a9ac-f9285671598a', description: 'THW OVMUO IT' },\n        5: { project_id: 'b5ad0e49-7a49-45a2-93d6-7c7505425c9a', description: 'THW Forschung Cyberhilfe' },\n        6: { project_id: 'e350c891-e1cf-4b58-8f7e-1f36fd4f5fd5', description: 'OSINT' },\n        9: { project_id: '65b42608-7141-4f4e-a5aa-e91e7183fa61', description: 'Labor Setup/Konfiguration' }\n    }\n};\n// --------------------------------------------------------------------\n\nif (!CFG.token) {\n    node.error('SOLIDTIME_TOKEN ist nicht gesetzt', msg);\n    return null;\n}\nflow.set('cfg', CFG);\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + CFG.token,\n    'Accept': 'application/json',\n    'Content-Type': 'application/json'\n};\nmsg.method = 'GET';\nmsg.url = CFG.base + '/api/v1/organizations/' + CFG.org + '/time-entries?active=true';\n\n// Taste aus dem Topic streamdeck/button/<n>; beim Resync-Tick keine\nconst m = /button\\/(\\d+)$/.exec(msg.topic || '');\nmsg.pressedKey = m ? Number(m[1]) : null;\nmsg.payload = '';\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 130,
+        "wires": [
+            [
+                "sd-get-active"
+            ]
+        ]
+    },
+    {
+        "id": "sd-get-active",
+        "type": "http request",
+        "z": "sd-tab",
+        "name": "GET laufender Eintrag",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": true,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 590,
+        "y": 130,
+        "wires": [
+            [
+                "sd-decide"
+            ]
+        ]
+    },
+    {
+        "id": "sd-decide",
+        "type": "function",
+        "z": "sd-tab",
+        "name": "Entscheiden",
+        "func": "const CFG = flow.get('cfg');\n\n// Node-RED ersetzt msg.headers nach jeder Antwort durch die RESPONSE-Header.\n// Vor jeder weiteren Anfrage muessen sie daher neu gesetzt werden - sonst geht\n// der Authorization-Header verloren und der HTTP-Client bekommt Antwort-Header\n// als Anfrage-Header untergeschoben.\nconst authHeaders = () => ({\n    'Authorization': 'Bearer ' + CFG.token,\n    'Accept': 'application/json',\n    'Content-Type': 'application/json'\n});\n\n\nif (msg.statusCode && msg.statusCode >= 300) {\n    node.error('Solidtime GET fehlgeschlagen: HTTP ' + msg.statusCode, msg);\n    return null;\n}\n\nconst data   = (msg.payload && msg.payload.data) || [];\nconst active = Array.isArray(data) ? (data[0] || null) : (data || null);\nconst key    = msg.pressedKey;\nconst target = (key !== null) ? CFG.keys[key] : null;\n\n// Sekundengenaue ISO-Zeit in UTC, wie Solidtime sie liefert\nconst now = new Date().toISOString().replace(/\\.\\d+Z$/, 'Z');\nmsg.now = now;\nmsg.active = active;\n\n// Resync-Tick, Anzeigetaste oder unbelegte Taste: nur Zustand melden\nif (!target) {\n    msg.startAfter = null;\n    return [null, msg];\n}\n\nconst stopReq = () => {\n    msg.headers = authHeaders();\n    msg.method = 'PUT';\n    msg.url = CFG.base + '/api/v1/organizations/' + CFG.org + '/time-entries/' + active.id;\n    msg.payload = { member_id: CFG.member, start: active.start, end: now };\n};\n\nif (active && active.project_id === target.project_id) {\n    stopReq();                 // gleiches Projekt -> aus\n    msg.startAfter = null;\n    return [msg, null];\n}\nif (active) {\n    stopReq();                 // anderes Projekt -> umschalten\n    msg.startAfter = target;\n    return [msg, null];\n}\nmsg.startAfter = target;       // nichts laeuft -> an\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 230,
+        "wires": [
+            [
+                "sd-stop"
+            ],
+            [
+                "sd-startgate"
+            ]
+        ]
+    },
+    {
+        "id": "sd-stop",
+        "type": "http request",
+        "z": "sd-tab",
+        "name": "PUT Timer stoppen",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": true,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 600,
+        "y": 200,
+        "wires": [
+            [
+                "sd-startgate"
+            ]
+        ]
+    },
+    {
+        "id": "sd-startgate",
+        "type": "function",
+        "z": "sd-tab",
+        "name": "Starten?",
+        "func": "const CFG = flow.get('cfg');\n\n// Node-RED ersetzt msg.headers nach jeder Antwort durch die RESPONSE-Header.\n// Vor jeder weiteren Anfrage muessen sie daher neu gesetzt werden - sonst geht\n// der Authorization-Header verloren und der HTTP-Client bekommt Antwort-Header\n// als Anfrage-Header untergeschoben.\nconst authHeaders = () => ({\n    'Authorization': 'Bearer ' + CFG.token,\n    'Accept': 'application/json',\n    'Content-Type': 'application/json'\n});\n\n\nif (msg.statusCode && msg.statusCode >= 300) {\n    node.error('Solidtime Stop fehlgeschlagen: HTTP ' + msg.statusCode, msg);\n    return null;\n}\n\nif (!msg.startAfter) {\n    return [null, msg];        // nichts zu starten -> weiter zur Tagessumme\n}\n\nmsg.headers = authHeaders();\nmsg.method = 'POST';\nmsg.url = CFG.base + '/api/v1/organizations/' + CFG.org + '/time-entries';\nmsg.payload = {\n    member_id:   CFG.member,\n    start:       msg.now,\n    end:         null,\n    project_id:  msg.startAfter.project_id,\n    description: msg.startAfter.description || '',\n    billable:    false\n};\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 330,
+        "wires": [
+            [
+                "sd-start"
+            ],
+            [
+                "sd-today-prep"
+            ]
+        ]
+    },
+    {
+        "id": "sd-start",
+        "type": "http request",
+        "z": "sd-tab",
+        "name": "POST Timer starten",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": true,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 600,
+        "y": 300,
+        "wires": [
+            [
+                "sd-today-prep"
+            ]
+        ]
+    },
+    {
+        "id": "sd-today-prep",
+        "type": "function",
+        "z": "sd-tab",
+        "name": "Tagessumme anfragen",
+        "func": "const CFG = flow.get('cfg');\n\n// Node-RED ersetzt msg.headers nach jeder Antwort durch die RESPONSE-Header.\n// Vor jeder weiteren Anfrage muessen sie daher neu gesetzt werden - sonst geht\n// der Authorization-Header verloren und der HTTP-Client bekommt Antwort-Header\n// als Anfrage-Header untergeschoben.\nconst authHeaders = () => ({\n    'Authorization': 'Bearer ' + CFG.token,\n    'Accept': 'application/json',\n    'Content-Type': 'application/json'\n});\n\n\nif (msg.statusCode && msg.statusCode >= 300) {\n    node.error('Solidtime Start fehlgeschlagen: HTTP ' + msg.statusCode, msg);\n}\n\n// Aktuellen Deck-Zustand aus der letzten Antwort merken.\n// Nach POST kommt ein Objekt, nach GET ein Array zurueck.\nconst d = msg.payload && msg.payload.data;\nconst entry = Array.isArray(d) ? (d[0] || null) : (d || null);\n\nlet activeKey = null, startedAt = null;\nif (entry && !entry.end) {\n    startedAt = entry.start;\n    for (const k of Object.keys(CFG.keys)) {\n        if (CFG.keys[k].project_id === entry.project_id) { activeKey = Number(k); break; }\n    }\n}\nmsg.deckState = { active_key: activeKey, started_at: startedAt };\n\n// Lokale Mitternacht in UTC - unabhaengig von der Zeitzone des Servers.\nconst now = new Date();\nconst p = new Intl.DateTimeFormat('en-US', {\n    timeZone: CFG.tz, hour12: false,\n    hour: '2-digit', minute: '2-digit', second: '2-digit'\n}).formatToParts(now).reduce((a, x) => (a[x.type] = x.value, a), {});\nconst intoDay = ((+p.hour) % 24) * 3600 + (+p.minute) * 60 + (+p.second);\nconst midnight = new Date(now.getTime() - intoDay * 1000)\n    .toISOString().replace(/\\.\\d+Z$/, 'Z');\n\nmsg.headers = authHeaders();\nmsg.method = 'GET';\nmsg.url = CFG.base + '/api/v1/organizations/' + CFG.org\n        + '/time-entries?limit=500&user_id=' + CFG.user\n        + '&start=' + encodeURIComponent(midnight);\nmsg.payload = '';\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 430,
+        "wires": [
+            [
+                "sd-today-get"
+            ]
+        ]
+    },
+    {
+        "id": "sd-today-get",
+        "type": "http request",
+        "z": "sd-tab",
+        "name": "GET heutige Eintraege",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": true,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 610,
+        "y": 430,
+        "wires": [
+            [
+                "sd-state"
+            ]
+        ]
+    },
+    {
+        "id": "sd-state",
+        "type": "function",
+        "z": "sd-tab",
+        "name": "Zustand bauen",
+        "func": "const CFG = flow.get('cfg');\nconst st  = msg.deckState || { active_key: null, started_at: null };\n\n// project_id -> Tastennummer\nconst keyOf = {};\nfor (const k of Object.keys(CFG.keys)) keyOf[CFG.keys[k].project_id] = Number(k);\n\nlet base = 0;                 // heute abgeschlossen, alle Projekte\nconst byKey = {};             // heute abgeschlossen, je Taste\nif (!msg.statusCode || msg.statusCode < 300) {\n    const rows = (msg.payload && msg.payload.data) || [];\n    for (const r of rows) {\n        if (r.user_id && r.user_id !== CFG.user) continue;  // nur eigene\n        if (!r.end) continue;                               // laufenden auslassen\n        const d = r.duration || 0;\n        base += d;\n        const k = keyOf[r.project_id];\n        if (k !== undefined) byKey[k] = (byKey[k] || 0) + d;\n    }\n} else {\n    node.warn('Tagessumme nicht ermittelbar: HTTP ' + msg.statusCode);\n}\n\nmsg.topic   = 'streamdeck/state';\nmsg.payload = {\n    active_key:         st.active_key,\n    started_at:         st.started_at,\n    today_base_seconds: base,\n    today_by_key:       byKey\n};\nmsg.retain = true;\nmsg.qos    = 1;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 520,
+        "wires": [
+            [
+                "sd-out"
+            ]
+        ]
+    },
+    {
+        "id": "sd-out",
+        "type": "mqtt out",
+        "z": "sd-tab",
+        "name": "Zustand ans Deck",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 600,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "tab_mesh_ctrl",
+        "type": "tab",
+        "label": "Meshtastic Mesh-Steuerung",
+        "disabled": false,
+        "info": "Fernsteuerung/Status-Abfrage per Meshtastic-Textnachricht, inspiriert von https://www.pocholabs.com.ar (SenseCAP T1000-E/P1-Pro Artikel, 04.08.2026).\n\nFlow 1: Text 'status' auf Kanal IceMesh (verschluesselt, channel index 1 - NICHT LongFast, da unverschluesselt/oeffentlich) wird beantwortet mit Internet-Status, aktiven Mesh-Nodes und HA-Erreichbarkeit.\n\nFlow 2: Internet-Ausfall/-Wiederkehr (binary_sensor.fritz_box_6591_cable_vodafone_connection, 60s Entprellung) wird automatisch als Nachricht auf IceMesh gesendet - hilfreich, weil das Mesh unabhaengig vom Internet funktioniert.\n\nBeide Flows senden ueber das bestehende Muster von script.meshtastic_send: mqtt.publish auf meshtastic/send -> /usr/local/bin/meshtastic-mqtt-bridge sendet per HTTP-API ueber T-Beam/Supreme ins Mesh.",
+        "env": []
+    },
+    {
+        "id": "mesh_ctrl_info",
+        "type": "comment",
+        "z": "tab_mesh_ctrl",
+        "name": "Quelle: pocholabs.com.ar Meshtastic+SenseCAP Artikel (04.08.2026) - siehe Tab-Info",
+        "info": "",
+        "x": 250,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "mesh_mqtt_in_status",
+        "type": "mqtt in",
+        "z": "tab_mesh_ctrl",
+        "name": "msh/EU_868/2/json/+/+",
+        "topic": "msh/EU_868/2/json/+/+",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "mqtt_nuc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 140,
+        "wires": [
+            [
+                "mesh_status_check"
+            ]
+        ]
+    },
+    {
+        "id": "mesh_status_check",
+        "type": "function",
+        "z": "tab_mesh_ctrl",
+        "name": "Filter: 'status' auf IceMesh",
+        "func": "var p = msg.payload;\nif (!p || p.type !== 'text') { return null; }\n// channel 1 = IceMesh (PSK-verschluesselt). LongFast(0) bewusst NICHT\n// zugelassen, da unverschluesselt/oeffentlich - sonst koennte jeder in\n// Funkreichweite Befehle einschleusen.\nif (p.channel !== 1) { return null; }\nvar text = ((p.payload && p.payload.text) || '').trim().toLowerCase();\nif (text !== 'status') { return null; }\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 140,
+        "wires": [
+            [
+                "mesh_status_build"
+            ]
+        ]
+    },
+    {
+        "id": "mesh_status_build",
+        "type": "function",
+        "z": "tab_mesh_ctrl",
+        "name": "Status-Antwort bauen",
+        "func": "var ha = global.get('homeassistant');\nvar states = (ha && ha.homeAssistant && ha.homeAssistant.states) || {};\nfunction getState(id) {\n    return states[id] ? states[id].state : '?';\n}\n\nvar inet = getState('binary_sensor.fritz_box_6591_cable_vodafone_connection') === 'on'\n    ? 'OK' : 'DOWN';\nvar nodesActive = getState('sensor.mesh_aktive_nodes');\nvar now = new Date();\nvar hh = ('0' + now.getHours()).slice(-2);\nvar mm = ('0' + now.getMinutes()).slice(-2);\n\nvar text = 'Status: Internet ' + inet + ', Mesh ' + nodesActive\n    + ' Nodes, HA laeuft, ' + hh + ':' + mm;\n\nmsg.payload = JSON.stringify({ text: text, channel: 'IceMesh' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 140,
+        "wires": [
+            [
+                "mesh_status_send",
+                "mesh_status_dbg"
+            ]
+        ]
+    },
+    {
+        "id": "mesh_status_send",
+        "type": "mqtt out",
+        "z": "tab_mesh_ctrl",
+        "name": "MQTT: meshtastic/send",
+        "topic": "meshtastic/send",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 990,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "mesh_status_dbg",
+        "type": "debug",
+        "z": "tab_mesh_ctrl",
+        "name": "Debug: Status-Antwort",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 990,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "mesh_wan_state",
+        "type": "server-state-changed",
+        "z": "tab_mesh_ctrl",
+        "name": "binary_sensor.fritz_box_..._connection (60s entprellt)",
+        "server": "80ef547.fe1b7a8",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "binary_sensor.fritz_box_6591_cable_vodafone_connection"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "60",
+        "forType": "num",
+        "forUnits": "seconds",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 330,
+        "y": 320,
+        "wires": [
+            [
+                "mesh_wan_build"
+            ]
+        ]
+    },
+    {
+        "id": "mesh_wan_build",
+        "type": "function",
+        "z": "tab_mesh_ctrl",
+        "name": "WAN-Alert Text bauen",
+        "func": "var isUp = msg.payload === 'on';\nvar now = new Date();\nvar hh = ('0' + now.getHours()).slice(-2);\nvar mm = ('0' + now.getMinutes()).slice(-2);\n\nvar text = isUp\n    ? ('Internet wieder da (' + hh + ':' + mm + ')')\n    : ('ACHTUNG: Internet ausgefallen (' + hh + ':' + mm + ')');\n\nmsg.payload = JSON.stringify({ text: text, channel: 'IceMesh' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 320,
+        "wires": [
+            [
+                "mesh_wan_send",
+                "mesh_wan_dbg"
+            ]
+        ]
+    },
+    {
+        "id": "mesh_wan_send",
+        "type": "mqtt out",
+        "z": "tab_mesh_ctrl",
+        "name": "MQTT: meshtastic/send",
+        "topic": "meshtastic/send",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 870,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "mesh_wan_dbg",
+        "type": "debug",
+        "z": "tab_mesh_ctrl",
+        "name": "Debug: WAN-Alert",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 870,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "sm301z_presence_tab",
+        "type": "tab",
+        "label": "Matrix2-4 Präsenz-Abschaltung (SM301Z)",
+        "disabled": false,
+        "info": "SM301Z PIR (binary_sensor.az_sm301z_anwesenheit): Matrix2-4 aus nach 15 Min ohne Bewegung, sofort wieder an bei Bewegung."
+    },
+    {
+        "id": "sm301z_comment",
+        "type": "comment",
+        "z": "sm301z_presence_tab",
+        "name": "SM301Z PIR -> Matrix2-4 aus nach 15min ohne Bewegung, an bei Bewegung",
+        "info": "",
+        "x": 380,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "sm301z_ha_state",
+        "type": "server-state-changed",
+        "z": "sm301z_presence_tab",
+        "name": "binary_sensor.az_sm301z_anwesenheit",
+        "server": "80ef547.fe1b7a8",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "binary_sensor.az_sm301z_anwesenheit"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "seconds",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 190,
+        "y": 140,
+        "wires": [
+            [
+                "sm301z_switch"
+            ]
+        ]
+    },
+    {
+        "id": "sm301z_switch",
+        "type": "switch",
+        "z": "sm301z_presence_tab",
+        "name": "Bewegung? on/off",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "off",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "on",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 380,
+        "y": 140,
+        "wires": [
+            [
+                "sm301z_trigger"
+            ],
+            [
+                "sm301z_on",
+                "sm301z_trigger"
+            ]
+        ]
+    },
+    {
+        "id": "sm301z_trigger",
+        "type": "trigger",
+        "z": "sm301z_presence_tab",
+        "name": "Timer ohne Bewegung (15min)",
+        "op1": "",
+        "op2": "OFF",
+        "op1type": "nul",
+        "op2type": "str",
+        "duration": "15",
+        "extend": true,
+        "overrideDelay": false,
+        "units": "min",
+        "reset": "on",
+        "bytopic": "all",
+        "topic": "topic",
+        "outputs": 1,
+        "x": 620,
+        "y": 100,
+        "wires": [
+            [
+                "sm301z_mqtt2",
+                "sm301z_mqtt3",
+                "sm301z_mqtt4",
+                "sm301z_debug"
+            ]
+        ]
+    },
+    {
+        "id": "sm301z_on",
+        "type": "change",
+        "z": "sm301z_presence_tab",
+        "name": "Payload = ON",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "ON",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 620,
+        "y": 200,
+        "wires": [
+            [
+                "sm301z_mqtt2",
+                "sm301z_mqtt3",
+                "sm301z_mqtt4"
+            ]
+        ]
+    },
+    {
+        "id": "sm301z_mqtt2",
+        "type": "mqtt out",
+        "z": "sm301z_presence_tab",
+        "name": "cmnd/Matrix2/Power",
+        "topic": "cmnd/Matrix2/Power",
+        "qos": "0",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 900,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "sm301z_mqtt3",
+        "type": "mqtt out",
+        "z": "sm301z_presence_tab",
+        "name": "cmnd/Matrix3/Power",
+        "topic": "cmnd/Matrix3/Power",
+        "qos": "0",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 900,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "sm301z_mqtt4",
+        "type": "mqtt out",
+        "z": "sm301z_presence_tab",
+        "name": "cmnd/Matrix4/Power",
+        "topic": "cmnd/Matrix4/Power",
+        "qos": "0",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 900,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "sm301z_debug",
+        "type": "debug",
+        "z": "sm301z_presence_tab",
+        "name": "Debug: Matrix2-4 Power",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 900,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "gt7000_night_tab",
+        "type": "tab",
+        "label": "GT-7000 Nachtlicht bei Bewegung (SNZB-06P)",
+        "disabled": false,
+        "info": "Ziel: nachts (23:00-06:00), wenn die WZ-Lichtleiste (mss210) bereits aus ist und der Praesenzsensor SNZB-06P Bewegung meldet (z.B. jemand steht kurz auf), geht die per Replay-Sender geschaltete GT-FSA-01-Funksteckdose ('Lichterkette', siehe [[GT-7000 Funksteckdosen-Replay]] in docs/08-nodered.html) automatisch an und nach 10 Minuten ohne weitere Bewegung wieder aus.\n\nLogik (1x pro Minute geprueft, wie [[WZ Lichtleiste Nacht-Abschaltung]]):\n1. Fenster 23:00-06:00 (feste Uhrzeit, nicht sonnenstandsbasiert wie die WZ-Lichtleiste-Abschaltung).\n2. Bei Bewegung UND Fenster aktiv UND Lichterkette noch nicht an UND WZ ist wirklich dunkel (Lichtleiste UND Dimmer WZ [light.dimmer_wz_light_1, Tuya/SmartLife] beide aus): Lichterkette AN (MQTT cmnd/gt7000fake/Power).\n3. Bei jeder weiteren Bewegung waehrend die Lichterkette an ist: Ruhe-Timer wird verlaengert (nicht fix 10min ab der ersten Bewegung).\n4. Nach 10 Minuten durchgehender Ruhe: Lichterkette AUS.\n5. Sicherheitsnetz: verlaesst das Zeitfenster (06:00) waehrend die Lichterkette noch an ist, wird sie sofort ausgeschaltet.\n\nDa die GT-FSA-01 per Festcode-RF ohne Rueckkanal geschaltet wird, gibt es keinen echten Ist-Zustand - der Flow fuehrt einen eigenen Soll-Zustand in einer Flow-Variable (gt7000_night_on). Kollidiert theoretisch mit den manuellen AN/AUS-Buttons in 'Geraete-Steuerung', wurde aber bewusst so belassen (seltener Anwendungsfall, gleiches Muster wie beim urspruenglichen GT-7000-Setup).\n\nVerfuegbarkeits-Absicherung: wie beim WZ-Lichtleiste-Fix vom 23.08.2026 wird ein 'unavailable'/'unknown'-Sensorstatus explizit erkannt und NICHT als 'keine Bewegung' gewertet.\n\nErweiterung 23.08.2026: zusaetzlich zur WZ-Lichtleiste wird auch der 'Dimmer WZ' (Tuya/SmartLife, light.dimmer_wz_light_1) geprueft. Ist der Dimmer an, ist im WZ bereits manuell Licht eingeschaltet worden -> Funktion pausiert komplett (kein ON-Kommando), analog zur Lichtleiste-Bedingung."
+    },
+    {
+        "id": "gt7000_night_comment",
+        "type": "comment",
+        "z": "gt7000_night_tab",
+        "name": "SNZB-06P Bewegung 23:00-06:00 + Lichtleiste aus -> Lichterkette (GT-FSA-01) 10min an",
+        "info": "",
+        "x": 420,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "gt7000_night_tick",
+        "type": "inject",
+        "z": "gt7000_night_tab",
+        "name": "Tick alle 60s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "5",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 140,
+        "wires": [
+            [
+                "gt7000_night_check"
+            ]
+        ]
+    },
+    {
+        "id": "gt7000_night_check",
+        "type": "function",
+        "z": "gt7000_night_tab",
+        "name": "Fensterpruefung + Bewegung + Ruhe-Timer",
+        "func": "var ha = global.get('homeassistant');\nvar states = (ha && ha.homeAssistant && ha.homeAssistant.states) || {};\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\n\nvar now = new Date();\nvar hour = now.getHours();\nvar nowMs = now.getTime();\n\n// Fenster 23:00 - 06:00 (ueber Mitternacht)\nvar windowActive = (hour >= 23 || hour < 6);\nvar gt7000On = flow.get('gt7000_night_on') || false;\n\nif (!windowActive) {\n    if (gt7000On) {\n        flow.set('gt7000_night_on', false);\n        flow.set('gt7000_last_motion', null);\n        node.status({fill:'grey', shape:'dot', text:'Fenster vorbei -> aus'});\n        return {payload: 'OFF'};\n    }\n    flow.set('gt7000_last_motion', null);\n    node.status({fill:'grey', shape:'dot', text:'Fenster inaktiv'});\n    return null;\n}\n\nvar presence = getState('binary_sensor.sonoff_snzb_06p');\n\nif (presence !== 'on' && presence !== 'off') {\n    // Sensor nicht erreichbar/verfuegbar -> nichts schalten (siehe wz_check-Fix\n    // vom 23.08.2026: unavailable/unknown darf NIE als \"keine Bewegung\" gewertet\n    // werden, sonst droht eine falsche Schaltung bzw. hier: keine Reaktion trotz\n    // echter Bewegung).\n    node.status({fill:'red', shape:'ring', text:'Sensor nicht verfuegbar (' + (presence || 'leer') + ')'});\n    return null;\n}\n\nif (presence === 'on') {\n    flow.set('gt7000_last_motion', nowMs);\n\n    if (!gt7000On) {\n        var lichtleiste = getState('switch.licht_wz_mss210_main_channel');\n        var dimmer = getState('light.dimmer_wz_light_1');\n        // Nur einschalten, wenn WZ wirklich komplett dunkel ist. Ist entweder die\n        // Lichtleiste ODER der Dimmer WZ (Tuya/SmartLife) an, hat jemand das Licht\n        // bereits manuell eingeschaltet -> Funktion pausiert, keine eigene Aktion.\n        if (lichtleiste === 'off' && dimmer === 'off') {\n            flow.set('gt7000_night_on', true);\n            node.status({fill:'green', shape:'dot', text:'Bewegung, WZ dunkel -> Lichterkette an'});\n            return {payload: 'ON'};\n        }\n        node.status({fill:'green', shape:'dot', text:'Bewegung, WZ schon hell -> keine Aktion'});\n        return null;\n    }\n    node.status({fill:'green', shape:'dot', text:'Bewegung, Timer verlaengert'});\n    return null;\n}\n\n// presence === 'off'\nif (gt7000On) {\n    var lastMotion = flow.get('gt7000_last_motion') || nowMs;\n    var quietMin = (nowMs - lastMotion) / 60000;\n    node.status({fill:'yellow', shape:'dot', text:'ruhig seit ' + quietMin.toFixed(1) + ' min'});\n    if (quietMin >= 10) {\n        flow.set('gt7000_night_on', false);\n        node.status({fill:'red', shape:'dot', text:'10min ruhig -> Lichterkette aus'});\n        return {payload: 'OFF'};\n    }\n    return null;\n}\n\nnode.status({fill:'grey', shape:'dot', text:'Fenster aktiv, keine Bewegung'});\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 140,
+        "wires": [
+            [
+                "gt7000_night_mqtt",
+                "gt7000_night_debug"
+            ]
+        ]
+    },
+    {
+        "id": "gt7000_night_mqtt",
+        "type": "mqtt out",
+        "z": "gt7000_night_tab",
+        "name": "cmnd/gt7000fake/Power",
+        "topic": "cmnd/gt7000fake/Power",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 780,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "gt7000_night_debug",
+        "type": "debug",
+        "z": "gt7000_night_tab",
+        "name": "Debug: GT-7000 Nachtlicht",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 780,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "wz_nacht_tab",
+        "type": "tab",
+        "label": "WZ Lichtleiste Nacht-Abschaltung (SNZB-06P)",
+        "disabled": false,
+        "info": "Sonoff SNZB-06P (mmWave-Praesenzsensor) im Wohnzimmer.\n\nZiel: Erkennen, wann alle Bewohner ins Bett gegangen sind, und dann die WZ-Lichtleiste (switch.licht_wz_mss210_main_channel, Meross MSS210, wird auch manuell per Funksender DD21AB getoggled) automatisch ausschalten.\n\nLogik (1x pro Minute geprueft, kein State-Watcher-nur-bei-Aenderung, damit das Fenster auch OHNE frische Sensor-Flanke zuverlaessig oeffnet):\n1. Fenster ist nur aktiv ab (Sonnenuntergang + 60 Minuten) bis zum naechsten Sonnenaufgang (sun.sun Status + last_changed).\n2. Innerhalb des Fensters: laeuft ein Ruhe-Timer, sobald der Praesenzsensor 'off' meldet. Bei 'on' wird der Timer zurueckgesetzt.\n3. Nach 10 Minuten durchgehender Ruhe: aktueller Zustand der Lichtleiste wird per current-state-Node geprueft (halt_if 'off', um unnoetige Service-Calls zu vermeiden) und nur bei 'on' per switch.turn_off ausgeschaltet.\n\nDa der 1-Minuten-Tick weiterlaeuft, ist das selbstheilend: wird die Lichtleiste waehrend einer bereits laufenden Ruhephase nochmal manuell (z.B. per DD21AB) angeschaltet, geht sie binnen max. 1 Minute wieder aus, solange weiter Ruhe herrscht.\n\nWICHTIG - Grenze bei Haustieren: Der SNZB-06P hat KEINE Objektgroessen-/Distanz-Filterung (nur 'Detection sensitivity' Low/Medium/High + 'Presence detection timeout' 15-60s, beides device-seitig, nicht Node-RED). Eine ca. 7kg Katze kann als mmWave-Reflexion durchaus erkannt werden und den Ruhe-Timer zuruecksetzen -> Lichtleiste bleibt dann laenger an, als erwuenscht. Kein reiner Software-Fix moeglich; Sensitivity wurde auf 'Low' reduziert (Reichweite kuerzer, damit unkritisch fuer Sofa/Sesselbereich).\n\nSICHERHEITS-FIX (23.08.2026): Wenn der SNZB-06P keinen Strom/keine Zigbee-Verbindung hat, liefert Home Assistant den Entity-State 'unavailable' (oder beim allerersten Start 'unknown'/leer) statt 'on'/'off'. Die Funktion 'Fensterpruefung + Ruhe-Timer' behandelt das jetzt als eigenen Fall (weder Bewegung noch Ruhe) und bricht sofort ab, statt es faelschlich als 'keine Bewegung' zu werten - sonst wuerde die Lichtleiste nach 10 Minuten abgeschaltet, obwohl der Sensor schlicht offline ist. Ausgeloest durch einen realen Vorfall: SM301Z/Praesenzsensor war noch nicht an Strom, Lichtleiste ging trotzdem aus."
+    },
+    {
+        "id": "wz_comment",
+        "type": "comment",
+        "z": "wz_nacht_tab",
+        "name": "SNZB-06P Praesenz -> WZ Lichtleiste aus, wenn alle im Bett sind",
+        "info": "",
+        "x": 380,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "wz_tick",
+        "type": "inject",
+        "z": "wz_nacht_tab",
+        "name": "Tick alle 60s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "5",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 140,
+        "wires": [
+            [
+                "wz_check"
+            ]
+        ]
+    },
+    {
+        "id": "wz_check",
+        "type": "function",
+        "z": "wz_nacht_tab",
+        "name": "Fensterpruefung + Ruhe-Timer",
+        "func": "var ha = global.get('homeassistant');\nvar states = (ha && ha.homeAssistant && ha.homeAssistant.states) || {};\n\nfunction getState(id) {\n    return states[id] ? states[id].state : '';\n}\nfunction getLastChanged(id) {\n    return states[id] ? states[id].last_changed : null;\n}\n\nvar sunState = getState('sun.sun');\nvar sunsetChangedAt = getLastChanged('sun.sun');\nvar now = Date.now();\n\nvar windowActive = false;\nif (sunState === 'below_horizon' && sunsetChangedAt) {\n    var elapsedSinceSunsetMin = (now - new Date(sunsetChangedAt).getTime()) / 60000;\n    windowActive = elapsedSinceSunsetMin >= 60;\n}\n\nif (!windowActive) {\n    flow.set('wz_no_motion_since', null);\n    node.status({fill:'grey', shape:'dot', text:'Fenster inaktiv'});\n    return null;\n}\n\nvar presence = getState('binary_sensor.sonoff_snzb_06p');\n\nif (presence !== 'on' && presence !== 'off') {\n    // Sensor nicht erreichbar/verfuegbar (unavailable, unknown, oder leer weil\n    // noch nie ein State empfangen wurde) -> NICHT abschalten, sonst wird die\n    // Lichtleiste faelschlich als \"keine Bewegung\" interpretiert und ausgeschaltet,\n    // obwohl der Sensor schlicht keinen Strom hat.\n    flow.set('wz_no_motion_since', null);\n    node.status({fill:'red', shape:'ring', text:'Sensor nicht verfuegbar (' + (presence || 'leer') + ')'});\n    return null;\n}\n\nif (presence === 'on') {\n    flow.set('wz_no_motion_since', null);\n    node.status({fill:'green', shape:'dot', text:'Bewegung erkannt'});\n    return null;\n}\n\nvar since = flow.get('wz_no_motion_since');\nif (!since) {\n    flow.set('wz_no_motion_since', now);\n    node.status({fill:'yellow', shape:'ring', text:'keine Bewegung, Timer startet'});\n    return null;\n}\n\nvar quietMin = (now - since) / 60000;\nnode.status({fill:'yellow', shape:'dot', text:'ruhig seit ' + quietMin.toFixed(1) + ' min'});\n\nif (quietMin >= 10) {\n    node.status({fill:'red', shape:'dot', text:'10min ruhig -> Licht pruefen'});\n    return {payload: 'check'};\n}\n\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 140,
+        "wires": [
+            [
+                "wz_current_state"
+            ]
+        ]
+    },
+    {
+        "id": "wz_current_state",
+        "type": "api-current-state",
+        "z": "wz_nacht_tab",
+        "name": "Lichtleiste aktueller Zustand",
+        "server": "80ef547.fe1b7a8",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "off",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "switch.licht_wz_mss210_main_channel",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [],
+        "for": "0",
+        "forType": "num",
+        "x": 700,
+        "y": 140,
+        "wires": [
+            [],
+            [
+                "wz_set_payload"
+            ]
+        ]
+    },
+    {
+        "id": "wz_set_payload",
+        "type": "change",
+        "z": "wz_nacht_tab",
+        "name": "Service-Call vorbereiten",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\"domain\":\"switch\",\"service\":\"turn_off\",\"target\":{\"entity_id\":[\"switch.licht_wz_mss210_main_channel\"]}}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 700,
+        "y": 200,
+        "wires": [
+            [
+                "wz_call_turnoff"
+            ]
+        ]
+    },
+    {
+        "id": "wz_call_turnoff",
+        "type": "api-call-service",
+        "z": "wz_nacht_tab",
+        "name": "switch.turn_off Lichtleiste",
+        "server": "80ef547.fe1b7a8",
+        "version": 7,
+        "debugenabled": false,
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": false,
+        "domain": "",
+        "service": "",
+        "x": 700,
+        "y": 260,
+        "wires": [
+            [
+                "wz_debug"
+            ]
+        ]
+    },
+    {
+        "id": "wz_debug",
+        "type": "debug",
+        "z": "wz_nacht_tab",
+        "name": "Debug: WZ Nacht-Abschaltung",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 990,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "gs_comment_gt7000",
+        "type": "comment",
+        "z": "tab_geraete",
+        "name": "=== GT-FSA-01 Funksteckdose (ESP8266-Replay-Sender) ===",
+        "info": "Wird ueber einen ESP8266 (SYN115-Sender, aus dem Tchibofake-Projekt mitgenutzt) per RF-Replay geschaltet, kein direktes Tasmota-Geraet. MQTT cmnd/gt7000fake/Power ON/OFF, Soft-State auf stat/gt7000fake/POWER (kein echtes Feedback von der Funksteckdose moeglich, da unidirektionales Funkprotokoll). Details: /root/tchibo365722_fake_sensor/gt7000_codes.md",
+        "x": 200,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "gs_inj_gt7000_on",
+        "type": "inject",
+        "z": "tab_geraete",
+        "name": "GT-FSA-01 AN",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "ON",
+        "payloadType": "str",
+        "x": 150,
+        "y": 460,
+        "wires": [
+            [
+                "gs_mqtt_gt7000"
+            ]
+        ]
+    },
+    {
+        "id": "gs_inj_gt7000_off",
+        "type": "inject",
+        "z": "tab_geraete",
+        "name": "GT-FSA-01 AUS",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "OFF",
+        "payloadType": "str",
+        "x": 150,
+        "y": 500,
+        "wires": [
+            [
+                "gs_mqtt_gt7000"
+            ]
+        ]
+    },
+    {
+        "id": "gs_mqtt_gt7000",
+        "type": "mqtt out",
+        "z": "tab_geraete",
+        "name": "cmnd/gt7000fake/Power",
+        "topic": "cmnd/gt7000fake/Power",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 450,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "bk_tab",
+        "type": "tab",
+        "label": "Briefkasten",
+        "disabled": false,
+        "info": "IceBriefkasten (github.com/icepaule/IceBriefkasten): ESP32-CAM am Briefkasten laedt stuendlich (bzw. im Testbetrieb alle 5min) ein Foto per HTTP-POST hoch. Dieser Flow vergleicht es gegen ein Referenzbild (leerer Briefkasten) per Graustufen-MAD (sharp), setzt binary_sensor.briefkasten_post per MQTT-Discovery und republiziert das Bild als MQTT-Kamera. 'setmaster=1' (Erstboot ODER 'Master setzen'-Button auf der ESP32-Test-GUI) uebernimmt das Bild direkt als neue Referenz, ohne den Diff-Schwellwert zu pruefen."
+    },
+    {
+        "id": "bk_comment",
+        "type": "comment",
+        "z": "bk_tab",
+        "name": "ESP32-CAM Upload -> Bild-Diff -> MQTT/HA",
+        "info": "",
+        "x": 200,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "bk_http_in",
+        "type": "http in",
+        "z": "bk_tab",
+        "name": "POST /briefkasten/upload",
+        "url": "/briefkasten/upload",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 200,
+        "y": 120,
+        "wires": [
+            [
+                "bk_extract"
+            ]
+        ]
+    },
+    {
+        "id": "bk_extract",
+        "type": "function",
+        "z": "bk_tab",
+        "name": "Bild+Metadaten extrahieren",
+        "func": "const vbatt = parseFloat(msg.req.query.vbatt || \"0\");\nconst rssi = parseInt(msg.req.query.rssi || \"0\", 10);\nconst setMaster = msg.req.query.setmaster === \"1\";\nconst threshold = msg.req.query.threshold ? parseFloat(msg.req.query.threshold) : null;\nconst imageBuffer = msg.payload;\n\nconst fs = global.get('fs');\nconst dir = \"/config/briefkasten\";\nconst capturesDir = dir + \"/captures\";\nfs.mkdirSync(capturesDir, { recursive: true });\n\nconst ts = new Date().toISOString().replace(/[:.]/g, \"-\");\nconst capturePath = capturesDir + \"/\" + ts + \".jpg\";\nfs.writeFileSync(capturePath, imageBuffer);\nfs.writeFileSync(dir + \"/latest.jpg\", imageBuffer);\n\nmsg.payload = imageBuffer;\nmsg.vbatt = vbatt;\nmsg.rssi = rssi;\nmsg.setMaster = setMaster;\nmsg.threshold = threshold;\nmsg.capturePath = capturePath;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 120,
+        "wires": [
+            [
+                "bk_diff"
+            ]
+        ]
+    },
+    {
+        "id": "bk_http_response",
+        "type": "http response",
+        "z": "bk_tab",
+        "name": "200 OK",
+        "statusCode": "",
+        "headers": {},
+        "x": 720,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "bk_diff",
+        "type": "function",
+        "z": "bk_tab",
+        "name": "Bild-Diff gegen Referenz + Auto-Rekalibrierung",
+        "func": "const sharp = global.get('sharp');\nconst fs = global.get('fs');\nconst dir = \"/config/briefkasten\";\nconst REF_PATH = dir + \"/reference.jpg\";\n\nfunction respond(diffScore, mailPresent, onThreshold, offThreshold) {\n    const httpMsg = {\n        res: msg.res,\n        statusCode: 200,\n        headers: { \"Content-Type\": \"application/json\" },\n        payload: JSON.stringify({\n            diffScore: Math.round(diffScore * 100) / 100,\n            mailPresent: mailPresent,\n            onThreshold: onThreshold,\n            offThreshold: Math.round(offThreshold * 100) / 100\n        })\n    };\n    node.send([msg, httpMsg]);\n}\n\nasync function run() {\n    const onThreshold = (msg.threshold && msg.threshold > 0) ? msg.threshold : 18;\n    const offThreshold = onThreshold * 0.55;\n\n    if (msg.setMaster || !fs.existsSync(REF_PATH)) {\n        fs.copyFileSync(msg.capturePath, REF_PATH);\n        flow.set('mailPresent', false);\n        flow.set('offStreak', 0);\n        msg.diffScore = 0;\n        msg.mailPresent = false;\n        respond(0, false, onThreshold, offThreshold);\n        return;\n    }\n\n    const size = 64;\n    const cur = await sharp(msg.payload).resize(size, size).grayscale().raw().toBuffer();\n    const ref = await sharp(REF_PATH).resize(size, size).grayscale().raw().toBuffer();\n\n    let sum = 0;\n    for (let i = 0; i < cur.length; i++) sum += Math.abs(cur[i] - ref[i]);\n    const score = sum / cur.length;\n\n    const wasOn = flow.get('mailPresent') || false;\n    let mailPresent = wasOn;\n    if (score > onThreshold) mailPresent = true;\n    else if (score < offThreshold) mailPresent = false;\n    flow.set('mailPresent', mailPresent);\n\n    let streak = flow.get('offStreak') || 0;\n    if (mailPresent) {\n        streak = 0;\n    } else {\n        streak++;\n        if (streak >= 24) {\n            fs.copyFileSync(msg.capturePath, REF_PATH);\n            streak = 0;\n            node.warn(\"Referenzbild automatisch neu kalibriert (24x OFF in Folge)\");\n        }\n    }\n    flow.set('offStreak', streak);\n\n    msg.diffScore = score;\n    msg.mailPresent = mailPresent;\n    respond(score, mailPresent, onThreshold, offThreshold);\n}\n\nrun().catch(err => {\n    node.error(\"Diff fehlgeschlagen: \" + err, msg);\n    node.send([null, { res: msg.res, statusCode: 500, payload: JSON.stringify({ error: String(err) }) }]);\n});\nreturn null;",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 200,
+        "wires": [
+            [
+                "bk_publish"
+            ],
+            [
+                "bk_http_response"
+            ]
+        ]
+    },
+    {
+        "id": "bk_publish",
+        "type": "function",
+        "z": "bk_tab",
+        "name": "MQTT-Nachrichten bauen (state/image/diag)",
+        "func": "const stateMsg = {\n    topic: \"homeassistant/binary_sensor/briefkasten_post/state\",\n    payload: msg.mailPresent ? \"ON\" : \"OFF\"\n};\nconst imageMsg = { topic: \"briefkasten/image\", payload: msg.payload };\nconst vbattMsg = { topic: \"briefkasten/vbatt\", payload: String(msg.vbatt) };\nconst rssiMsg = { topic: \"briefkasten/rssi\", payload: String(msg.rssi) };\nreturn [[stateMsg], [imageMsg], [vbattMsg], [rssiMsg]];",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 280,
+        "wires": [
+            [
+                "bk_mqtt_retained"
+            ],
+            [
+                "bk_mqtt_image"
+            ],
+            [
+                "bk_mqtt_retained"
+            ],
+            [
+                "bk_mqtt_retained"
+            ]
+        ]
+    },
+    {
+        "id": "bk_mqtt_retained",
+        "type": "mqtt out",
+        "z": "bk_tab",
+        "name": "MQTT (retained)",
+        "topic": "",
+        "qos": "0",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 760,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "bk_mqtt_image",
+        "type": "mqtt out",
+        "z": "bk_tab",
+        "name": "MQTT (Bild, nicht retained)",
+        "topic": "",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 780,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "bk_discovery_inject",
+        "type": "inject",
+        "z": "bk_tab",
+        "name": "Beim Deploy: Discovery senden",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 380,
+        "wires": [
+            [
+                "bk_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "bk_discovery",
+        "type": "function",
+        "z": "bk_tab",
+        "name": "Discovery-Configs bauen",
+        "func": "const device = { identifiers: [\"briefkasten\"], name: \"Briefkasten\", manufacturer: \"IceBriefkasten\" };\n\nconst binarySensor = {\n    topic: \"homeassistant/binary_sensor/briefkasten_post/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten Post\",\n        unique_id: \"briefkasten_post\",\n        state_topic: \"homeassistant/binary_sensor/briefkasten_post/state\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        icon: \"mdi:mailbox\",\n        device\n    })\n};\n\nconst camera = {\n    topic: \"homeassistant/camera/briefkasten_camera/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten Kamera\",\n        unique_id: \"briefkasten_camera\",\n        topic: \"briefkasten/image\",\n        device\n    })\n};\n\nconst vbattSensor = {\n    topic: \"homeassistant/sensor/briefkasten_vbatt/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten Batteriespannung\",\n        unique_id: \"briefkasten_vbatt\",\n        state_topic: \"briefkasten/vbatt\",\n        unit_of_measurement: \"V\",\n        device_class: \"voltage\",\n        entity_category: \"diagnostic\",\n        device\n    })\n};\n\nconst rssiSensor = {\n    topic: \"homeassistant/sensor/briefkasten_rssi/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten WLAN-Signal\",\n        unique_id: \"briefkasten_rssi\",\n        state_topic: \"briefkasten/rssi\",\n        unit_of_measurement: \"dBm\",\n        device_class: \"signal_strength\",\n        entity_category: \"diagnostic\",\n        device\n    })\n};\n\nreturn [[binarySensor, camera, vbattSensor, rssiSensor]];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 380,
+        "wires": [
+            [
+                "bk_mqtt_retained"
+            ]
+        ]
+    },
+    {
         "id": "ledwelt_tab",
         "type": "tab",
         "label": "LED-Welt (Weltkarte)",
@@ -5943,7 +7127,8 @@
         "y": 380,
         "wires": [
             [
-                "ledwelt_build_discovery"
+                "ledwelt_build_discovery",
+                "ledwelt_build_discovery_light"
             ]
         ]
     },
@@ -5952,7 +7137,7 @@
         "type": "function",
         "z": "ledwelt_tab",
         "name": "Discovery-Payload bauen",
-        "func": "var options = ['02 Solid-Eurasien','01 Solid Australien','03 Solid-Afrika','07 Beach','06 Flow','08 Lava Flicker','04 Solid-S\u00fcdamerika','09 Orangery','05 Solid - all diff','10 Blueisch'];\nmsg.payload = JSON.stringify({\n    name: 'LED-Welt Szene',\n    unique_id: 'led_welt_preset_select',\n    command_topic: 'ledwelt/nodered/preset/set',\n    state_topic: 'ledwelt/nodered/preset/state',\n    options: options,\n    icon: 'mdi:earth',\n    device: {\n        identifiers: ['led-welt-c515cb'],\n        name: 'LED-Welt',\n        manufacturer: 'WLED',\n        model: 'ESP8266 WLED Weltkarte',\n        sw_version: '16.0.0'\n    }\n});\nmsg.topic = 'homeassistant/select/led_welt_preset/config';\nmsg.retain = true;\nreturn msg;",
+        "func": "var options = ['02 Solid-Eurasien','01 Solid Australien','03 Solid-Afrika','07 Beach','06 Flow','08 Lava Flicker','04 Solid-Südamerika','09 Orangery','05 Solid - all diff','10 Blueisch'];\nmsg.payload = JSON.stringify({\n    name: 'LED-Welt Szene',\n    unique_id: 'led_welt_preset_select',\n    command_topic: 'ledwelt/nodered/preset/set',\n    state_topic: 'ledwelt/nodered/preset/state',\n    options: options,\n    icon: 'mdi:earth',\n    device: {\n        identifiers: ['led-welt-c515cb'],\n        name: 'LED-Welt',\n        manufacturer: 'WLED',\n        model: 'ESP8266 WLED Weltkarte',\n        sw_version: '16.0.0'\n    }\n});\nmsg.topic = 'homeassistant/select/led_welt_preset/config';\nmsg.retain = true;\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -6007,7 +7192,7 @@
         "type": "function",
         "z": "ledwelt_tab",
         "name": "Preset-Name zu WLED-ID mappen",
-        "func": "var map = {\n    '02 Solid-Eurasien': 1,\n    '01 Solid Australien': 2,\n    '03 Solid-Afrika': 3,\n    '07 Beach': 4,\n    '06 Flow': 5,\n    '08 Lava Flicker': 6,\n    '04 Solid-S\u00fcdamerika': 7,\n    '09 Orangery': 8,\n    '05 Solid - all diff': 9,\n    '10 Blueisch': 10\n};\nvar name = msg.payload;\nvar id = map[name];\nif (!id) { node.warn('LED-Welt: unbekanntes Preset ' + name); return null; }\nvar out1 = { payload: JSON.stringify({ps: id}), topic: 'wled/ledwelt/api' };\nvar out2 = { payload: name, topic: 'ledwelt/nodered/preset/state' };\nreturn [out1, out2];",
+        "func": "var map = {\n    '02 Solid-Eurasien': 1,\n    '01 Solid Australien': 2,\n    '03 Solid-Afrika': 3,\n    '07 Beach': 4,\n    '06 Flow': 5,\n    '08 Lava Flicker': 6,\n    '04 Solid-Südamerika': 7,\n    '09 Orangery': 8,\n    '05 Solid - all diff': 9,\n    '10 Blueisch': 10\n};\nvar name = msg.payload;\nvar id = map[name];\nif (!id) { node.warn('LED-Welt: unbekanntes Preset ' + name); return null; }\nvar out1 = { payload: JSON.stringify({ps: id}), topic: 'wled/ledwelt/api' };\nvar out2 = { payload: name, topic: 'ledwelt/nodered/preset/state' };\nreturn [out1, out2];",
         "outputs": 2,
         "noerr": 0,
         "initialize": "",
@@ -6076,6 +7261,25 @@
         "wires": [
             [
                 "ledwelt_map_preset"
+            ]
+        ]
+    },
+    {
+        "id": "ledwelt_build_discovery_light",
+        "type": "function",
+        "z": "ledwelt_tab",
+        "name": "Discovery-Payload Licht bauen",
+        "func": "msg.payload = JSON.stringify({\n    schema: 'json',\n    name: 'LED-Welt',\n    unique_id: 'led_welt_light',\n    command_topic: 'ledwelt/nodered/light/set',\n    state_topic: 'ledwelt/nodered/light/state_json',\n    brightness: true,\n    brightness_scale: 255,\n    availability_topic: 'wled/ledwelt/status',\n    payload_available: 'online',\n    payload_not_available: 'offline',\n    icon: 'mdi:earth',\n    device: {\n        identifiers: ['led-welt-c515cb'],\n        name: 'LED-Welt',\n        manufacturer: 'WLED',\n        model: 'ESP8266 WLED Weltkarte',\n        sw_version: '16.0.0'\n    }\n});\nmsg.topic = 'homeassistant/light/led_welt_light/config';\nmsg.retain = true;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 320,
+        "wires": [
+            [
+                "ledwelt_mqtt_out_discovery"
             ]
         ]
     },
@@ -6187,6 +7391,252 @@
         "broker": "mqtt_nuc",
         "x": 800,
         "y": 700,
+        "wires": []
+    },
+    {
+        "id": "muellkalender_tab",
+        "type": "tab",
+        "label": "Müllkalender Ottobrunn",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "muell_comment",
+        "type": "comment",
+        "z": "muellkalender_tab",
+        "name": "Müllkalender Ottobrunn – ZVMSO via muellapp.com API. Wöchentlicher Sync + Erinnerung 18/20 Uhr am Vortag (Kiosk-Sensor via MQTT + Alexa AZ/Wohnzimmer).",
+        "info": "API: https://app.muellapp.com/api/trash/186845?include-public-holidays (ohne Auth, JSON).\nAddress-ID 186845 = eigene Adresse in Ottobrunn (town-id 9184136).\nRestmüll+Biotonne kleine Tonne (60-240l/120-240l), Papiertonne große 1.100l-Sammeltonne.",
+        "x": 460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "muell_sync_trigger",
+        "type": "inject",
+        "z": "muellkalender_tab",
+        "name": "Wöchentlicher Sync (Mo 03:00)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "0 3 * * 1",
+        "once": true,
+        "onceDelay": "10",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 120,
+        "wires": [
+            [
+                "muell_http"
+            ]
+        ]
+    },
+    {
+        "id": "muell_http",
+        "type": "http request",
+        "z": "muellkalender_tab",
+        "name": "GET ZVMSO Kalender",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://app.muellapp.com/api/trash/186845?include-public-holidays",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "other",
+                "keyValue": "User-Agent",
+                "valueType": "other",
+                "valueValue": "HA-NodeRED-Muellkalender/1.0"
+            }
+        ],
+        "x": 510,
+        "y": 120,
+        "wires": [
+            [
+                "muell_parse"
+            ]
+        ]
+    },
+    {
+        "id": "muell_parse",
+        "type": "function",
+        "z": "muellkalender_tab",
+        "name": "Termine filtern & cachen",
+        "func": "var RELEVANT = [\"Restmüll 60-240l\", \"Biotonne 120-240l\", \"Papiertonne 1.100 Liter\", \"Gelber Sack\"];\n\nvar events = msg.payload || [];\nif (!Array.isArray(events)) {\n    node.status({fill:\"red\", shape:\"ring\", text:\"Unerwartete Antwort von muellapp.com\"});\n    return null;\n}\n\nvar termine = events\n    .filter(function (e) { return RELEVANT.indexOf(e.title) !== -1; })\n    .map(function (e) { return { datum: e.start, typ: e.title }; })\n    .sort(function (a, b) { return a.datum.localeCompare(b.datum); });\n\nflow.set(\"muell_termine\", termine);\n\nvar now = new Date().toLocaleString(\"de-DE\");\nnode.status({fill:\"green\", shape:\"dot\", text: termine.length + \" Termine geladen (\" + now + \")\"});\n\nmsg.payload = termine.length;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 800,
+        "y": 120,
+        "wires": [
+            [
+                "muell_sync_debug"
+            ]
+        ]
+    },
+    {
+        "id": "muell_sync_debug",
+        "type": "debug",
+        "z": "muellkalender_tab",
+        "name": "Debug: Sync",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1020,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "muell_check_18",
+        "type": "inject",
+        "z": "muellkalender_tab",
+        "name": "Check 18:00 Uhr",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "0 18 * * *",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 240,
+        "wires": [
+            [
+                "muell_check"
+            ]
+        ]
+    },
+    {
+        "id": "muell_check_20",
+        "type": "inject",
+        "z": "muellkalender_tab",
+        "name": "Check 20:00 Uhr",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "0 20 * * *",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 300,
+        "wires": [
+            [
+                "muell_check"
+            ]
+        ]
+    },
+    {
+        "id": "muell_check",
+        "type": "function",
+        "z": "muellkalender_tab",
+        "name": "Morgen-Check",
+        "func": "var TYP_KURZ = {\n    \"Restmüll 60-240l\": \"Restmüll\",\n    \"Biotonne 120-240l\": \"Biotonne\",\n    \"Papiertonne 1.100 Liter\": \"Papiertonne\",\n    \"Gelber Sack\": \"Gelber Sack\"\n};\n\nvar termine = flow.get(\"muell_termine\") || [];\n\nvar d = new Date();\nd.setDate(d.getDate() + 1);\nvar tomorrow = d.getFullYear() + \"-\" + String(d.getMonth() + 1).padStart(2, \"0\") + \"-\" + String(d.getDate()).padStart(2, \"0\");\n\nvar matches = termine.filter(function (t) { return t.datum === tomorrow; });\n\nvar mqttPayload;\nvar alertMsg = null;\n\nif (matches.length > 0) {\n    var typen = matches.map(function (m) { return TYP_KURZ[m.typ] || m.typ; });\n    typen = typen.filter(function (v, i) { return typen.indexOf(v) === i; });\n    var typText = typen.join(\" und \");\n    var text = \"Morgen wird \" + typText + \" abgeholt.\";\n\n    mqttPayload = { typ: typText, text: text, datum: tomorrow };\n\n    alertMsg = {\n        payload: {\n            message: text,\n            target: [\n                \"media_player.marcus_echo_show_8_2nd_gen\",\n                \"media_player.marcus_echo_plus\"\n            ],\n            data: { type: \"announce\" }\n        }\n    };\n    node.status({fill:\"blue\", shape:\"dot\", text: \"Erinnerung: \" + typText + \" (\" + tomorrow + \")\"});\n} else {\n    mqttPayload = { typ: \"none\", text: \"\", datum: tomorrow };\n    node.status({fill:\"grey\", shape:\"ring\", text: \"Keine Abholung am \" + tomorrow});\n}\n\nvar mqttMsg = { topic: \"muellkalender/erinnerung\", payload: JSON.stringify(mqttPayload) };\n\nreturn [mqttMsg, alertMsg];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 270,
+        "wires": [
+            [
+                "muell_mqtt"
+            ],
+            [
+                "muell_alexa_call"
+            ]
+        ]
+    },
+    {
+        "id": "muell_mqtt",
+        "type": "mqtt out",
+        "z": "muellkalender_tab",
+        "name": "MQTT muellkalender/erinnerung",
+        "topic": "muellkalender/erinnerung",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "application/json",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_nuc",
+        "x": 800,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "muell_alexa_call",
+        "type": "api-call-service",
+        "z": "muellkalender_tab",
+        "name": "Alexa Ansage (AZ + Wohnzimmer)",
+        "server": "80ef547.fe1b7a8",
+        "version": 5,
+        "debugenabled": false,
+        "domain": "notify",
+        "service": "alexa_media",
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "data": "{\\\"message\\\": payload.message, \\\"target\\\": payload.target, \\\"data\\\": payload.data}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "x": 800,
+        "y": 300,
+        "wires": [
+            [
+                "muell_alexa_debug"
+            ]
+        ]
+    },
+    {
+        "id": "muell_alexa_debug",
+        "type": "debug",
+        "z": "muellkalender_tab",
+        "name": "Debug: Alexa-Ansage",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1030,
+        "y": 300,
         "wires": []
     }
 ]
