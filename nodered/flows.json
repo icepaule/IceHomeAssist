@@ -7472,7 +7472,7 @@
         "type": "function",
         "z": "muellkalender_tab",
         "name": "Termine filtern & cachen",
-        "func": "var RELEVANT = [\"Restmüll 60-240l\", \"Biotonne 120-240l\", \"Papiertonne 1.100 Liter\", \"Gelber Sack\"];\n\nvar events = msg.payload || [];\nif (!Array.isArray(events)) {\n    node.status({fill:\"red\", shape:\"ring\", text:\"Unerwartete Antwort von muellapp.com\"});\n    return null;\n}\n\nvar termine = events\n    .filter(function (e) { return RELEVANT.indexOf(e.title) !== -1; })\n    .map(function (e) { return { datum: e.start, typ: e.title }; })\n    .sort(function (a, b) { return a.datum.localeCompare(b.datum); });\n\nflow.set(\"muell_termine\", termine);\n\nvar now = new Date().toLocaleString(\"de-DE\");\nnode.status({fill:\"green\", shape:\"dot\", text: termine.length + \" Termine geladen (\" + now + \")\"});\n\nmsg.payload = termine.length;\nreturn msg;\n",
+        "func": "var RELEVANT = [\"Restmüll 60-240l\", \"Biotonne 120-240l\", \"Papiertonne 120-240l\", \"Gelber Sack\"];\n\nvar events = msg.payload || [];\nif (!Array.isArray(events)) {\n    node.status({fill:\"red\", shape:\"ring\", text:\"Unerwartete Antwort von muellapp.com\"});\n    return null;\n}\n\nvar termine = events\n    .filter(function (e) { return RELEVANT.indexOf(e.title) !== -1; })\n    .map(function (e) { return { datum: e.start, typ: e.title }; })\n    .sort(function (a, b) { return a.datum.localeCompare(b.datum); });\n\nflow.set(\"muell_termine\", termine);\n\nvar now = new Date().toLocaleString(\"de-DE\");\nnode.status({fill:\"green\", shape:\"dot\", text: termine.length + \" Termine geladen (\" + now + \")\"});\n\nmsg.payload = termine.length;\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
