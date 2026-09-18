@@ -44,7 +44,7 @@ Als Decoder kommt nicht das originale `antirez/dump1090` zum Einsatz (seit Jahre
 |---|---|
 | SDR | RTL2838-Stick mit R820T-Tuner (getestet: NooElec NESDR Nano 3 und ein generischer RTL2838UHIDIR) |
 | Antenne | dedizierte **1090-MHz-Antenne**, 5 dBi, Magnetfuß, RG174 1 m, MCX-Stecker (Adapter SMA-Stecker auf MCX-Buchse liegt bei) |
-| Anschluss | Stick **direkt** in einen USB-3-Port des NUC, keine USB-Verlängerung (siehe Lessons Learned) |
+| Anschluss | Stick **direkt** in einen USB-3-Port des NUC (mit USB-Verlängerung gab es keinen Empfang, siehe Lessons Learned) |
 
 ## Installation
 
@@ -112,7 +112,7 @@ Die Werte werden in der `docker-compose.yml` gesetzt, der Ausdruck für `config.
 
 ## Lessons Learned
 
-- **Nie den USB-Stick verlängern, sondern die Antenne per Koax.** Über ein USB-Verlängerungskabel fiel der Stick auf USB Full-Speed (12 Mbit/s) zurück, im Kernel-Log erschien alle zwei Minuten `usb ...: reset full-speed USB device`. Der RTL-SDR braucht High-Speed für seine ca. 2,4 MSps, Ergebnis war 0 empfangene Nachrichten.
+- **USB-Verlängerung:** Beim Test mit einem USB-Verlängerungskabel kamen 0 Nachrichten an (readsb startete, dekodierte aber nichts), direkt in einem USB-3-Port des NUC lief es sofort wieder. Die Ursache ist nicht abschließend geklärt, vermutet wird das Kabel. Hinweis: Die alle zwei Minuten wiederkehrenden Kernel-Meldungen `usb 1-10: reset full-speed USB device` stammen vom internen Bluetooth-Adapter des NUC und haben nichts mit dem SDR zu tun. Sicherer Weg: den Stick direkt am Rechner lassen und die Antenne per Koax verlängern.
 - **`rtl_adsb`-Rohzahlen sind kein Qualitätsmaß.** `rtl_adsb` zählt Frames ohne CRC-Prüfung. Ein Stick mit falscher WLAN-Antenne zeigte dort 3x mehr Treffer, im echten Decoder kamen aber nur wenige valide Nachrichten und 0 Flugzeuge an (überwiegend Rauschen). Für Vergleiche immer die validierten Werte aus `docker exec iceflightradar-ultrafeeder cat /run/readsb/stats.json` verwenden.
 - **Der `messages`-Zähler in `aircraft.json` startet bei jedem Container-Neustart bei 0.** Kurz nach einem Neustart wirkt der Empfang deshalb fälschlich tot.
 - **Beim Umstecken eines Sticks** kann `readsb` mit `unable to read device details` abstürzen (Stick ist noch beim Enumerieren). Ein `docker compose restart` nach dem Stecken behebt das.
