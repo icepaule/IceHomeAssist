@@ -1,0 +1,56 @@
+services:
+  ultrafeeder:
+    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:latest
+    container_name: iceflightradar-ultrafeeder
+    hostname: iceflightradar
+    restart: unless-stopped
+    device_cgroup_rules:
+      - 'c 189:* rmw'
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    ports:
+      - "8095:80"      # tar1090 interaktive Karte
+      - "30005:30005"  # Beast (roh, TCP) - optional weitere Feeder/HA-Integrationen
+      - "30003:30003"  # SBS/BaseStation (Text) - optional
+    environment:
+      - TZ=Europe/Berlin
+      - LOGLEVEL=verbose
+      # --- Empfänger (RTL-SDR): generischer RTL2838-Stick (SN 00000001) + dedizierte
+      # 1090MHz-Antenne 5dBi (seit 18.09.). Nano 3 liegt als Ersatz bereit.
+      # Nur readsb-validierte Werte zaehlen (nicht rtl_adsb-Rohcount).
+      - READSB_DEVICE_TYPE=rtlsdr
+      - READSB_RTLSDR_DEVICE=${SDR_SERIAL}
+      - READSB_RTLSDR_PPM=0
+      - READSB_GAIN=autogain
+      # --- Standort des Empfaengers (aus .env) ---
+      - READSB_LAT=${RECEIVER_LAT}
+      - READSB_LON=${RECEIVER_LON}
+      - READSB_ALT=${RECEIVER_ALT}
+      - READSB_RX_LOCATION_ACCURACY=2
+      - READSB_STATS_RANGE=true
+      # --- tar1090 Karte ---
+      - UPDATE_TAR1090=false
+      - TAR1090_DEFAULTCENTERLAT=${RECEIVER_LAT}
+      - TAR1090_DEFAULTCENTERLON=${RECEIVER_LON}
+      - TAR1090_MESSAGERATEINTITLE=true
+      - TAR1090_PAGETITLE=IceFlightRadar
+      - TAR1090_FLIGHTAWARELINKS=true
+      - TAR1090_ENABLE_AC_DB=true
+      - TAR1090_RANGE_OUTLINE_COLORED_BY_ALTITUDE=true
+      - TAR1090_RANGERINGS=true
+      - TAR1090_USEROUTEAPI=true
+      # --- graphs1090 Statistiken ---
+      - GRAPHS1090_DARKMODE=true
+      # --- Feed an ADSBExchange (Beast + MLAT), 16.09. aktiviert ---
+      # Feste Stations-UUID aus .env (einmalig mit `uuidgen` erzeugen, danach nicht mehr aendern).
+      - UUID=${ADSBX_UUID}
+      - ADSBX_UUID=${ADSBX_UUID}
+      - ULTRAFEEDER_CONFIG=adsb,feed.adsbexchange.com,30004,beast_reduce_plus_out,uuid=${ADSBX_UUID};mlat,feed.adsbexchange.com,31090,uuid=${ADSBX_UUID}
+    tmpfs:
+      - /run:exec,size=256M
+      - /tmp:size=128M
+      - /var/log:size=256M
+    volumes:
+      - ./globe_history:/var/globe_history
+      - ./graphs1090:/var/lib/collectd
+    tty: true

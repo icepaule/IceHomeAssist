@@ -1,0 +1,35 @@
+# =============================================================================
+# IceFlightRadar Dashboard
+# ADS-B Empfang via NooElec NESDR Nano 3 -> readsb + tar1090 (Ultrafeeder)
+# Interaktive Live-Karte (Positionen, Routen, Trails, Details) wie ATC-Radar.
+# Quelle: /opt/iceflightradar/docker-compose.yml auf NUC-HA
+# =============================================================================
+title: FlightRadar
+views:
+  - title: Karte
+    path: karte
+    icon: mdi:airplane
+    type: panel
+    cards:
+      - type: iframe
+        url: http://10.10.0.100:8095/
+        aspect_ratio: 100%
+
+  - title: Statistik
+    path: statistik
+    icon: mdi:chart-line
+    type: panel
+    cards:
+      - type: iframe
+        url: http://10.10.0.100:8095/graphs1090/
+        aspect_ratio: 100%
+
+  - title: ADSBExchange
+    path: adsbexchange
+    icon: mdi:upload-network
+    type: panel
+    cards:
+      - type: iframe
+        # Feed-ID steht nach dem ersten Connect in `docker logs iceflightradar-ultrafeeder | grep "Stats URL"`
+        url: https://www.adsbexchange.com/api/feeders/?feed=DEINE_FEED_ID
+        aspect_ratio: 100%

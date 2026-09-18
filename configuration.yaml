@@ -267,6 +267,14 @@ lovelace:
       show_in_sidebar: true
       filename: dashboards/alexa_monitor.yaml
 
+    # === FLIGHTRADAR (IceFlightRadar, ADS-B via NESDR Nano 3) ===
+    lovelace-flightradar:
+      mode: yaml
+      title: FlightRadar
+      icon: mdi:airplane
+      show_in_sidebar: true
+      filename: dashboards/flightradar.yaml
+
 # =============================================================================
 # REST COMMANDS (für Tasmota Displays)
 # =============================================================================

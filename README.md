@@ -16,6 +16,10 @@ Die vollständige HTML-Dokumentation (deutsch) ist unter GitHub Pages verfügbar
 
 **[https://icepaule.github.io/IceHomeAssist/docs/](https://icepaule.github.io/IceHomeAssist/docs/)**
 
+## Projekte
+
+- **[IceFlightRadar](IceFlightRadar/)** - ADS-B Flugradar (RTL-SDR, readsb/tar1090) mit interaktiver Karte als Dashboard "FlightRadar" und Feed an ADSBExchange
+
 ## System-Übersicht
 
 | Komponente | Details |
