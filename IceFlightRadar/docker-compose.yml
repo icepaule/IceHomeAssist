@@ -28,6 +28,8 @@ services:
       - READSB_ALT=${RECEIVER_ALT}
       - READSB_RX_LOCATION_ACCURACY=2
       - READSB_STATS_RANGE=true
+      # Reichweiten-Umrandung nur aus den letzten 5 Minuten (0.0833 h) statt 24 h
+      - READSB_RANGE_OUTLINE_HOURS=0.0833
       # --- tar1090 Karte ---
       - UPDATE_TAR1090=false
       - TAR1090_DEFAULTCENTERLAT=${RECEIVER_LAT}
@@ -39,6 +41,8 @@ services:
       - TAR1090_RANGE_OUTLINE_COLORED_BY_ALTITUDE=true
       - TAR1090_RANGERINGS=true
       - TAR1090_USEROUTEAPI=true
+      # Flugspuren aller Flugzeuge dauerhaft an; Spurpunkte und inaktive Flugzeuge verfallen nach 300 s
+      - TAR1090_CONFIGJS_APPEND=tempTrails = true; tempTrailsTimeout = 300; seenTimeout = 300; seenTimeoutMlat = 300;
       # --- graphs1090 Statistiken ---
       - GRAPHS1090_DARKMODE=true
       # --- Feed an ADSBExchange (Beast + MLAT), 16.09. aktiviert ---

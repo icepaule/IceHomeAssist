@@ -97,6 +97,19 @@ Mit der mitgelieferten Stummelantenne war der Empfang schwach, mit der dediziert
 | Positionsfixes pro Minute | ca. 17 | **283** |
 | Rauschpegel | -19 dB | **-39 dB** |
 
+## Reichweiten-Umrandung und Flugspuren
+
+Die Karte kennt zwei Arten von Linien, die sich in Farbe und Zweck unterscheiden:
+
+| Linie | Bedeutung | Einstellung |
+|---|---|---|
+| **Petrol-farbene Strahlen** vom Empfänger nach außen | Reichweiten-Umrandung ("actual range outline"): pro Himmelsrichtung der am weitesten entfernte Empfangspunkt. Sie ist ein Sammelwert über alle Flüge, keine einzelne Flugroute. | `READSB_RANGE_OUTLINE_HOURS=0.0833` = nur die letzten **5 Minuten** (Standard wären 24 h). Ohne aktive Flüge verschwindet sie damit von selbst. |
+| **Farbige Spur hinter jedem Flugzeug** (nach Höhe eingefärbt) | Verlauf des einzelnen Fluges aus den bisherigen Positionen | `tempTrails = true; tempTrailsTimeout = 300` zeigt die Spuren aller Flugzeuge dauerhaft an und lässt Spurpunkte nach 300 s verfallen |
+
+Ein Flugzeug, von dem kein Signal mehr kommt, bleibt mit seiner Spur noch bis zu **5 Minuten** stehen (`seenTimeout = 300`) und verschwindet dann samt Linie. Das läuft im Browser: `readsb` selbst nimmt Flugzeuge nach ca. 60 s aus seinem JSON-Feed, `tar1090` behält sie danach lokal bis zum Ablauf des Timeouts.
+
+Die Werte werden in der `docker-compose.yml` gesetzt, der Ausdruck für `config.js` kommt über `TAR1090_CONFIGJS_APPEND`. Alte Umrandungs-Daten lassen sich bei Bedarf zurücksetzen, indem man den Container stoppt, `globe_history/outline.json` und `globe_history/internal_state/rangeDirs.gz` löscht und ihn wieder startet.
+
 ## Lessons Learned
 
 - **Nie den USB-Stick verlängern, sondern die Antenne per Koax.** Über ein USB-Verlängerungskabel fiel der Stick auf USB Full-Speed (12 Mbit/s) zurück, im Kernel-Log erschien alle zwei Minuten `usb ...: reset full-speed USB device`. Der RTL-SDR braucht High-Speed für seine ca. 2,4 MSps, Ergebnis war 0 empfangene Nachrichten.
