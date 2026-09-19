@@ -5950,7 +5950,7 @@
         "type": "function",
         "z": "sd-tab",
         "name": "Tagessumme anfragen",
-        "func": "const CFG = flow.get('cfg');\n\n// Node-RED ersetzt msg.headers nach jeder Antwort durch die RESPONSE-Header.\n// Vor jeder weiteren Anfrage muessen sie daher neu gesetzt werden - sonst geht\n// der Authorization-Header verloren und der HTTP-Client bekommt Antwort-Header\n// als Anfrage-Header untergeschoben.\nconst authHeaders = () => ({\n    'Authorization': 'Bearer ' + CFG.token,\n    'Accept': 'application/json',\n    'Content-Type': 'application/json'\n});\n\n\nif (msg.statusCode && msg.statusCode >= 300) {\n    node.error('Solidtime Start fehlgeschlagen: HTTP ' + msg.statusCode, msg);\n}\n\n// Aktuellen Deck-Zustand aus der letzten Antwort merken.\n// Nach POST kommt ein Objekt, nach GET ein Array zurueck.\nconst d = msg.payload && msg.payload.data;\nconst entry = Array.isArray(d) ? (d[0] || null) : (d || null);\n\nlet activeKey = null, startedAt = null;\nif (entry && !entry.end) {\n    startedAt = entry.start;\n    for (const k of Object.keys(CFG.keys)) {\n        if (CFG.keys[k].project_id === entry.project_id) { activeKey = Number(k); break; }\n    }\n}\nmsg.deckState = { active_key: activeKey, started_at: startedAt };\n\n// Lokale Mitternacht in UTC - unabhaengig von der Zeitzone des Servers.\nconst now = new Date();\nconst p = new Intl.DateTimeFormat('en-US', {\n    timeZone: CFG.tz, hour12: false,\n    hour: '2-digit', minute: '2-digit', second: '2-digit'\n}).formatToParts(now).reduce((a, x) => (a[x.type] = x.value, a), {});\nconst intoDay = ((+p.hour) % 24) * 3600 + (+p.minute) * 60 + (+p.second);\nconst midnight = new Date(now.getTime() - intoDay * 1000)\n    .toISOString().replace(/\\.\\d+Z$/, 'Z');\n\nmsg.headers = authHeaders();\nmsg.method = 'GET';\nmsg.url = CFG.base + '/api/v1/organizations/' + CFG.org\n        + '/time-entries?limit=500&user_id=' + CFG.user\n        + '&start=' + encodeURIComponent(midnight);\nmsg.payload = '';\nreturn msg;",
+        "func": "const CFG = flow.get('cfg');\n\n// Node-RED ersetzt msg.headers nach jeder Antwort durch die RESPONSE-Header.\n// Vor jeder weiteren Anfrage muessen sie daher neu gesetzt werden - sonst geht\n// der Authorization-Header verloren und der HTTP-Client bekommt Antwort-Header\n// als Anfrage-Header untergeschoben.\nconst authHeaders = () => ({\n    'Authorization': 'Bearer ' + CFG.token,\n    'Accept': 'application/json',\n    'Content-Type': 'application/json'\n});\n\n\nif (msg.statusCode && msg.statusCode >= 300) {\n    node.error('Solidtime Start fehlgeschlagen: HTTP ' + msg.statusCode, msg);\n}\n\n// Aktuellen Deck-Zustand aus der letzten Antwort merken.\n// Nach POST kommt ein Objekt, nach GET ein Array zurueck.\nconst d = msg.payload && msg.payload.data;\nconst entry = Array.isArray(d) ? (d[0] || null) : (d || null);\n\nlet activeKey = null, startedAt = null;\nif (entry && !entry.end) {\n    startedAt = entry.start;\n    for (const k of Object.keys(CFG.keys)) {\n        if (CFG.keys[k].project_id === entry.project_id) { activeKey = Number(k); break; }\n    }\n}\nmsg.deckState = { active_key: activeKey, started_at: startedAt };\n\n// Lokale Mitternacht in UTC - unabhaengig von der Zeitzone des Servers.\nconst now = new Date();\nconst p = new Intl.DateTimeFormat('en-US', {\n    timeZone: CFG.tz, hour12: false,\n    hour: '2-digit', minute: '2-digit', second: '2-digit'\n}).formatToParts(now).reduce((a, x) => (a[x.type] = x.value, a), {});\nconst intoDay = ((+p.hour) % 24) * 3600 + (+p.minute) * 60 + (+p.second);\nconst midnight = new Date(now.getTime() - intoDay * 1000)\n    .toISOString().replace(/\\.\\d+Z$/, 'Z');\n\n// Obergrenze: naechste lokale Mitternacht - verhindert, dass im Voraus\n// gebuchte kuenftige Eintraege (z.B. Gleittag) in die Tagessumme einfliessen.\nconst midnightEnd = new Date(now.getTime() - intoDay * 1000 + 86400000)\n    .toISOString().replace(/\\.\\d+Z$/, 'Z');\n\nmsg.headers = authHeaders();\nmsg.method = 'GET';\nmsg.url = CFG.base + '/api/v1/organizations/' + CFG.org\n        + '/time-entries?limit=500&user_id=' + CFG.user\n        + '&start=' + encodeURIComponent(midnight)\n        + '&end=' + encodeURIComponent(midnightEnd);\nmsg.payload = '';\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -6844,7 +6844,7 @@
         "type": "function",
         "z": "bk_tab",
         "name": "Bild+Metadaten extrahieren",
-        "func": "const vbatt = parseFloat(msg.req.query.vbatt || \"0\");\nconst rssi = parseInt(msg.req.query.rssi || \"0\", 10);\nconst setMaster = msg.req.query.setmaster === \"1\";\nconst threshold = msg.req.query.threshold ? parseFloat(msg.req.query.threshold) : null;\nconst imageBuffer = msg.payload;\n\nconst fs = global.get('fs');\nconst dir = \"/config/briefkasten\";\nconst capturesDir = dir + \"/captures\";\nfs.mkdirSync(capturesDir, { recursive: true });\n\nconst ts = new Date().toISOString().replace(/[:.]/g, \"-\");\nconst capturePath = capturesDir + \"/\" + ts + \".jpg\";\nfs.writeFileSync(capturePath, imageBuffer);\nfs.writeFileSync(dir + \"/latest.jpg\", imageBuffer);\n\nmsg.payload = imageBuffer;\nmsg.vbatt = vbatt;\nmsg.rssi = rssi;\nmsg.setMaster = setMaster;\nmsg.threshold = threshold;\nmsg.capturePath = capturePath;\nreturn msg;",
+        "func": "const vbatt = parseFloat(msg.req.query.vbatt || \"0\");\nconst rssi = parseInt(msg.req.query.rssi || \"0\", 10);\nconst setMaster = msg.req.query.setmaster === \"1\";\nconst threshold = msg.req.query.threshold ? parseFloat(msg.req.query.threshold) : null;\nconst imageBuffer = msg.payload;\n\nconst fs = global.get('fs');\nconst dir = \"/config/briefkasten\";\nconst capturesDir = dir + \"/captures\";\nfs.mkdirSync(capturesDir, { recursive: true });\n\nconst ts = new Date().toISOString().replace(/[:.]/g, \"-\");\nconst capturePath = capturesDir + \"/\" + ts + \".jpg\";\nfs.writeFileSync(capturePath, imageBuffer);\nfs.writeFileSync(dir + \"/latest.jpg\", imageBuffer);\n\nflow.set('lastUploadMs', Date.now());\n\nmsg.payload = imageBuffer;\nmsg.vbatt = vbatt;\nmsg.rssi = rssi;\nmsg.setMaster = setMaster;\nmsg.threshold = threshold;\nmsg.capturePath = capturePath;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -6875,7 +6875,7 @@
         "type": "function",
         "z": "bk_tab",
         "name": "Bild-Diff gegen Referenz + Auto-Rekalibrierung",
-        "func": "const sharp = global.get('sharp');\nconst fs = global.get('fs');\nconst dir = \"/config/briefkasten\";\nconst REF_PATH = dir + \"/reference.jpg\";\n\nfunction respond(diffScore, mailPresent, onThreshold, offThreshold) {\n    const httpMsg = {\n        res: msg.res,\n        statusCode: 200,\n        headers: { \"Content-Type\": \"application/json\" },\n        payload: JSON.stringify({\n            diffScore: Math.round(diffScore * 100) / 100,\n            mailPresent: mailPresent,\n            onThreshold: onThreshold,\n            offThreshold: Math.round(offThreshold * 100) / 100\n        })\n    };\n    node.send([msg, httpMsg]);\n}\n\nasync function run() {\n    const onThreshold = (msg.threshold && msg.threshold > 0) ? msg.threshold : 18;\n    const offThreshold = onThreshold * 0.55;\n\n    if (msg.setMaster || !fs.existsSync(REF_PATH)) {\n        fs.copyFileSync(msg.capturePath, REF_PATH);\n        flow.set('mailPresent', false);\n        flow.set('offStreak', 0);\n        msg.diffScore = 0;\n        msg.mailPresent = false;\n        respond(0, false, onThreshold, offThreshold);\n        return;\n    }\n\n    const size = 64;\n    const cur = await sharp(msg.payload).resize(size, size).grayscale().raw().toBuffer();\n    const ref = await sharp(REF_PATH).resize(size, size).grayscale().raw().toBuffer();\n\n    let sum = 0;\n    for (let i = 0; i < cur.length; i++) sum += Math.abs(cur[i] - ref[i]);\n    const score = sum / cur.length;\n\n    const wasOn = flow.get('mailPresent') || false;\n    let mailPresent = wasOn;\n    if (score > onThreshold) mailPresent = true;\n    else if (score < offThreshold) mailPresent = false;\n    flow.set('mailPresent', mailPresent);\n\n    let streak = flow.get('offStreak') || 0;\n    if (mailPresent) {\n        streak = 0;\n    } else {\n        streak++;\n        if (streak >= 24) {\n            fs.copyFileSync(msg.capturePath, REF_PATH);\n            streak = 0;\n            node.warn(\"Referenzbild automatisch neu kalibriert (24x OFF in Folge)\");\n        }\n    }\n    flow.set('offStreak', streak);\n\n    msg.diffScore = score;\n    msg.mailPresent = mailPresent;\n    respond(score, mailPresent, onThreshold, offThreshold);\n}\n\nrun().catch(err => {\n    node.error(\"Diff fehlgeschlagen: \" + err, msg);\n    node.send([null, { res: msg.res, statusCode: 500, payload: JSON.stringify({ error: String(err) }) }]);\n});\nreturn null;",
+        "func": "const sharp = global.get('sharp');\nconst fs = global.get('fs');\nconst dir = \"/config/briefkasten\";\nconst REF_PATH = dir + \"/reference.jpg\";\n\nfunction respond(diffScore, mailPresent, onThreshold, offThreshold) {\n    const httpMsg = {\n        res: msg.res,\n        statusCode: 200,\n        headers: { \"Content-Type\": \"application/json\" },\n        payload: JSON.stringify({\n            diffScore: Math.round(diffScore * 100) / 100,\n            mailPresent: mailPresent,\n            onThreshold: onThreshold,\n            offThreshold: Math.round(offThreshold * 100) / 100\n        })\n    };\n    node.send([msg, httpMsg]);\n}\n\nasync function run() {\n    const onThreshold = (msg.threshold && msg.threshold > 0) ? msg.threshold : 18;\n    const offThreshold = onThreshold * 0.55;\n\n    if (msg.setMaster || !fs.existsSync(REF_PATH)) {\n        fs.copyFileSync(msg.capturePath, REF_PATH);\n        flow.set('mailPresent', false);\n        flow.set('lowStreak', 0);\n        msg.diffScore = 0;\n        msg.mailPresent = false;\n        respond(0, false, onThreshold, offThreshold);\n        return;\n    }\n\n    const size = 64;\n    const cur = await sharp(msg.payload).resize(size, size).grayscale().raw().toBuffer();\n    const ref = await sharp(REF_PATH).resize(size, size).grayscale().raw().toBuffer();\n\n    let sum = 0;\n    for (let i = 0; i < cur.length; i++) sum += Math.abs(cur[i] - ref[i]);\n    const score = sum / cur.length;\n\n    const wasOn = flow.get('mailPresent') || false;\n    let mailPresent = wasOn;\n    if (score > onThreshold) mailPresent = true;\n    else if (score < offThreshold) mailPresent = false;\n\n    // Deadlock-Schutz: zaehlt JEDEN Zyklus unter onThreshold, unabhaengig\n    // davon ob mailPresent durch die Hysterese noch auf true haengt (z.B.\n    // wenn das Referenzbild-Rauschen selbst schon > offThreshold liegt).\n    let streak = flow.get('lowStreak') || 0;\n    if (score < onThreshold) {\n        streak++;\n        if (streak >= 24) {\n            fs.copyFileSync(msg.capturePath, REF_PATH);\n            mailPresent = false;\n            streak = 0;\n            node.warn(\"Referenzbild automatisch neu kalibriert (24x unter Schwellwert in Folge, auch falls mailPresent haengengeblieben war)\");\n        }\n    } else {\n        streak = 0;\n    }\n    flow.set('lowStreak', streak);\n    flow.set('mailPresent', mailPresent);\n\n    msg.diffScore = score;\n    msg.mailPresent = mailPresent;\n    respond(score, mailPresent, onThreshold, offThreshold);\n}\n\nrun().catch(err => {\n    node.error(\"Diff fehlgeschlagen: \" + err, msg);\n    node.send([null, { res: msg.res, statusCode: 500, payload: JSON.stringify({ error: String(err) }) }]);\n});\nreturn null;",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -6898,8 +6898,8 @@
         "type": "function",
         "z": "bk_tab",
         "name": "MQTT-Nachrichten bauen (state/image/diag)",
-        "func": "const stateMsg = {\n    topic: \"homeassistant/binary_sensor/briefkasten_post/state\",\n    payload: msg.mailPresent ? \"ON\" : \"OFF\"\n};\nconst imageMsg = { topic: \"briefkasten/image\", payload: msg.payload };\nconst vbattMsg = { topic: \"briefkasten/vbatt\", payload: String(msg.vbatt) };\nconst rssiMsg = { topic: \"briefkasten/rssi\", payload: String(msg.rssi) };\nreturn [[stateMsg], [imageMsg], [vbattMsg], [rssiMsg]];",
-        "outputs": 4,
+        "func": "const stateMsg = {\n    topic: \"homeassistant/binary_sensor/briefkasten_post/state\",\n    payload: msg.mailPresent ? \"ON\" : \"OFF\"\n};\nconst imageMsg = { topic: \"briefkasten/image\", payload: msg.payload };\nconst vbattMsg = { topic: \"briefkasten/vbatt\", payload: String(msg.vbatt) };\nconst rssiMsg = { topic: \"briefkasten/rssi\", payload: String(msg.rssi) };\nconst availMsg = { topic: \"briefkasten/availability\", payload: \"online\" };\nreturn [[stateMsg], [imageMsg], [vbattMsg], [rssiMsg], [availMsg]];",
+        "outputs": 5,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -6913,6 +6913,9 @@
             ],
             [
                 "bk_mqtt_image"
+            ],
+            [
+                "bk_mqtt_retained"
             ],
             [
                 "bk_mqtt_retained"
@@ -6988,7 +6991,7 @@
         "type": "function",
         "z": "bk_tab",
         "name": "Discovery-Configs bauen",
-        "func": "const device = { identifiers: [\"briefkasten\"], name: \"Briefkasten\", manufacturer: \"IceBriefkasten\" };\n\nconst binarySensor = {\n    topic: \"homeassistant/binary_sensor/briefkasten_post/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten Post\",\n        unique_id: \"briefkasten_post\",\n        state_topic: \"homeassistant/binary_sensor/briefkasten_post/state\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        icon: \"mdi:mailbox\",\n        device\n    })\n};\n\nconst camera = {\n    topic: \"homeassistant/camera/briefkasten_camera/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten Kamera\",\n        unique_id: \"briefkasten_camera\",\n        topic: \"briefkasten/image\",\n        device\n    })\n};\n\nconst vbattSensor = {\n    topic: \"homeassistant/sensor/briefkasten_vbatt/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten Batteriespannung\",\n        unique_id: \"briefkasten_vbatt\",\n        state_topic: \"briefkasten/vbatt\",\n        unit_of_measurement: \"V\",\n        device_class: \"voltage\",\n        entity_category: \"diagnostic\",\n        device\n    })\n};\n\nconst rssiSensor = {\n    topic: \"homeassistant/sensor/briefkasten_rssi/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten WLAN-Signal\",\n        unique_id: \"briefkasten_rssi\",\n        state_topic: \"briefkasten/rssi\",\n        unit_of_measurement: \"dBm\",\n        device_class: \"signal_strength\",\n        entity_category: \"diagnostic\",\n        device\n    })\n};\n\nreturn [[binarySensor, camera, vbattSensor, rssiSensor]];",
+        "func": "const device = { identifiers: [\"briefkasten\"], name: \"Briefkasten\", manufacturer: \"IceBriefkasten\" };\nconst availability_topic = \"briefkasten/availability\";\nconst payload_available = \"online\";\nconst payload_not_available = \"offline\";\n\nconst binarySensor = {\n    topic: \"homeassistant/binary_sensor/briefkasten_post/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten Post\",\n        unique_id: \"briefkasten_post\",\n        state_topic: \"homeassistant/binary_sensor/briefkasten_post/state\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        icon: \"mdi:mailbox\",\n        availability_topic, payload_available, payload_not_available,\n        device\n    })\n};\n\nconst camera = {\n    topic: \"homeassistant/camera/briefkasten_camera/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten Kamera\",\n        unique_id: \"briefkasten_camera\",\n        topic: \"briefkasten/image\",\n        availability_topic, payload_available, payload_not_available,\n        device\n    })\n};\n\nconst vbattSensor = {\n    topic: \"homeassistant/sensor/briefkasten_vbatt/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten Batteriespannung\",\n        unique_id: \"briefkasten_vbatt\",\n        state_topic: \"briefkasten/vbatt\",\n        unit_of_measurement: \"V\",\n        device_class: \"voltage\",\n        entity_category: \"diagnostic\",\n        availability_topic, payload_available, payload_not_available,\n        device\n    })\n};\n\nconst rssiSensor = {\n    topic: \"homeassistant/sensor/briefkasten_rssi/config\",\n    payload: JSON.stringify({\n        name: \"Briefkasten WLAN-Signal\",\n        unique_id: \"briefkasten_rssi\",\n        state_topic: \"briefkasten/rssi\",\n        unit_of_measurement: \"dBm\",\n        device_class: \"signal_strength\",\n        entity_category: \"diagnostic\",\n        availability_topic, payload_available, payload_not_available,\n        device\n    })\n};\n\nreturn [[binarySensor, camera, vbattSensor, rssiSensor]];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -7638,5 +7641,604 @@
         "x": 1030,
         "y": 300,
         "wires": []
+    },
+    {
+        "id": "bk_avail_inject",
+        "type": "inject",
+        "z": "bk_tab",
+        "name": "Alle 5min: Verfuegbarkeit pruefen",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "10",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 460,
+        "wires": [
+            [
+                "bk_avail_check"
+            ]
+        ]
+    },
+    {
+        "id": "bk_avail_check",
+        "type": "function",
+        "z": "bk_tab",
+        "name": "Offline-Watchdog (>20min kein Upload -> offline)",
+        "func": "const STALE_MS = 20 * 60 * 1000; // siehe Kommentar in patch_availability_watchdog.py\nconst last = flow.get('lastUploadMs') || 0;\nconst age = Date.now() - last;\nif (last === 0) return null; // seit Node-RED-Neustart noch nie ein Upload gesehen - nichts behaupten\nif (age > STALE_MS) {\n    return { topic: \"briefkasten/availability\", payload: \"offline\" };\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 460,
+        "wires": [
+            [
+                "bk_mqtt_retained"
+            ]
+        ]
+    },
+    {
+        "id": "ifr_tab",
+        "type": "tab",
+        "label": "IceFlightRadar",
+        "disabled": false,
+        "info": "Automationen auf den IceFlightRadar-MQTT-Entitäten: Empfangs-Watchdog, tiefe Vorbeiflüge, Tagesbilanz."
+    },
+    {
+        "id": "ifr_comment",
+        "type": "comment",
+        "name": "IceFlightRadar - Automationen (Empfangs-Watchdog, tiefe Vorbeiflüge, Tagesbilanz). Datenquelle: MQTT-Entitäten des IceFlightRadar in Home Assistant.",
+        "info": "Alle Werte kommen aus den HA-Entitäten sensor.iceflightradar_* / binary_sensor.iceflightradar_empfang_aktiv (MQTT-Bridge auf dem Pi).\nSchwellen stehen im Knoten 'Konfiguration' (Start-Inject) und lassen sich dort ändern:\n  nearKm=5, lowFt=4000 (Baro-Höhe ü. NN; Boden ca. 1830 ft), perHexMin=30, globalMin=3.\nMeldung per Push (notify.mobile_app_iphone_von_marcus).\nGrenzen: 'nächstes Flugzeug' liefert nur EIN Flugzeug; Statistik-Zähler liegen im Speicher und gehen bei Neustart/Deploy von Node-RED verloren.",
+        "x": 470,
+        "y": 40,
+        "wires": [],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_cfg_inj",
+        "type": "inject",
+        "name": "Konfiguration laden (Start)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 100,
+        "wires": [
+            [
+                "ifr_cfg_fn"
+            ]
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_cfg_fn",
+        "type": "function",
+        "name": "Konfiguration",
+        "func": "// Schwellen hier anpassen, dann deployen\nflow.set('cfg', { nearKm: 5, lowFt: 4000, perHexMin: 30, globalMin: 3 });\nnode.status({fill:'green', shape:'dot', text:'Schwellen geladen'});\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 100,
+        "wires": [
+            []
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_ssc_off",
+        "type": "server-state-changed",
+        "name": "Empfang aus seit 10 min",
+        "server": "80ef547.fe1b7a8",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "binary_sensor.iceflightradar_empfang_aktiv"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "off",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "10",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 200,
+        "y": 200,
+        "wires": [
+            [
+                "ifr_fn_off"
+            ]
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_ssc_unav",
+        "type": "server-state-changed",
+        "name": "Nicht verfügbar seit 10 min",
+        "server": "80ef547.fe1b7a8",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "binary_sensor.iceflightradar_empfang_aktiv"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "unavailable",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "10",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 200,
+        "y": 260,
+        "wires": [
+            [
+                "ifr_fn_unav"
+            ]
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_ssc_on",
+        "type": "server-state-changed",
+        "name": "Empfang wieder da (2 min stabil)",
+        "server": "80ef547.fe1b7a8",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "binary_sensor.iceflightradar_empfang_aktiv"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "on",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "2",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 200,
+        "y": 320,
+        "wires": [
+            [
+                "ifr_fn_back"
+            ]
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_fn_off",
+        "type": "function",
+        "name": "Alarm: Empfang aus",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 200,
+        "wires": [
+            [
+                "ifr_notify"
+            ]
+        ],
+        "func": "if (flow.get('alarm')) return null;            // schon gemeldet\nflow.set('alarm', { since: Date.now(), kind: 'off' });\nconst s = flow.get('stats') || {}; s.outages = (s.outages || 0) + 1; flow.set('stats', s);\nmsg.payload = { title: 'IceFlightRadar: kein Empfang',\n  message: 'Seit 10 Minuten kommen keine Nachrichten mehr an. Antenne und SDR-Stick am Pi prüfen.',\n  tag: 'ifr-empfang', level: 'time-sensitive' };\nreturn msg;",
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_fn_unav",
+        "type": "function",
+        "name": "Alarm: Pi/Bridge weg",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 260,
+        "wires": [
+            [
+                "ifr_notify"
+            ]
+        ],
+        "func": "if (flow.get('alarm')) return null;\nflow.set('alarm', { since: Date.now(), kind: 'unavailable' });\nconst s = flow.get('stats') || {}; s.outages = (s.outages || 0) + 1; flow.set('stats', s);\nmsg.payload = { title: 'IceFlightRadar: Pi nicht erreichbar',\n  message: 'Die Entitäten sind seit 10 Minuten nicht verfügbar (Pi aus, WLAN weg oder MQTT-Bridge gestoppt).',\n  tag: 'ifr-empfang', level: 'time-sensitive' };\nreturn msg;",
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_fn_back",
+        "type": "function",
+        "name": "Entwarnung",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 320,
+        "wires": [
+            [
+                "ifr_notify"
+            ]
+        ],
+        "func": "const a = flow.get('alarm');\nif (!a) return null;                            // es gab keinen Alarm\nflow.set('alarm', null);\nconst min = Math.round((Date.now() - a.since) / 60000) + 10;\nmsg.payload = { title: 'IceFlightRadar: Empfang wieder da',\n  message: 'Der Empfang läuft wieder (Ausfall ca. ' + min + ' Minuten).',\n  tag: 'ifr-empfang', level: 'passive' };\nreturn msg;",
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_ssc_near",
+        "type": "server-state-changed",
+        "name": "sensor.iceflightradar_naechstes_flugzeug",
+        "server": "80ef547.fe1b7a8",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.iceflightradar_naechstes_flugzeug"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 200,
+        "y": 440,
+        "wires": [
+            [
+                "ifr_fn_near"
+            ]
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_fn_near",
+        "type": "function",
+        "name": "Nah und niedrig?",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 440,
+        "wires": [
+            [
+                "ifr_notify"
+            ]
+        ],
+        "func": "const cfg = flow.get('cfg') || { nearKm: 5, lowFt: 4000, perHexMin: 30, globalMin: 3 };\nconst ns = msg.data && msg.data.event && msg.data.event.new_state;\nif (!ns) return null;\nconst a = ns.attributes || {};\nconst dist = parseFloat(ns.state);\nconst alt = (typeof a.altitude_ft === 'number') ? a.altitude_ft : null;   // 'ground'/unbekannt -> ignorieren\nif (isNaN(dist) || alt === null) return null;\nif (dist > cfg.nearKm || alt > cfg.lowFt) return null;\nconst now = Date.now();\nconst seen = flow.get('nearSeen') || {};\nfor (const h in seen) { if (now - seen[h] > cfg.perHexMin * 60000) delete seen[h]; }\nconst last = flow.get('nearLast') || 0;\nif (seen[a.hex] || now - last < cfg.globalMin * 60000) return null;\nseen[a.hex] = now; flow.set('nearSeen', seen); flow.set('nearLast', now);\nconst s = flow.get('stats') || {};\ns.nearby = (s.nearby || 0) + 1; s.lowestFt = Math.min(s.lowestFt === undefined ? 1e9 : s.lowestFt, alt);\nflow.set('stats', s);\nconst cs = (a.callsign || a.hex || 'unbekannt');\nmsg.payload = { title: 'Flugzeug tief in der Nähe: ' + cs,\n  message: dist.toFixed(1) + ' km entfernt, ' + alt + ' ft (Baro), ' + Math.round(a.speed_kt || 0) + ' kt',\n  tag: 'ifr-nah-' + a.hex, level: 'passive' };\nreturn msg;",
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_ssc_stats",
+        "type": "server-state-changed",
+        "name": "Werte sammeln",
+        "server": "80ef547.fe1b7a8",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.iceflightradar_flugzeuge",
+                "sensor.iceflightradar_maximale_distanz",
+                "sensor.iceflightradar_nachrichten_pro_minute"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 200,
+        "y": 560,
+        "wires": [
+            [
+                "ifr_fn_collect"
+            ]
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_fn_collect",
+        "type": "function",
+        "name": "Tageswerte sammeln",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 560,
+        "wires": [
+            []
+        ],
+        "func": "const v = parseFloat(msg.payload);\nif (isNaN(v)) return null;\nconst s = flow.get('stats') || {};\nswitch (msg.topic) {\n  case 'sensor.iceflightradar_flugzeuge':            s.maxAircraft = Math.max(s.maxAircraft || 0, v); break;\n  case 'sensor.iceflightradar_maximale_distanz':     s.maxDist = Math.max(s.maxDist || 0, v); break;\n  case 'sensor.iceflightradar_nachrichten_pro_minute': s.msgSum = (s.msgSum || 0) + v; s.msgN = (s.msgN || 0) + 1; break;\n}\nflow.set('stats', s);\nreturn null;",
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_inj_daily",
+        "type": "inject",
+        "name": "Tagesbilanz 22:00",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 22 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 640,
+        "wires": [
+            [
+                "ifr_fn_daily"
+            ]
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_fn_daily",
+        "type": "function",
+        "name": "Tagesbilanz",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 640,
+        "wires": [
+            [
+                "ifr_notify"
+            ]
+        ],
+        "func": "const s = flow.get('stats') || {};\nflow.set('stats', {});                            // neuer Tag\nconst avg = s.msgN ? Math.round(s.msgSum / s.msgN) : 0;\nconst low = (s.lowestFt !== undefined) ? ', tiefster Vorbeiflug ' + s.lowestFt + ' ft' : '';\nmsg.payload = { title: 'IceFlightRadar Tagesbilanz',\n  message: 'Max. ' + (s.maxAircraft || 0) + ' Flugzeuge gleichzeitig, weiteste Distanz ' + Math.round(s.maxDist || 0) + ' km, '\n         + 'Ø ' + avg + ' Nachr./min, Empfangsausfälle: ' + (s.outages || 0) + ', tiefe Vorbeiflüge: ' + (s.nearby || 0) + low + '.',\n  tag: 'ifr-tag', level: 'passive' };\nreturn msg;",
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_inj_test",
+        "type": "inject",
+        "name": "Test: Beispielmeldung",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 720,
+        "wires": [
+            [
+                "ifr_fn_test"
+            ]
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_fn_test",
+        "type": "function",
+        "name": "Testmeldung",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 720,
+        "wires": [
+            [
+                "ifr_notify"
+            ]
+        ],
+        "func": "msg.payload = { title: 'IceFlightRadar: Test', message: 'Die Node-RED-Automationen sind aktiv.', tag: 'ifr-test', level: 'passive' };\nreturn msg;",
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_notify",
+        "type": "api-call-service",
+        "name": "Push an iPhone",
+        "server": "80ef547.fe1b7a8",
+        "version": 5,
+        "debugenabled": false,
+        "domain": "notify",
+        "service": "mobile_app_iphone_von_marcus",
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "data": "{\"title\": payload.title, \"message\": payload.message, \"data\": {\"tag\": payload.tag, \"push\": {\"interruption-level\": payload.level}}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "x": 760,
+        "y": 380,
+        "wires": [
+            [
+                "ifr_debug"
+            ]
+        ],
+        "z": "ifr_tab"
+    },
+    {
+        "id": "ifr_debug",
+        "type": "debug",
+        "name": "Debug: IceFlightRadar Meldung",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1010,
+        "y": 380,
+        "wires": [],
+        "z": "ifr_tab"
     }
 ]
