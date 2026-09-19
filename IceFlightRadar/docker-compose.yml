@@ -47,9 +47,10 @@ services:
       - GRAPHS1090_DARKMODE=true
       # --- Feed an ADSBExchange (Beast + MLAT), 16.09. aktiviert ---
       # Feste Stations-UUID aus .env (einmalig mit `uuidgen` erzeugen, danach nicht mehr aendern).
-      - UUID=${ADSBX_UUID}
-      - ADSBX_UUID=${ADSBX_UUID}
-      - ULTRAFEEDER_CONFIG=adsb,feed.adsbexchange.com,30004,beast_reduce_plus_out,uuid=${ADSBX_UUID};mlat,feed.adsbexchange.com,31090,uuid=${ADSBX_UUID}
+      # Werte kommen aus .env; die Konfigseite (Standalone) schreibt sie dort hinein.
+      - UUID=${ADSBX_UUID:-}
+      - ADSBX_UUID=${ADSBX_UUID:-}
+      - ULTRAFEEDER_CONFIG=${ULTRAFEEDER_CONFIG:-}
     tmpfs:
       - /run:exec,size=256M
       - /tmp:size=128M
@@ -58,3 +59,32 @@ services:
       - ./globe_history:/var/globe_history
       - ./graphs1090:/var/lib/collectd
     tty: true
+
+  # ---- Optional: Standalone-Weboberflaeche (Profil "web"), Port 80 ----
+  web:
+    image: nginx:alpine
+    container_name: iceflightradar-web
+    profiles: ["web"]
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./web/html:/usr/share/nginx/html:ro
+
+  # ---- Optional: MQTT-Bridge fuer Home Assistant (Profil "mqtt") ----
+  mqtt-bridge:
+    build: ./mqtt
+    container_name: iceflightradar-mqtt
+    profiles: ["mqtt"]
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - SOURCE_URL=http://127.0.0.1:8095
+      - CONFIG_FILE=/config/iceflightradar.json
+      # Ohne Konfigseite reichen diese Variablen (aus .env):
+      - MQTT_HOST=${MQTT_HOST:-}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - MQTT_USER=${MQTT_USER:-}
+      - MQTT_PASSWORD=${MQTT_PASSWORD:-}
+    volumes:
+      - ./config:/config:ro

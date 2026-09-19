@@ -1,0 +1,12 @@
+[Unit]
+Description=IceFlightRadar Steuerdienst (Konfigseite, WLAN-Einrichtung)
+After=network.target docker.service
+
+[Service]
+Environment=ICEFLIGHT_DIR=/opt/iceflightradar
+ExecStart=/usr/bin/python3 /opt/iceflightradar/control/control.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

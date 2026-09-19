@@ -1,0 +1,13 @@
+[Unit]
+Description=IceFlightRadar WLAN-Fallback (Access Point wenn kein WLAN)
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+ExecStart=/opt/iceflightradar/pi/iceflightradar-wifi-fallback.sh
+ExecStopPost=/bin/rm -f /run/iceflightradar-ap-active
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

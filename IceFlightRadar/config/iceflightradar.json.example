@@ -1,0 +1,18 @@
+{
+  "poll_interval_s": 10,
+  "ui_refresh_s": 5,
+  "mqtt": {
+    "enabled": false,
+    "host": "",
+    "port": 1883,
+    "user": "",
+    "password": "",
+    "discovery_prefix": "homeassistant",
+    "device_name": "IceFlightRadar"
+  },
+  "adsbx": {
+    "enabled": false,
+    "uuid": "",
+    "feed_id": ""
+  }
+}

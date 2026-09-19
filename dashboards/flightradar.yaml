@@ -30,6 +30,35 @@ views:
     type: panel
     cards:
       - type: iframe
-        # Feed-ID steht nach dem ersten Connect in `docker logs iceflightradar-ultrafeeder | grep "Stats URL"`
         url: https://www.adsbexchange.com/api/feeders/?feed=DEINE_FEED_ID
         aspect_ratio: 100%
+
+  - title: Werte
+    path: werte
+    icon: mdi:gauge
+    cards:
+      - type: entities
+        title: Empfänger (per MQTT)
+        entities:
+          - entity: binary_sensor.iceflightradar_empfang_aktiv
+          - entity: sensor.iceflightradar_flugzeuge
+          - entity: sensor.iceflightradar_flugzeuge_mit_position
+          - entity: sensor.iceflightradar_nachrichten_pro_minute
+          - entity: sensor.iceflightradar_positionen_pro_minute
+          - entity: sensor.iceflightradar_signalpegel
+          - entity: sensor.iceflightradar_rauschpegel
+          - entity: sensor.iceflightradar_maximale_distanz
+          - entity: sensor.iceflightradar_naechstes_flugzeug
+      - type: history-graph
+        title: Flugzeuge und Nachrichten
+        hours_to_show: 6
+        entities:
+          - entity: sensor.iceflightradar_flugzeuge
+          - entity: sensor.iceflightradar_flugzeuge_mit_position
+          - entity: sensor.iceflightradar_nachrichten_pro_minute
+      - type: history-graph
+        title: Signal und Rauschen
+        hours_to_show: 6
+        entities:
+          - entity: sensor.iceflightradar_signalpegel
+          - entity: sensor.iceflightradar_rauschpegel
