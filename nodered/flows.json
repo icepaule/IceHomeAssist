@@ -7409,7 +7409,7 @@
         "type": "comment",
         "z": "muellkalender_tab",
         "name": "Müllkalender Ottobrunn – ZVMSO via muellapp.com API. Wöchentlicher Sync + Erinnerung 18/20 Uhr am Vortag (Kiosk-Sensor via MQTT + Alexa AZ/Wohnzimmer).",
-        "info": "API: https://app.muellapp.com/api/trash/<ADRESS_ID>?include-public-holidays (ohne Auth, JSON).\nAddress-ID <ADRESS_ID> = eigene Adresse in Ottobrunn (town-id 9184136).\nRestmüll+Biotonne kleine Tonne (60-240l/120-240l), Papiertonne große 1.100l-Sammeltonne.",
+        "info": "API: https://app.muellapp.com/api/trash/<ADRESS_ID>?include-public-holidays (ohne Auth, JSON).\nAddress-ID <ADRESS_ID> = eigene Adresse (in der Repo-Kopie durch Platzhalter ersetzt, nach einem Restore eintragen) in Ottobrunn (town-id 9184136).\nRestmüll+Biotonne kleine Tonne (60-240l/120-240l), Papiertonne große 1.100l-Sammeltonne.",
         "x": 460,
         "y": 40,
         "wires": []
